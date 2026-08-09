@@ -91,6 +91,24 @@
         "keywords": "Sally Contarino, Sally Grace Contarino, hilang Las Vegas, wanita Australia hilang, LVMPD LLV260600083886, orang hilang dalam bahaya",
         "isAccessibleForFree": true,
         "specialty": "Kesadaran Orang Hilang"
+      },
+      {
+        "@type": "BreadcrumbList",
+        "@id": "https://earthlingofficial.com/cari-sally-contarino.html#breadcrumb",
+        "itemListElement": [
+          {
+            "@type": "ListItem",
+            "position": 1,
+            "name": "Earthling Official",
+            "item": "https://earthlingofficial.com/"
+          },
+          {
+            "@type": "ListItem",
+            "position": 2,
+            "name": "Cari Sally Contarino",
+            "item": "https://earthlingofficial.com/cari-sally-contarino.html"
+          }
+        ]
       }
     ]
   }
@@ -282,6 +300,83 @@
     .share-section { background: #161616; border: 2px solid #333; padding: 28px; text-align: center; border-radius: 4px; margin-bottom: 24px; }
     .share-section h2 { font-size: 0.85rem; letter-spacing: 3px; text-transform: uppercase; color: #888; margin-bottom: 16px; }
     .share-section p { font-size: 1rem; line-height: 1.8; color: #ccc; margin-bottom: 12px; }
+
+    /* ── Brand-colored share buttons w/ icons ── */
+    .share-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 20px;
+      border-radius: 4px;
+      font-size: 0.95rem;
+      font-weight: bold;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      text-decoration: none;
+      cursor: pointer;
+      border: none;
+      font-family: Georgia, serif;
+      color: #fff;
+      transition: filter 0.15s, transform 0.15s;
+    }
+    .share-btn:hover { filter: brightness(1.15); transform: translateY(-1px); }
+    .share-btn svg { width: 18px; height: 18px; flex-shrink: 0; fill: currentColor; }
+    .share-btn.sb-copy { background: #cc0000; }
+    .share-btn.sb-facebook { background: #1877F2; }
+    .share-btn.sb-x { background: #000; border: 1px solid #444; }
+    .share-btn.sb-whatsapp { background: #25D366; color: #06210f; }
+    .share-btn.sb-threads { background: #000; border: 1px solid #444; }
+    .share-btn.sb-telegram { background: #229ED9; }
+
+    /* smaller variant for the top strip */
+    .share-strip-top .share-btn { padding: 7px 14px; font-size: 0.78rem; gap: 6px; }
+    .share-strip-top .share-btn svg { width: 14px; height: 14px; }
+
+    .share-strip-top {
+      background: #111;
+      border-bottom: 2px solid #333;
+      padding: 10px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .share-strip-top .sst-label {
+      font-size: 0.72rem;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: #666;
+      margin-right: 4px;
+      white-space: nowrap;
+    }
+    #copyFeedbackTop { font-size: 0.78rem; color: #2d7a2d; font-weight: bold; width: 100%; text-align: center; height: 1em; }
+    @media (max-width:600px) { .share-strip-top { padding: 10px 10px; gap: 6px; } }
+
+    /* CTA arrow pointing at share strip */
+    .share-cta {
+      background: #1a0000;
+      text-align: center;
+      padding: 8px 12px 2px;
+      font-size: 0.78rem;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: #ff6666;
+      font-weight: bold;
+      font-family: Georgia, serif;
+    }
+    .share-cta .arrow-down {
+      display: block;
+      font-size: 1rem;
+      color: #cc0000;
+      animation: cta-bounce 1.4s infinite;
+      margin-top: 2px;
+    }
+    @keyframes cta-bounce {
+      0%, 100% { transform: translateY(0); opacity: 1; }
+      50% { transform: translateY(5px); opacity: 0.6; }
+    }
+
     .thanks-section { background: #0f1f0f; border-left: 4px solid #2d7a2d; padding: 24px 28px; margin-bottom: 24px; border-radius: 0 4px 4px 0; }
     .thanks-section h2 { font-size: 0.85rem; text-transform: uppercase; letter-spacing: 3px; color: #2d7a2d; margin-bottom: 14px; }
     .thanks-section p { font-size: 1rem; line-height: 1.8; color: #ccc; }
@@ -327,6 +422,40 @@
   <p>⚠ Reddit menekan ratusan ribu tayangan konten tentang kasus Sally tanpa peringatan atau penjelasan. <a href="reddit-missing-persons-suppression.html">Baca pemberitahuan lengkap →</a></p>
 </div>
 
+<!-- ── TOP SHARE STRIP ── -->
+<div class="share-cta">
+  Setiap kali dibagikan berarti — bantu temukan Sally
+  <span class="arrow-down">↓</span>
+</div>
+<div class="share-strip-top">
+  <span class="sst-label">Bagikan sekarang:</span>
+  <button class="share-btn sb-copy" onclick="copyShareLinkTop()">
+    <svg viewBox="0 0 24 24"><path d="M3.9 12a5 5 0 0 1 5-5h4v2h-4a3 3 0 1 0 0 6h4v2h-4a5 5 0 0 1-5-5zm7-1h4v2h-4v-2zm3-4h4a5 5 0 1 1 0 10h-4v-2h4a3 3 0 1 0 0-6h-4V7z"/></svg>
+    Salin Tautan
+  </button>
+  <a class="share-btn sb-facebook" id="shareFacebookTop" href="#" target="_blank" rel="noopener">
+    <svg viewBox="0 0 24 24"><path d="M22 12a10 10 0 1 0-11.6 9.9v-7H7.9V12h2.5V9.8c0-2.5 1.5-3.9 3.8-3.9 1.1 0 2.2.2 2.2.2v2.5h-1.3c-1.2 0-1.6.8-1.6 1.6V12h2.8l-.4 2.9h-2.4v7A10 10 0 0 0 22 12z"/></svg>
+    Facebook
+  </a>
+  <a class="share-btn sb-x" id="shareXTop" href="#" target="_blank" rel="noopener">
+    <svg viewBox="0 0 24 24"><path d="M18.9 2H22l-7.6 8.7L23.3 22h-7l-5.5-7.2L4.5 22H1.4l8.1-9.3L1 2h7.2l5 6.6L18.9 2zm-1.2 18h1.7L7.4 4h-1.8l12.1 16z"/></svg>
+    X / Twitter
+  </a>
+  <a class="share-btn sb-whatsapp" id="shareWhatsappTop" href="#" target="_blank" rel="noopener">
+    <svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 0 0-8.5 15.2L2 22l4.9-1.5A10 10 0 1 0 12 2zm5.7 14.2c-.2.7-1.4 1.3-2 1.4-.5.1-1.2.1-1.9-.1-.4-.1-1-.3-1.7-.6-3-1.3-4.9-4.3-5.1-4.5-.1-.2-1.2-1.6-1.2-3s.7-2.1 1-2.4c.3-.3.6-.4.8-.4h.6c.2 0 .5 0 .7.5.3.7.9 2.3 1 2.4.1.2.1.3 0 .5-.1.2-.1.3-.3.5l-.4.5c-.1.2-.3.3-.1.6.2.3.9 1.5 2 2.4 1.3 1.2 2.4 1.6 2.7 1.7.3.1.5.1.6-.1.2-.2.7-.8.9-1.1.2-.3.4-.2.7-.1.3.1 1.8.9 2.1 1 .3.2.5.2.6.3.1.2.1.9-.1 1.6z"/></svg>
+    WhatsApp
+  </a>
+  <a class="share-btn sb-telegram" id="shareTelegramTop" href="#" target="_blank" rel="noopener">
+    <svg viewBox="0 0 24 24"><path d="M22 4.1 2.9 11.6c-1.3.5-1.3 1.2-.2 1.5l4.9 1.5 1.9 5.8c.2.6.5.9.9.9.4 0 .6-.2.9-.5l2.2-2.1 4.6 3.4c.8.5 1.4.2 1.6-.8L23 4.9c.3-1.2-.4-1.7-1-.8zM7.9 14.6l9.6-6.1c.5-.3.9-.1.5.2l-7.9 7.2-.3 3-1.5-4.3z"/></svg>
+    Telegram
+  </a>
+  <a class="share-btn sb-threads" id="shareThreadsTop" href="#" target="_blank" rel="noopener">
+    <svg viewBox="0 0 24 24"><path d="M12.2 22c-2.6 0-4.7-.8-6.2-2.4-1.5-1.6-2.3-3.9-2.4-6.9v-1.4c.1-3 .9-5.3 2.4-6.9C7.5 2.8 9.6 2 12.2 2c2.5 0 4.5.7 6 2.1 1.3 1.2 2.1 2.9 2.4 5l-2.1.3c-.2-1.6-.8-2.9-1.7-3.7-1-.9-2.5-1.4-4.4-1.4-2 0-3.5.6-4.6 1.8-1.1 1.2-1.7 3-1.7 5.3v.6c0 2.4.6 4.2 1.7 5.4 1.1 1.2 2.6 1.8 4.6 1.8 1.8 0 3.1-.4 4-1.2.9-.8 1.4-1.9 1.4-3.2 0-.7-.2-1.3-.5-1.7-.4-.5-1-.9-1.8-1.1-.1.9-.4 1.7-.9 2.3-.6.8-1.5 1.2-2.6 1.2-1 0-1.8-.3-2.4-.8-.6-.6-.9-1.3-.9-2.1 0-.9.4-1.7 1.1-2.2.7-.5 1.6-.8 2.8-.8.5 0 1 0 1.4.1 0-.7-.2-1.3-.6-1.7-.4-.4-1-.6-1.8-.6-1 0-1.9.4-2.6 1.1l-1.5-1.4c1.1-1.1 2.5-1.7 4.1-1.7 1.4 0 2.6.4 3.4 1.3.8.8 1.3 2 1.3 3.5v.5c1.2.3 2.1.9 2.8 1.7.7.9 1.1 2 1.1 3.2 0 1.9-.7 3.5-2.1 4.6-1.3 1.1-3.1 1.7-5.3 1.7z"/></svg>
+    Threads
+  </a>
+</div>
+<div id="copyFeedbackTop"></div>
+
 <div class="container">
 
   <!-- ABOVE-FOLD HOOK -->
@@ -363,6 +492,10 @@
   <div class="carousel" id="mainCarousel">
     <div class="carousel-track" id="carouselTrack">
       <div class="carousel-slide">
+        <img src="https://EarthlingOfficial.com/sallyclear.webp" alt="Sally Grace Contarino — foto jelas">
+        <div class="carousel-caption">Sally Grace Contarino — apakah Anda pernah melihatnya?</div>
+      </div>
+      <div class="carousel-slide">
         <img src="https://EarthlingOfficial.com/chain.jpg" alt="Liontin sitrin John Hardy — petunjuk kunci dalam kasus Sally Contarino">
         <div class="carousel-caption">Liontin sitrin John Hardy — tidak ditemukan di antara barang-barang Sally, menunjukkan ia memakainya</div>
       </div>
@@ -378,6 +511,26 @@
         <img src="https://EarthlingOfficial.com/bungalowhotel.jpg" alt="The Bungalows Hostel Las Vegas — tempat Sally Contarino menginap">
         <div class="carousel-caption">The Bungalows Hostel, Las Vegas — tempat Sally menginap</div>
       </div>
+      <div class="carousel-slide">
+        <img src="https://EarthlingOfficial.com/lasvegaspolice.jpg" alt="Las Vegas Metropolitan Police Department — investigasi Sally Contarino">
+        <div class="carousel-caption">Las Vegas Metropolitan Police Department — menyelidiki hilangnya Sally</div>
+      </div>
+      <div class="carousel-slide">
+        <img src="https://EarthlingOfficial.com/timbersbar.jpg" alt="Timbers Bar Las Vegas — terkait kasus Sally Contarino">
+        <div class="carousel-caption">Timbers Bar, Las Vegas — lokasi relevan dalam kasus ini</div>
+      </div>
+      <div class="carousel-slide">
+        <img src="https://EarthlingOfficial.com/sallyssisters9.webp" alt="Saudari Sally Contarino, Amy dan Lauren — permohonan tulus di Channel 9">
+        <div class="carousel-caption">Amy dan Lauren di Channel 9 — permohonan tulus</div>
+      </div>
+      <div class="carousel-slide">
+        <img src="https://EarthlingOfficial.com/sallywalking.webp" alt="Sally Grace Contarino terakhir terlihat di CCTV meninggalkan Smith's Marketplace Las Vegas">
+        <div class="carousel-caption">Polisi menyatakan Contarino terakhir terlihat di CCTV setelah meninggalkan Smith's Marketplace di Las Vegas pukul 13.02 (waktu setempat) Sabtu, 20 Juni.</div>
+      </div>
+      <div class="carousel-slide">
+        <img src="https://EarthlingOfficial.com/sallyface.jpg" alt="Sally Grace Contarino — foto close-up, mohon bagikan halaman ini">
+        <div class="carousel-caption">Mohon bagikan halaman ini</div>
+      </div>
     </div>
     <button class="carousel-btn prev" onclick="carouselMove(-1)">&#8249;</button>
     <button class="carousel-btn next" onclick="carouselMove(1)">&#8250;</button>
@@ -386,6 +539,12 @@
       <span onclick="carouselGo(1)"></span>
       <span onclick="carouselGo(2)"></span>
       <span onclick="carouselGo(3)"></span>
+      <span onclick="carouselGo(4)"></span>
+      <span onclick="carouselGo(5)"></span>
+      <span onclick="carouselGo(6)"></span>
+      <span onclick="carouselGo(7)"></span>
+      <span onclick="carouselGo(8)"></span>
+      <span onclick="carouselGo(9)"></span>
     </div>
   </div>
 
@@ -470,11 +629,30 @@
     <p>Kami adalah kelompok advokasi Australia yang menjangkau siapa saja yang memiliki platform atau nurani. Anda memiliki kekuatan untuk menjangkau seseorang yang pernah melihat Sally. Tolong bantu kami menemukannya.</p>
     <p style="color:#cc0000;font-weight:bold;margin-bottom:20px;">Bagikan halaman ini. Posting. Kirim pesan. Jangan lewati begitu saja.</p>
     <div style="display:flex;flex-wrap:wrap;gap:10px;justify-content:center;">
-      <button id="copyLinkBtn" onclick="copyShareLink()" style="background:#cc0000;color:#fff;border:none;padding:12px 22px;border-radius:4px;font-size:0.95rem;font-weight:bold;letter-spacing:1px;text-transform:uppercase;cursor:pointer;font-family:Georgia,serif;">🔗 Salin Tautan</button>
-      <a id="shareFacebook" href="#" target="_blank" rel="noopener" style="background:#222;color:#fff;border:1px solid #444;padding:12px 22px;border-radius:4px;font-size:0.95rem;font-weight:bold;letter-spacing:1px;text-transform:uppercase;text-decoration:none;">Facebook</a>
-      <a id="shareX" href="#" target="_blank" rel="noopener" style="background:#222;color:#fff;border:1px solid #444;padding:12px 22px;border-radius:4px;font-size:0.95rem;font-weight:bold;letter-spacing:1px;text-transform:uppercase;text-decoration:none;">X / Twitter</a>
-      <a id="shareWhatsapp" href="#" target="_blank" rel="noopener" style="background:#222;color:#fff;border:1px solid #444;padding:12px 22px;border-radius:4px;font-size:0.95rem;font-weight:bold;letter-spacing:1px;text-transform:uppercase;text-decoration:none;">WhatsApp</a>
-      <a id="shareThreads" href="#" target="_blank" rel="noopener" style="background:#222;color:#fff;border:1px solid #444;padding:12px 22px;border-radius:4px;font-size:0.95rem;font-weight:bold;letter-spacing:1px;text-transform:uppercase;text-decoration:none;">Threads</a>
+      <button id="copyLinkBtn" class="share-btn sb-copy" onclick="copyShareLink()">
+        <svg viewBox="0 0 24 24"><path d="M3.9 12a5 5 0 0 1 5-5h4v2h-4a3 3 0 1 0 0 6h4v2h-4a5 5 0 0 1-5-5zm7-1h4v2h-4v-2zm3-4h4a5 5 0 1 1 0 10h-4v-2h4a3 3 0 1 0 0-6h-4V7z"/></svg>
+        Salin Tautan
+      </button>
+      <a id="shareFacebook" class="share-btn sb-facebook" href="#" target="_blank" rel="noopener">
+        <svg viewBox="0 0 24 24"><path d="M22 12a10 10 0 1 0-11.6 9.9v-7H7.9V12h2.5V9.8c0-2.5 1.5-3.9 3.8-3.9 1.1 0 2.2.2 2.2.2v2.5h-1.3c-1.2 0-1.6.8-1.6 1.6V12h2.8l-.4 2.9h-2.4v7A10 10 0 0 0 22 12z"/></svg>
+        Facebook
+      </a>
+      <a id="shareX" class="share-btn sb-x" href="#" target="_blank" rel="noopener">
+        <svg viewBox="0 0 24 24"><path d="M18.9 2H22l-7.6 8.7L23.3 22h-7l-5.5-7.2L4.5 22H1.4l8.1-9.3L1 2h7.2l5 6.6L18.9 2zm-1.2 18h1.7L7.4 4h-1.8l12.1 16z"/></svg>
+        X / Twitter
+      </a>
+      <a id="shareWhatsapp" class="share-btn sb-whatsapp" href="#" target="_blank" rel="noopener">
+        <svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 0 0-8.5 15.2L2 22l4.9-1.5A10 10 0 1 0 12 2zm5.7 14.2c-.2.7-1.4 1.3-2 1.4-.5.1-1.2.1-1.9-.1-.4-.1-1-.3-1.7-.6-3-1.3-4.9-4.3-5.1-4.5-.1-.2-1.2-1.6-1.2-3s.7-2.1 1-2.4c.3-.3.6-.4.8-.4h.6c.2 0 .5 0 .7.5.3.7.9 2.3 1 2.4.1.2.1.3 0 .5-.1.2-.1.3-.3.5l-.4.5c-.1.2-.3.3-.1.6.2.3.9 1.5 2 2.4 1.3 1.2 2.4 1.6 2.7 1.7.3.1.5.1.6-.1.2-.2.7-.8.9-1.1.2-.3.4-.2.7-.1.3.1 1.8.9 2.1 1 .3.2.5.2.6.3.1.2.1.9-.1 1.6z"/></svg>
+        WhatsApp
+      </a>
+      <a id="shareTelegram" class="share-btn sb-telegram" href="#" target="_blank" rel="noopener">
+        <svg viewBox="0 0 24 24"><path d="M22 4.1 2.9 11.6c-1.3.5-1.3 1.2-.2 1.5l4.9 1.5 1.9 5.8c.2.6.5.9.9.9.4 0 .6-.2.9-.5l2.2-2.1 4.6 3.4c.8.5 1.4.2 1.6-.8L23 4.9c.3-1.2-.4-1.7-1-.8zM7.9 14.6l9.6-6.1c.5-.3.9-.1.5.2l-7.9 7.2-.3 3-1.5-4.3z"/></svg>
+        Telegram
+      </a>
+      <a id="shareThreads" class="share-btn sb-threads" href="#" target="_blank" rel="noopener">
+        <svg viewBox="0 0 24 24"><path d="M12.2 22c-2.6 0-4.7-.8-6.2-2.4-1.5-1.6-2.3-3.9-2.4-6.9v-1.4c.1-3 .9-5.3 2.4-6.9C7.5 2.8 9.6 2 12.2 2c2.5 0 4.5.7 6 2.1 1.3 1.2 2.1 2.9 2.4 5l-2.1.3c-.2-1.6-.8-2.9-1.7-3.7-1-.9-2.5-1.4-4.4-1.4-2 0-3.5.6-4.6 1.8-1.1 1.2-1.7 3-1.7 5.3v.6c0 2.4.6 4.2 1.7 5.4 1.1 1.2 2.6 1.8 4.6 1.8 1.8 0 3.1-.4 4-1.2.9-.8 1.4-1.9 1.4-3.2 0-.7-.2-1.3-.5-1.7-.4-.5-1-.9-1.8-1.1-.1.9-.4 1.7-.9 2.3-.6.8-1.5 1.2-2.6 1.2-1 0-1.8-.3-2.4-.8-.6-.6-.9-1.3-.9-2.1 0-.9.4-1.7 1.1-2.2.7-.5 1.6-.8 2.8-.8.5 0 1 0 1.4.1 0-.7-.2-1.3-.6-1.7-.4-.4-1-.6-1.8-.6-1 0-1.9.4-2.6 1.1l-1.5-1.4c1.1-1.1 2.5-1.7 4.1-1.7 1.4 0 2.6.4 3.4 1.3.8.8 1.3 2 1.3 3.5v.5c1.2.3 2.1.9 2.8 1.7.7.9 1.1 2 1.1 3.2 0 1.9-.7 3.5-2.1 4.6-1.3 1.1-3.1 1.7-5.3 1.7z"/></svg>
+        Threads
+      </a>
     </div>
     <div id="copyFeedback" style="margin-top:14px;font-size:0.9rem;color:#2d7a2d;font-weight:bold;height:1.2em;"></div>
   </div>
@@ -495,6 +673,7 @@
     <p style="font-size:0.88rem;margin-bottom:6px;"><a href="sally-contarino-news.html" style="color:#cc0000;text-decoration:none;font-weight:bold;">→ Sally Contarino — Berita &amp; Pembaruan Terbaru (Earthling Official)</a></p>
     <p style="font-size:0.88rem;margin-bottom:6px;"><a href="sally-contarino-videos.html" style="color:#cc0000;text-decoration:none;font-weight:bold;">→ Video Sally Contarino — Dean Withers Show &amp; Rekaman 7-Eleven</a></p>
     <p style="font-size:0.88rem;margin-bottom:6px;"><a href="sally-contarino-reddit.html" style="color:#ff4500;text-decoration:none;font-weight:bold;">→ Sally Contarino di Reddit — Postingan yang Bertahan Setelah Kampanye Pelaporan Massal (r/WithoutATrace)</a></p>
+    <p style="font-size:0.88rem;margin-bottom:6px;"><a href="reddit-exposed.html" style="color:#ff4500;text-decoration:none;font-weight:bold;">→ Reddit Exposed — Bagaimana Konten Kasus Sally Terus-Menerus Ditekan</a></p>
     <p style="font-size:0.88rem;margin-bottom:6px;"><a href="https://youtube.com/shorts/mixjzKupEi0?si=zKHWZqC93yx4fUXs" rel="nofollow" target="_blank" style="color:#777;text-decoration:none;">Real Vegas Locals — Rekaman kacamata meta 7-Eleven (YouTube)</a></p>
     <p style="font-size:0.88rem;margin-bottom:6px;"><a href="https://www.youtube.com/live/aZ8k9lszGtA?si=5oUjlSVEp7YcSXmC&t=10590" rel="nofollow" target="_blank" style="color:#777;text-decoration:none;">Dean Withers membahas hilangnya Sally Contarino (YouTube, dari 2:56:30)</a></p>
     <p style="font-size:0.88rem;margin-bottom:6px;"><a href="https://www.news.com.au/travel/travel-updates/incidents/endangered-fears-for-melbourne-woman-sally-grace-contarino-missing-in-las-vegas/news-story/333d9f807b689f75de6f7df403cfa058" rel="nofollow" target="_blank" style="color:#777;text-decoration:none;">News.com.au — Kekhawatiran Hilang dalam Bahaya untuk Sally Grace Contarino yang Hilang di Las Vegas</a></p>
@@ -527,14 +706,37 @@
   (function(){
     var pageUrl = "https://earthlingofficial.com/cari-sally-contarino.html";
     var shareText = "Sally Grace Contarino, 26, dari Melbourne telah hilang di Las Vegas sejak 20 Juni 2026. 4 minggu. Tanpa jawaban. Tolong bagikan — seseorang di luar sana pasti tahu sesuatu.";
-    document.getElementById('shareFacebook').href = 'https://www.facebook.com/sharer/sharer.php?u=' + encodeURIComponent(pageUrl);
-    document.getElementById('shareX').href = 'https://twitter.com/intent/tweet?text=' + encodeURIComponent(shareText) + '&url=' + encodeURIComponent(pageUrl);
-    document.getElementById('shareWhatsapp').href = 'https://wa.me/?text=' + encodeURIComponent(shareText + ' ' + pageUrl);
-    document.getElementById('shareThreads').href = 'https://www.threads.net/intent/post?text=' + encodeURIComponent(shareText + ' ' + pageUrl);
+    var fbUrl = 'https://www.facebook.com/sharer/sharer.php?u=' + encodeURIComponent(pageUrl);
+    var xUrl  = 'https://twitter.com/intent/tweet?text=' + encodeURIComponent(shareText) + '&url=' + encodeURIComponent(pageUrl);
+    var waUrl = 'https://wa.me/?text=' + encodeURIComponent(shareText + ' ' + pageUrl);
+    var tgUrl = 'https://t.me/share/url?url=' + encodeURIComponent(pageUrl) + '&text=' + encodeURIComponent(shareText);
+    var thUrl = 'https://www.threads.net/intent/post?text=' + encodeURIComponent(shareText + ' ' + pageUrl);
 
-    window.copyShareLink = function(){
-      var feedback = document.getElementById('copyFeedback');
-      function showCopied(){ feedback.textContent = 'Tautan disalin — terima kasih telah berbagi!'; setTimeout(function(){ feedback.textContent=''; },3000); }
+    function trackShare(platform, position) {
+      if (window.gtag) gtag('event', 'share', { method: platform, position: position, content_type: 'missing_person', item_id: 'cari-sally-contarino' });
+    }
+
+    [
+      { id: 'shareFacebook',    url: fbUrl, platform: 'facebook', pos: 'bottom' },
+      { id: 'shareX',           url: xUrl,  platform: 'x',        pos: 'bottom' },
+      { id: 'shareWhatsapp',    url: waUrl, platform: 'whatsapp', pos: 'bottom' },
+      { id: 'shareTelegram',    url: tgUrl, platform: 'telegram', pos: 'bottom' },
+      { id: 'shareThreads',     url: thUrl, platform: 'threads',  pos: 'bottom' },
+      { id: 'shareFacebookTop', url: fbUrl, platform: 'facebook', pos: 'top'    },
+      { id: 'shareXTop',        url: xUrl,  platform: 'x',        pos: 'top'    },
+      { id: 'shareWhatsappTop', url: waUrl, platform: 'whatsapp', pos: 'top'    },
+      { id: 'shareTelegramTop', url: tgUrl, platform: 'telegram', pos: 'top'    },
+      { id: 'shareThreadsTop',  url: thUrl, platform: 'threads',  pos: 'top'    }
+    ].forEach(function(b){
+      var el = document.getElementById(b.id);
+      if (!el) return;
+      el.href = b.url;
+      el.addEventListener('click', function(){ trackShare(b.platform, b.pos); });
+    });
+
+    function doCopy(feedbackEl, position){
+      trackShare('copy_link', position);
+      function showCopied(){ feedbackEl.textContent = 'Tautan disalin — terima kasih telah berbagi!'; setTimeout(function(){ feedbackEl.textContent=''; },3000); }
       if(navigator.clipboard && navigator.clipboard.writeText){
         navigator.clipboard.writeText(pageUrl).then(showCopied).catch(fallback);
       } else { fallback(); }
@@ -542,14 +744,17 @@
         var tmp = document.createElement('textarea');
         tmp.value = pageUrl; tmp.style.cssText='position:fixed;opacity:0';
         document.body.appendChild(tmp); tmp.select();
-        try{ document.execCommand('copy'); showCopied(); } catch(e){ feedback.textContent='Salin gagal — salin dari bilah alamat.'; }
+        try{ document.execCommand('copy'); showCopied(); } catch(e){ feedbackEl.textContent='Salin gagal — salin dari bilah alamat.'; }
         document.body.removeChild(tmp);
       }
-    };
+    }
+
+    window.copyShareLink = function(){ doCopy(document.getElementById('copyFeedback'), 'bottom'); };
+    window.copyShareLinkTop = function(){ doCopy(document.getElementById('copyFeedbackTop'), 'top'); };
   })();
 
   // Carousel
-  var current=0, total=4;
+  var current=0, total=10;
   function carouselUpdate(){
     document.getElementById('carouselTrack').style.transform='translateX(-'+(current*100)+'%)';
     document.querySelectorAll('#carouselDots span').forEach(function(d,i){ d.classList.toggle('active',i===current); });
