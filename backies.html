@@ -382,7 +382,9 @@
       This experience contains <strong>graphic real-world footage</strong> from inside<br>
       the animal agricultural industry — slaughterhouses, factory farms,<br>
       and the realities that are hidden behind every meal.<br><br>
-      It is disturbing. It is the truth.
+      It is disturbing. It is the truth.<br><br>
+      A hostile humanoid entity will also appear and become more active<br>
+      as you descend. It may run directly at you.
     </div>
     <div class="ag-sting">
       "If you can't stomach it,<br>
@@ -493,6 +495,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
+import { SkeletonUtils } from 'three/addons/utils/SkeletonUtils.js';
 import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
@@ -509,6 +512,12 @@ const WALL_TV_VIDEO_MAP = {}; // no archive videos via video element — CORS bl
 const isMobile = /Mobi|Android|iPhone|iPad|iPod|Opera Mini/i.test(navigator.userAgent) || window.innerWidth < 768;
 const GLB_1K = 'https://cors.archive.org/cors/backrooms_vr1k/backrooms_vr1k.glb';
 const GLB_4K = 'https://cors.archive.org/cors/backrooms_vr/backrooms_vr.glb';
+// The entity files live beside the game's other public assets. Keep the
+// lighter version on phones so the creature does not add a second heavy
+// texture payload to the already-large map.
+const ENTITY_1K_URL = 'https://raw.githubusercontent.com/EarthlingOfficial/public-archive/main/br1k.glb';
+const ENTITY_4K_URL = 'https://raw.githubusercontent.com/EarthlingOfficial/public-archive/main/br4k.glb';
+const ENTITY_URL = isMobile ? ENTITY_1K_URL : ENTITY_4K_URL;
 
 // Resolved after map selector (PC) or immediately (mobile)
 let GLB_URL = isMobile ? GLB_1K : null; // null = waiting for PC choice
@@ -586,8 +595,6 @@ const VOID_LIVE_FEEDS = [
 // both window feeds, and one normal wall TV. Everything else in the GLB
 // keeps its original behaviour (T4/T6/T10/W1a video textures, unlocks, etc).
 const MAIN_RETURN_FEEDS = {
-  windowA: VOID_LIVE_FEEDS[1],
-  windowB: VOID_LIVE_FEEDS[2],
   normal:  VOID_LIVE_FEEDS[3],
   news:    VOID_LIVE_FEEDS[0],
 };
@@ -695,6 +702,21 @@ let level30StartTime = 0;
 
 const levelGroups   = [];
 let glbTemplate     = null;
+let entityActor     = null;
+let entityMixer     = null;
+let entityAction    = null;
+let entityMaterials = [];
+let entityLoaded    = false;
+let entityState     = 'hidden';
+let entityEventLevel = -1;
+let entityEventStart = 0;
+let entityEventDuration = 0;
+let entityFadeIn = 0;
+let entityFadeOut = 0;
+let entityStartPos = new THREE.Vector3();
+let entityEndPos = new THREE.Vector3();
+let entityNextEventAt = 0;
+let entityAlpha = 0;
 const noclipZones   = [];
 const stage30RoomLights = [];
 const stage30AccentLights = [];
@@ -1051,10 +1073,14 @@ function randomNoclipPositions(){
 
 // ── RENDERER / SCENE / CAMERA ─────────────────────────────────────────────────
 const canvas   = document.getElementById('c');
-const renderer = new THREE.WebGLRenderer({canvas, antialias:true});
-renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+const renderer = new THREE.WebGLRenderer({
+  canvas,
+  antialias: !isMobile,
+  powerPreference: 'high-performance',
+});
+renderer.setPixelRatio(isMobile ? Math.min(devicePixelRatio, 1.15) : Math.min(devicePixelRatio, 2));
 renderer.setSize(innerWidth, innerHeight);
-renderer.shadowMap.enabled = true;
+renderer.shadowMap.enabled = !isMobile;
 renderer.shadowMap.type    = THREE.PCFSoftShadowMap;
 renderer.toneMapping       = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 0.9;
@@ -1085,6 +1111,12 @@ composer.addPass(new RenderPass(scene, camera));
 composer.addPass(new UnrealBloomPass(new THREE.Vector2(innerWidth,innerHeight), 0.4, 0.5, 0.85));
 composer.addPass(new OutputPass());
 
+function renderScene(){
+  if(isMobile) renderer.render(scene, camera);
+  else composer.render();
+  css3dRenderer.render(scene, camera);
+}
+
 // ── T4 smirk.mp4 video texture (same pattern as W1a/slaughter) ───────────────
 let t4VideoEl = null;
 let t4VideoTex = null;
@@ -1113,23 +1145,45 @@ const tvPromptEl = document.getElementById('tv-prompt');
 const barEl     = document.getElementById('bar');
 const pctEl     = document.getElementById('pct');
 let showCoords  = false;
+let hasLockedOnce = false;
+
+// Toggle pointer-events on every attached live-feed iframe. While locked,
+// the real cursor is hidden and shouldn't be able to steal clicks from
+// camera-look; while unlocked, the player needs to be able to click into
+// the embedded YouTube UI (settings, CC, fullscreen, play/pause).
+function setLiveFeedsInteractive(interactive){
+  allTVs.forEach(tv => {
+    if(tv.liveIframe) tv.liveIframe.style.pointerEvents = interactive ? 'auto' : 'none';
+  });
+}
 
 controls.addEventListener('lock', ()=>{
+  hasLockedOnce = true;
   startW1aAudio();
   startRadio();
   startBroadcasts();
   overlayEl.style.display='none';
   xhairEl.style.display='block';
   hintEl.style.display='block';
+  setLiveFeedsInteractive(false);
 });
 controls.addEventListener('unlock', ()=>{
-  overlayEl.style.display='flex';
+  // Only the very first unlock (before the player has ever locked) shows
+  // the full "click to enter" screen. Every unlock after that just frees
+  // the cursor without covering the game — no pause-screen lock.
+  overlayEl.style.display = hasLockedOnce ? 'none' : 'flex';
   xhairEl.style.display='none';
   hintEl.style.display='none';
   popupEl.style.display='none';
   tvPromptEl.style.display='none';
+  setLiveFeedsInteractive(true);
 });
 overlayEl.addEventListener('click', ()=>controls.lock());
+// Clicking back into the game canvas (not into a cross-origin iframe —
+// those clicks never bubble here) re-locks the pointer.
+document.getElementById('c').addEventListener('click', ()=>{
+  if(hasLockedOnce && !controls.isLocked) controls.lock();
+});
 
 // ── WALL RAYCASTING COLLISION ──────────────────────────────────────────────────
 const wallRaycaster = new THREE.Raycaster();
@@ -1886,25 +1940,21 @@ function buildVoidTV(id, pos, ry, levelYOffset, liveEmbed=null){
 
 function buildVoidExitDoor(levelYOffset){
   const door = new THREE.Group();
-  const green = new THREE.MeshStandardMaterial({
-    color: 0x10351c, emissive: 0x20ff68, emissiveIntensity: 2.6,
-    transparent: true, opacity: 0.42, side: THREE.DoubleSide,
-  });
   const frameMat = new THREE.MeshStandardMaterial({
     color: 0x0c2415, emissive: 0x19ff62, emissiveIntensity: 3.4,
     metalness: 0.35, roughness: 0.3,
   });
-  const left = new THREE.Mesh(new THREE.BoxGeometry(.18, 3.5, .18), frameMat);
+  // Human-scale narrow opening — just the frame. No fill plane: the
+  // doorway itself is true black void, and the point light does the glow.
+  const left = new THREE.Mesh(new THREE.BoxGeometry(.15, 2.6, .15), frameMat);
   const right = left.clone();
-  const top = new THREE.Mesh(new THREE.BoxGeometry(3.25, .18, .18), frameMat);
-  left.position.set(-1.53, 1.75, 0);
-  right.position.set(1.53, 1.75, 0);
-  top.position.set(0, 3.5, 0);
-  const portal = new THREE.Mesh(new THREE.PlaneGeometry(3.0, 3.35), green);
-  portal.position.set(0, 1.72, -0.02);
-  door.add(left, right, top, portal);
+  const top = new THREE.Mesh(new THREE.BoxGeometry(1.9, .15, .15), frameMat);
+  left.position.set(-0.8, 1.3, 0);
+  right.position.set(0.8, 1.3, 0);
+  top.position.set(0, 2.6, 0);
+  door.add(left, right, top);
   const glow = new THREE.PointLight(0x36ff78, 2.2, 12);
-  glow.position.set(0, 1.8, 0.8);
+  glow.position.set(0, 1.5, 0.8);
   door.add(glow);
   door.position.set(
     VOID_DOOR_LOCAL_POS[0],
@@ -1913,7 +1963,7 @@ function buildVoidExitDoor(levelYOffset){
   );
   door.visible = false;
   scene.add(door);
-  return { group: door, portal, glow };
+  return { group: door, glow };
 }
 
 function getVoidDoorDistance(){
@@ -1976,20 +2026,23 @@ function attachLiveIframeToTV(tv){
   const iframe = document.createElement('iframe');
   iframe.className = 'in-world-live-feed';
   iframe.title = `${tv.id} live signal`;
-  iframe.width = '220';
-  iframe.height = '140';
+  // Native size is 5x the old 220x140 (same aspect ratio) so YouTube's
+  // auto-quality picks HD instead of 240p/360p. The CSS3D object scale
+  // below is divided by the same 5x so the on-screen size is unchanged.
+  iframe.width = '1100';
+  iframe.height = '700';
   iframe.allow = 'autoplay; encrypted-media; picture-in-picture; fullscreen';
   iframe.referrerPolicy = 'strict-origin-when-cross-origin';
   iframe.allowFullscreen = true;
-  iframe.style.width = '220px';
-  iframe.style.height = '140px';
+  iframe.style.width = '1100px';
+  iframe.style.height = '700px';
   iframe.style.border = '0';
   iframe.style.display = 'block';
   iframe.style.pointerEvents = 'none';
   iframe.style.background = '#000';
   const object = new CSS3DObject(iframe);
   object.position.set(0, 0, 0.085);
-  object.scale.set(0.01, 0.01, 0.01);
+  object.scale.set(0.002, 0.002, 0.002);
   object.visible = false;
   parent.add(object);
   tv.liveIframe = iframe;
@@ -2479,9 +2532,7 @@ function createLevelGroup(levelIndex){
       // else (T4/T6/T10/W1a video textures, unlocks) behaves exactly like
       // every other level.
       levelTVs.forEach(tv => {
-        if(tv.id === 'W1a') addLiveFeedToTV(tv, MAIN_RETURN_FEEDS.windowA);
-        else if(tv.id === 'W1b') addLiveFeedToTV(tv, MAIN_RETURN_FEEDS.windowB);
-        else if(tv.id === 'T1') addLiveFeedToTV(tv, MAIN_RETURN_FEEDS.normal);
+        if(tv.id === 'T1') addLiveFeedToTV(tv, MAIN_RETURN_FEEDS.normal);
         else if(tv.id === 'T5') addLiveFeedToTV(tv, MAIN_RETURN_FEEDS.news);
       });
     }
@@ -2533,9 +2584,6 @@ function createLevelGroup(levelIndex){
     const zoneX = t4Snap ? t4Snap.pos[0] + 1.5 : 1.5;
     const zoneZ = t4Snap ? t4Snap.pos[2]       : 8.60;
     positions = [[zoneX, zoneZ]];
-  } else if(levelIndex === RETURN_LEVEL){
-    // No fall-through on the way back — this is the destination.
-    positions = [];
   } else {
     positions = randomTVCross();
   }
@@ -2570,13 +2618,164 @@ function showLevel(idx){
   if(door) door.group.visible = true;
 }
 
+// Fully tears down a TV's live iframe (not just hides it) so no audio can
+// keep playing off-screen after the level is left. Next activation rebuilds
+// a fresh iframe via attachLiveIframeToTV.
+function killLiveFeed(tv){
+  if(!tv || !tv.liveIframeObject) return;
+  if(tv.liveIframe) tv.liveIframe.src = 'about:blank';
+  if(tv.liveIframeObject.parent) tv.liveIframeObject.parent.remove(tv.liveIframeObject);
+  tv.liveIframe = null;
+  tv.liveIframeObject = null;
+  tv.liveActive = false;
+}
+
 function hideLevel(idx){
   if(!levelGroups[idx]) return;
   const { group, tvs, door } = levelGroups[idx];
   group.visible = false;
-  tvs.forEach(tv => { tv.g.visible = false; });
+  tvs.forEach(tv => { tv.g.visible = false; killLiveFeed(tv); });
   (group.userData.crosses||[]).forEach(c => { c.visible = false; });
   if(door) door.group.visible = false;
+}
+
+// ── THE ENTITY ──────────────────────────────────────────────────────────────
+// This model has one strong run cycle rather than a full animation library.
+// That is useful here: the entity is never left standing in a bright room.
+// It is shown in short, staged sightings, then its opacity drops as it gets
+// close enough for the player to question what they saw.
+const ENTITY_HEIGHT = 2.18;
+const ENTITY_FAR_DISTANCE = isMobile ? 22 : 32;
+
+function setEntityOpacity(alpha){
+  entityAlpha = Math.max(0, Math.min(1, alpha));
+  entityMaterials.forEach(material => {
+    material.opacity = entityAlpha;
+    material.transparent = entityAlpha < 0.999;
+    material.needsUpdate = true;
+  });
+  if(entityActor) entityActor.visible = entityAlpha > 0.008;
+}
+
+function entityGroundY(levelIndex = currentLevel){
+  if(isVoidLevel(levelIndex)){
+    return levelTargetY(levelIndex) - EYE_HEIGHT + 0.12;
+  }
+  return levelFloorY - levelIndex * LEVEL_DEPTH + 0.025;
+}
+
+function placeEntityAt(position, levelIndex = currentLevel){
+  if(!entityActor) return;
+  entityActor.position.set(position.x, entityGroundY(levelIndex), position.z);
+}
+
+function entityFacing(point){
+  if(!entityActor) return;
+  entityActor.lookAt(point.x, entityActor.position.y, point.z);
+}
+
+function entityProfile(levelIndex){
+  if(levelIndex < 8){
+    return { kind:'cross', delayMin:9000, delayMax:18000, duration:1.55, fade:0.48, speed:0.86 };
+  }
+  if(levelIndex < 20){
+    return { kind:'cross', delayMin:6500, delayMax:13000, duration:1.95, fade:0.55, speed:1.0 };
+  }
+  if(levelIndex < 30){
+    return { kind:'charge', delayMin:5000, delayMax:10500, duration:2.8, fade:0.8, speed:1.12 };
+  }
+  if(levelIndex === 30){
+    return { kind:'charge', delayMin:4800, delayMax:7600, duration:5.0, fade:1.35, speed:0.92 };
+  }
+  return { kind:'charge', delayMin:3400, delayMax:7600, duration:3.7, fade:0.78, speed:1.3 };
+}
+
+function entityRandomDelay(profile){
+  return profile.delayMin + Math.random() * (profile.delayMax - profile.delayMin);
+}
+
+function scheduleEntityForLevel(now, immediate = false){
+  const profile = entityProfile(currentLevel);
+  entityEventLevel = currentLevel;
+  entityEventStart = 0;
+  entityEventDuration = profile.duration;
+  entityState = 'hidden';
+  setEntityOpacity(0);
+  entityNextEventAt = now + (immediate ? 900 : entityRandomDelay(profile));
+}
+
+function startEntityEvent(now){
+  if(!entityActor) return;
+  const profile = entityProfile(currentLevel);
+  const forward = new THREE.Vector3();
+  camera.getWorldDirection(forward);
+  forward.y = 0;
+  if(forward.lengthSq() < 0.001) forward.set(0, 0, -1);
+  forward.normalize();
+  const right = new THREE.Vector3(-forward.z, 0, forward.x);
+  const player = camera.position.clone();
+  const side = Math.random() < 0.5 ? -1 : 1;
+  const depth = Math.min(ENTITY_FAR_DISTANCE, 13 + Math.random() * 8);
+  const lane = 5.5 + Math.random() * 3.8;
+
+  if(profile.kind === 'cross'){
+    entityStartPos.copy(player).addScaledVector(forward, depth).addScaledVector(right, side * lane);
+    entityEndPos.copy(player).addScaledVector(forward, depth).addScaledVector(right, -side * lane);
+  } else {
+    entityStartPos.copy(player).addScaledVector(forward, Math.min(18, depth + 3));
+    entityStartPos.addScaledVector(right, (Math.random() - 0.5) * 4);
+    entityEndPos.copy(player).addScaledVector(forward, 1.8 + Math.random() * 1.4);
+  }
+
+  entityStartPos.x = Math.max(BUILD_BOUNDS.minX + 1.5, Math.min(BUILD_BOUNDS.maxX - 1.5, entityStartPos.x));
+  entityStartPos.z = Math.max(BUILD_BOUNDS.minZ + 1.5, Math.min(BUILD_BOUNDS.maxZ - 1.5, entityStartPos.z));
+  entityEndPos.x = Math.max(BUILD_BOUNDS.minX + 1.2, Math.min(BUILD_BOUNDS.maxX - 1.2, entityEndPos.x));
+  entityEndPos.z = Math.max(BUILD_BOUNDS.minZ + 1.2, Math.min(BUILD_BOUNDS.maxZ - 1.2, entityEndPos.z));
+
+  entityEventStart = now;
+  entityEventDuration = profile.duration * 1000;
+  entityState = profile.kind;
+  entityAction.timeScale = profile.speed;
+  placeEntityAt(entityStartPos);
+  entityFacing(profile.kind === 'cross' ? entityEndPos : player);
+  setEntityOpacity(0);
+}
+
+function updateEntity(now, dt){
+  if(!entityLoaded || !entityActor || !entityMixer) return;
+  if(entityEventLevel !== currentLevel){
+    scheduleEntityForLevel(now, currentLevel === 30);
+  }
+  if(isFalling || isRecovering || (!controls.isLocked && !isMobile)){
+    entityState = 'hidden';
+    setEntityOpacity(0);
+    entityNextEventAt = Math.max(entityNextEventAt, now + 1200);
+    return;
+  }
+
+  if(entityState === 'hidden'){
+    if(now >= entityNextEventAt) startEntityEvent(now);
+    return;
+  }
+
+  entityMixer.update(dt);
+  const profile = entityProfile(currentLevel);
+  const progress = Math.max(0, Math.min(1, (now - entityEventStart) / entityEventDuration));
+  const position = entityStartPos.clone().lerp(entityEndPos, progress);
+  placeEntityAt(position);
+  entityFacing(profile.kind === 'cross' ? entityEndPos : camera.position);
+
+  const fadeIn = Math.min(1, progress / 0.12);
+  const fadeOut = progress > 1 - profile.fade / (profile.duration * 1000)
+    ? Math.max(0, (1 - progress) / (profile.fade / (profile.duration * 1000)))
+    : 1;
+  setEntityOpacity(fadeIn * fadeOut * (currentLevel === 30 ? 0.96 : 0.88));
+
+  if(progress >= 1){
+    entityState = 'hidden';
+    setEntityOpacity(0);
+    entityNextEventAt = now + entityRandomDelay(profile);
+  }
 }
 
 // ── TRIGGER FALL ─────────────────────────────────────────────────────────────
@@ -2670,9 +2869,64 @@ const draco=new DRACOLoader();
 draco.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.5.6/');
 const loader=new GLTFLoader(); loader.setDRACOLoader(draco);
 
+function loadEntity(){
+  loader.load(
+    ENTITY_URL,
+    gltf => {
+      const actor = SkeletonUtils.clone(gltf.scene);
+      let bounds = new THREE.Box3().setFromObject(actor);
+      const size = bounds.getSize(new THREE.Vector3());
+      const modelHeight = Math.max(size.y, 0.01);
+      actor.scale.multiplyScalar(ENTITY_HEIGHT / modelHeight);
+      actor.updateMatrixWorld(true);
+
+      // Normalize the downloaded Sketchfab scene so its feet sit on the
+      // current level floor and its body is centered on the actor origin.
+      bounds = new THREE.Box3().setFromObject(actor);
+      const center = bounds.getCenter(new THREE.Vector3());
+      actor.position.x -= center.x;
+      actor.position.y -= bounds.min.y;
+      actor.position.z -= center.z;
+
+      entityMaterials = [];
+      actor.traverse(child => {
+        if(!child.isMesh) return;
+        child.castShadow = !isMobile;
+        child.receiveShadow = !isMobile;
+        const materials = Array.isArray(child.material) ? child.material : [child.material];
+        materials.forEach(material => {
+          if(!material) return;
+          material.transparent = true;
+          material.depthWrite = true;
+          entityMaterials.push(material);
+        });
+      });
+
+      entityActor = actor;
+      entityActor.visible = false;
+      scene.add(entityActor);
+
+      entityMixer = new THREE.AnimationMixer(entityActor);
+      if(gltf.animations.length > 0){
+        entityAction = entityMixer.clipAction(gltf.animations[0]);
+        entityAction.setLoop(THREE.LoopRepeat, Infinity);
+        entityAction.clampWhenFinished = false;
+      }
+      entityLoaded = Boolean(entityAction);
+      if(entityLoaded) scheduleEntityForLevel(performance.now());
+    },
+    undefined,
+    () => {
+      // The entity is an enhancement, never a reason for the map to fail.
+      entityLoaded = false;
+    },
+  );
+}
+
 // Wait for map URL to be chosen (PC selector) then start loading
 glbUrlReady.then(chosenUrl => {
   GLB_URL = chosenUrl;
+  loadEntity();
   loader.load(GLB_URL,
     gltf => {
       glbTemplate = gltf.scene;
@@ -2867,7 +3121,7 @@ function animate(t){
         voidAutoFallAt = 0;
       }
     }
-    composer.render(); css3dRenderer.render(scene, camera); return;
+    renderScene(); return;
   }
 
   // ── RECOVERY ──────────────────────────────────────────────────────────────
@@ -2881,7 +3135,7 @@ function animate(t){
     camera.rotation.z=Math.sin(t*0.012)*0.08*wobbleFade;
     camera.rotation.x+=Math.sin(t*0.009)*0.003*wobbleFade;
     if(progress>=1){ isRecovering=false; camera.rotation.z=0; }
-    composer.render(); css3dRenderer.render(scene, camera); return;
+    renderScene(); return;
   }
 
   // ── NORMAL MOVEMENT ───────────────────────────────────────────────────────
@@ -3023,6 +3277,8 @@ function animate(t){
     }
   }
 
+  updateEntity(t, dt);
+
   // ── UPDATE BLOOD LEVEL (Level 30) ────────────────────────────────────────
   if(currentLevel === 30 && bloodActive){
     const bloodFloor = levelFloorY + 0.02;
@@ -3158,8 +3414,7 @@ function animate(t){
     tvPromptEl.style.display = 'none';
   }
 
-  composer.render();
-  css3dRenderer.render(scene, camera);
+  renderScene();
 }
 animate(0);
 
