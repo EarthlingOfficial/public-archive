@@ -229,6 +229,86 @@
         }
         .pixel-divider { display: none; }
 
+        /* VHS BACKROOMS — pale yellow */
+        .game-btn-backrooms {
+            background: #12100a;
+            color: #f7ecc0;
+            border: 2px solid #e8d98a;
+            box-shadow:
+                0 0 8px #e8d98a77,
+                inset 0 0 12px #1f1b08,
+                2px 0 0 #00000044,
+                -2px 0 0 #fffde022;
+            text-shadow: 0 0 8px #f7ecc0, 0 0 3px #e8d98a;
+            font-family: 'Press Start 2P', monospace;
+            position: relative;
+            overflow: hidden;
+            image-rendering: pixelated;
+            animation: backrooms-flicker 4s infinite;
+        }
+        .game-btn-backrooms::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: repeating-linear-gradient(
+                0deg,
+                transparent,
+                transparent 2px,
+                rgba(0,0,0,0.15) 2px,
+                rgba(0,0,0,0.15) 4px
+            );
+            pointer-events: none;
+            z-index: 1;
+            animation: scanlines 8s linear infinite;
+        }
+        .game-btn-backrooms::after {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: 0;
+            width: 100%;
+            height: 30%;
+            background: rgba(255,255,230,0.06);
+            animation: vhs-sweep 6s ease-in-out infinite;
+            pointer-events: none;
+            z-index: 2;
+        }
+        .game-btn-backrooms span.game-btn-inner {
+            position: relative;
+            z-index: 3;
+            display: block;
+        }
+        .game-btn-backrooms:hover {
+            background: #2a2410;
+            border-color: #fff9d1;
+            box-shadow:
+                0 0 20px #fff2a8,
+                0 0 40px #e8d98a88,
+                inset 0 0 20px #332b10,
+                3px 0 0 #00000055,
+                -3px 0 0 #fffde044;
+            text-shadow: 0 0 16px #fff, 0 0 6px #fff2a8;
+            transform: translateY(-2px);
+            color: #fff;
+        }
+        .game-btn-backrooms .vhs-tag {
+            display: block;
+            font-size: 0.35rem;
+            color: rgba(232,217,138,0.75);
+            margin-top: 4px;
+            letter-spacing: 2px;
+            font-family: 'Press Start 2P', monospace;
+            text-shadow: 0 0 6px #e8d98a88;
+        }
+        @keyframes backrooms-flicker {
+            0%,100% { opacity: 1; }
+            91% { opacity: 1; }
+            92% { opacity: 0.45; }
+            93% { opacity: 1; }
+            95% { opacity: 0.65; }
+            96% { opacity: 1; }
+        }
+
         /* Button stack — pen + music tight together */
         .action-stack {
             display: flex;
@@ -287,11 +367,17 @@
                     <span class="vhs-tag">[ STAGE 9 — THE FINAL DESCENT ]</span>
                 </span>
             </a>
+            <div class="pixel-divider">▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓</div>
+            <a href="the-backrooms.html" class="game-btn game-btn-backrooms">
+                <span class="game-btn-inner">
+                    📼 Go Dean! The Backrooms
+                    <span class="vhs-tag">[ NEW — ENTER IF YOU DARE ]</span>
+                </span>
+            </a>
         </div>
 
-        <!-- Enter + Music tight together -->
+        <!-- Music -->
         <div class="action-stack">
-            <a href="quiz.html" class="enter-button">Enter the Pen Here</a>
             <button id="musicBtn" class="enter-button">Play Music</button>
         </div>
 
@@ -312,7 +398,10 @@
         
         <div class="bottom-actions">
             <a href="legal.html" class="legal-btn">Official Disclosures, Privacy Policy & Terms of Service</a>
-            <a href="keepdeansafe.html" class="legal-btn">Keep Dean Safe</a>
+            <div style="display: flex; gap: 10px; flex-wrap: wrap; justify-content: center;">
+                <a href="keepdeansafe.html" class="legal-btn">Keep Dean Safe</a>
+                <a href="quiz.html" class="legal-btn">Enter the Pen Here</a>
+            </div>
             <a href="public-conduct-record.html" class="legal-btn">Public Conduct Record & Evidentiary Archive</a>
         </div>
     </div>
