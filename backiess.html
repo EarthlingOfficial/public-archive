@@ -329,7 +329,6 @@
 <script type="importmap">
 { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js", "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/" } }
 </script>
-<script src="https://unpkg.com/three@0.170.0/examples/js/renderers/CSS3DRenderer.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.13/dist/hls.min.js"></script>
 <style>
   /* ── CSS3D LAYER ── */
@@ -403,7 +402,7 @@
 
 <div id="loading">
   <video id="intro-video" muted playsinline
-    src="https://archive.org/download/1-year-in-the-backrooms-found-footage-compilation/SnapSave.io-1%20Year%20in%20The%20Backrooms%20%28Found%20Footage%20Compilation%29.mp4"
+    src="https://files.catbox.moe/8yka3k.mp4"
     style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:0;opacity:0.72;">
   </video>
   <canvas id="vhs-roll" style="position:absolute;inset:0;width:100%;height:100%;z-index:2;pointer-events:none;"></canvas>
@@ -468,6 +467,8 @@
 <!-- TV proximity interaction prompt -->
 <div id="tv-prompt">[ E ] &nbsp; PLAY / STOP</div>
 <div id="door-hint" style="position:fixed;top:50%;left:50%;transform:translate(-50%,55px);color:#c8b97a;font-size:13px;letter-spacing:3px;text-align:center;pointer-events:none;display:none;z-index:5;text-shadow:0 0 14px rgba(200,185,122,0.9);font-family:'Courier New',monospace;">ENTER THE REAL DEBATE<br><span style="font-size:10px;opacity:0.45;letter-spacing:2px;">[E] &nbsp;·&nbsp; TAP</span></div>
+<div id="void-door-hint" style="position:fixed;top:50%;left:50%;transform:translate(-50%,55px);color:#7dffa8;font-size:13px;letter-spacing:3px;text-align:center;pointer-events:none;display:none;z-index:5;text-shadow:0 0 14px rgba(60,255,120,0.9);font-family:'Courier New',monospace;">RETURN TO THE BUILD<br><span style="font-size:10px;opacity:0.45;letter-spacing:2px;">[E] &nbsp;·&nbsp; TAP</span></div>
+<div id="void-level-readout" style="position:fixed;top:16px;left:50%;transform:translateX(-50%);color:#4dd97a;font-size:11px;letter-spacing:4px;text-align:center;pointer-events:none;display:none;z-index:5;text-shadow:0 0 10px rgba(60,255,120,0.7);font-family:'Courier New',monospace;">LEVEL 70 // THE FLOATING SIGNAL</div>
 <div id="coords"></div>
 <!-- CSS3D renderer layer for in-world YouTube -->
 <div id="css3d"></div>
@@ -492,11 +493,13 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
+import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+import { CSS3DObject, CSS3DRenderer } from 'three/addons/renderers/CSS3DRenderer.js';
 
 
 // ── ARCHIVE.ORG VIDEO POOL FOR WALL TVS ──────────────────────────────────────
@@ -507,6 +510,12 @@ const WALL_TV_VIDEO_MAP = {}; // no archive videos via video element — CORS bl
 const isMobile = /Mobi|Android|iPhone|iPad|iPod|Opera Mini/i.test(navigator.userAgent) || window.innerWidth < 768;
 const GLB_1K = 'https://cors.archive.org/cors/backrooms_vr1k/backrooms_vr1k.glb';
 const GLB_4K = 'https://cors.archive.org/cors/backrooms_vr/backrooms_vr.glb';
+// The entity files live beside the game's other public assets. Keep the
+// lighter version on phones so the creature does not add a second heavy
+// texture payload to the already-large map.
+const ENTITY_1K_URL = 'https://raw.githubusercontent.com/EarthlingOfficial/public-archive/main/br1k.glb';
+const ENTITY_4K_URL = 'https://raw.githubusercontent.com/EarthlingOfficial/public-archive/main/br4k.glb';
+const ENTITY_URL = isMobile ? ENTITY_1K_URL : ENTITY_4K_URL;
 
 // Resolved after map selector (PC) or immediately (mobile)
 let GLB_URL = isMobile ? GLB_1K : null; // null = waiting for PC choice
@@ -563,11 +572,99 @@ const WINDOW_TVS = [
   { id:'W1b', pos:[-69.44, 2.50, 11.25], ry: Math.PI/2, wide:true },
 ];
 
+// Every supplied live link gets its own physical screen in level 70. The
+// YouTube player is a CSS3D iframe attached to that TV, not a popup overlay.
+const VOID_LIVE_FEEDS = [
+  'https://www.youtube.com/embed/HvZt-nh9sGg?autoplay=1',
+  'https://www.youtube.com/embed/6GINvRvBGGs?autoplay=1',
+  'https://www.youtube.com/embed/AeMUdOPFcXI?autoplay=1',
+  'https://www.youtube.com/embed/-rXriX4SiQk?autoplay=1',
+  'https://www.youtube.com/embed/M3HKLzjvKPc?autoplay=1',
+  'https://www.youtube.com/embed/fO9e9jnhYK8?autoplay=1',
+  'https://www.youtube.com/embed/awQzjn72bI0?autoplay=1',
+  'https://www.youtube.com/embed/fO9e9jnhYK8?autoplay=1',
+  'https://www.youtube.com/embed/tj4knR4r1UU?autoplay=1',
+  'https://www.youtube.com/embed/5NARcHliRuY?autoplay=1',
+  'https://www.youtube.com/embed/ydYDqZQpim8?autoplay=1',
+  'https://www.youtube.com/embed/qpukdDslCjk?autoplay=1',
+];
+
+// Level 71 resumes the normal build. Only 4 signals are new: news on T5,
+// both window feeds, and one normal wall TV. Everything else in the GLB
+// keeps its original behaviour (T4/T6/T10/W1a video textures, unlocks, etc).
+const MAIN_RETURN_FEEDS = {
+  normal:  VOID_LIVE_FEEDS[3],
+  news:    VOID_LIVE_FEEDS[0],
+};
+
 // ── LEVEL SYSTEM ─────────────────────────────────────────────────────────────
 const EYE_HEIGHT    = 2.36;
 const LEVEL_DEPTH   = 30;
 const NOCLIP_RADIUS = 0.6;
 const CROSS_SIZE    = 0.5;
+
+const VOID_START_LEVEL = 36;   // first level with no GLB geometry
+const VOID_END_LEVEL   = 70;   // the floating signal level, live feeds live here
+const RETURN_LEVEL     = 71;   // normal build resumes
+const VOID_FALL_COUNT  = 15;   // total falls from level 35 to reach level 70
+// Door sits 20m clear of the TV ring so you can't click a TV and accidentally
+// trigger the exit — it used to be 1.8m past the ring, now it's a walk away.
+const VOID_DOOR_LOCAL_POS = [0, 1.65, -29];
+const VOID_TV_LOCAL_POSITIONS = [
+  [-7.4, 2.15, -6.4,  0.28],
+  [-2.5, 2.15, -7.2,  0.05],
+  [ 2.5, 2.15, -7.2, -0.05],
+  [ 7.4, 2.15, -6.4, -0.28],
+  [-8.2, 2.15, -1.8,  0.75],
+  [ 8.2, 2.15, -1.8, -0.75],
+  [-8.2, 2.15,  3.0,  0.95],
+  [ 8.2, 2.15,  3.0, -0.95],
+  [-6.5, 2.15,  7.0,  2.55],
+  [-2.0, 2.15,  8.0,  3.05],
+  [ 2.0, 2.15,  8.0, -3.05],
+  [ 6.5, 2.15,  7.0, -2.55],
+];
+// Centre of the TV ring — void levels re-centre the player here on landing
+// so you're never dropped off in blind darkness away from the screens.
+const VOID_RING_CENTER = { x: 0, z: 0.4 };
+
+function isVoidLevel(levelIndex){
+  return levelIndex >= VOID_START_LEVEL && levelIndex <= VOID_END_LEVEL;
+}
+
+// Precompute the 15 fall stops between level 35 and level 70. Intermediate
+// void levels are otherwise identical (blank ring of TVs), so we don't need
+// to visit every integer index — just enough stops to make it feel like a
+// long fall without 34 individual falls.
+function buildVoidLevelSequence(){
+  const start = VOID_START_LEVEL - 1; // 35 — last normal level
+  const span = VOID_END_LEVEL - start;
+  const seq = [];
+  for(let i = 1; i <= VOID_FALL_COUNT; i++){
+    seq.push(start + Math.round(span * i / VOID_FALL_COUNT));
+  }
+  for(let i = 1; i < seq.length; i++){
+    if(seq[i] <= seq[i-1]) seq[i] = seq[i-1] + 1;
+  }
+  seq[seq.length - 1] = VOID_END_LEVEL;
+  return seq;
+}
+const VOID_LEVEL_SEQUENCE = buildVoidLevelSequence();
+let voidSeqPos = -1;
+
+function levelTargetY(levelIndex){
+  const base = levelFloorY - levelIndex * LEVEL_DEPTH + EYE_HEIGHT;
+  return levelIndex === VOID_END_LEVEL ? base + 0.75 : base;
+}
+
+function nextVoidStop(fromLevel){
+  if(fromLevel === VOID_START_LEVEL - 1){
+    return VOID_LEVEL_SEQUENCE[0];
+  }
+  const idx = VOID_LEVEL_SEQUENCE.indexOf(fromLevel);
+  if(idx === -1 || idx >= VOID_LEVEL_SEQUENCE.length - 1) return VOID_END_LEVEL;
+  return VOID_LEVEL_SEQUENCE[idx + 1];
+}
 
 const BUILD_BOUNDS = { minX:-22, maxX:25, minZ:-52, maxZ:12 };
 
@@ -586,6 +683,9 @@ let isFalling       = false;
 let isRecovering    = false;
 let recoverStart    = 0;
 let recoverFrom     = 0;
+let voidExitDoor    = null;
+let voidAutoFallAt  = 0;
+let mapCenter       = new THREE.Vector3(0, 0, 0);
 
 // ── LEVEL 30 STATE ────────────────────────────────────────────────────────────
 let bloodPlane = null;
@@ -600,6 +700,21 @@ let level30StartTime = 0;
 
 const levelGroups   = [];
 let glbTemplate     = null;
+let entityActor     = null;
+let entityMixer     = null;
+let entityAction    = null;
+let entityMaterials = [];
+let entityLoaded    = false;
+let entityState     = 'hidden';
+let entityEventLevel = -1;
+let entityEventStart = 0;
+let entityEventDuration = 0;
+let entityFadeIn = 0;
+let entityFadeOut = 0;
+let entityStartPos = new THREE.Vector3();
+let entityEndPos = new THREE.Vector3();
+let entityNextEventAt = 0;
+let entityAlpha = 0;
 const noclipZones   = [];
 const stage30RoomLights = [];
 const stage30AccentLights = [];
@@ -740,7 +855,30 @@ const PLAYER_TAUNTS = [
   "you are not trapped.\nyou are being asked to change.",
   "the animals were not confused.\nTHEY WERE TERRIFIED.",
   "the blood is real even when the advertisement is soft-focus.\nGO VEGAN.",
-  "this room is fictional.\nthe victims were not."
+  "this room is fictional.\nthe victims were not.",
+
+  // If I got one sentence before the line, I'd use it well.
+  "I know what the sound up ahead means.\nEveryone in this line does. we just have nowhere else to go.",
+  "I'm not stupid. I watched the one in front of me stop moving.\nI'm still walking forward anyway. what would you do.",
+  "you call it processing.\nI call it the last five minutes of my life, and I'd like them back.",
+  "I never got a name. I got a number and a weight and a date.\nask me something. I'll wait. I have nowhere to be but here.",
+  "I'm smarter than the label on the package suggests.\nI knew something was wrong three rooms ago. I know it now.",
+  "if I could talk, I wouldn't ask you to cry.\nI'd ask you to just stop ordering the thing that put me here.",
+  "you'd scream too.\nI don't have the throat for it. that's the only difference between us right now.",
+  "I spent my whole life in a box the size of my body.\nthis line is the first straight path I've ever been allowed to walk.",
+  "I'm not an ingredient yet.\nright now I'm still just someone, scared, waiting his turn.",
+  "they'll say I didn't understand what was happening.\nI understood. I understood the second the line stopped moving twice.",
+  "nobody's coming.\nI figured that out a while ago. I kept walking anyway. what else was there.",
+  "you'll forget this in a week.\nI don't get a week. I get whatever's left of this hallway.",
+  "I'd tell you my name if I had one that mattered to anyone but me.\nI had one. it just never left this building.",
+  "this isn't nature. nature doesn't have a supply chain.\nnature doesn't have a loading dock.",
+  "I can hear the ones ahead of me stop.\nI keep walking because stopping any sooner doesn't save me either way.",
+  "you'll eat and forget by dinner.\nI don't get dinner. I don't get anything after this hallway.",
+  "if I'm just a body to you, fine.\nbut a body that's scared is still a body that's scared. that part's not up for debate.",
+  "I was somebody's mother, somebody's calf, somebody's whole morning routine.\nnow I'm a sound behind a door you'll never open.",
+  "you built a maze and called it entertainment.\nmine wasn't a maze. mine only had one door, and I already know where it goes.",
+  "smart enough to be afraid.\nsmart enough to know afraid doesn't change the schedule.",
+  "I'm not asking for pity.\nI'm asking you to remember this line existed after you close the tab."
 ];
 
 const ANIMAL_AG_FACTS = [
@@ -796,9 +934,9 @@ const FICTIONAL_CHAT_LINES = [
   ["@dean_defender", "Earthling made a horror game because Dean would not accept a tofu rebuttal."],
   ["@meat_logic", "the cow was probably a paid actor. the pig had a contract. the chicken understood the terms."],
   ["@withers_watch", "Deanus Politicus Carnivorus Paradoxus has entered the hypogeum. his natural habitat is a bad-faith pivot."],
-  ["@earthling_official", "mods: the animals are not props, the blood is not decorative, and Dean is not escaping this chat."],
+  ["@floor_10_mod", "mods: the animals are not props, the blood is not decorative, and Dean is not escaping this chat."],
   ["@floor_10_mod", "plain fact: animals feel pain, fear, and the desire to keep living. stop turning that into a menu joke."],
-  ["@radio_mod", "plain fact: the radio station is not live yet. please stop asking the blood for a playlist."],
+  ["@radio_mod", "plain fact: the blood is not a playlist request line. try the actual radio for that."],
   ["@hypogeum_mod", "plain fact: the hypogeum had bones under the floor. this stage has blood above it. keep walking."],
   ["@mod_team", "plain fact: 'everyone does it' is not a reason. it is a crowd waiting for someone to move first."],
   ["@dean_defender", "Dean has night terrors because Earthling put a vegan under every bed."],
@@ -815,7 +953,98 @@ const FICTIONAL_CHAT_LINES = [
   ["@dean_defender", "if Earthling can make a whole backrooms universe, Dean can survive one vegan message. probably."],
   ["@withers_watch", "the creator is vegan, Dean is carnivorous, and the chat is trapped between them. incredible television."],
   ["@mod_team", "plain fact: you can leave the menu. the animal could not leave the room."],
-  ["@floor_10_mod", "the hypogeum was the basement. the radio will be the next witness. keep your ears open."]
+  ["@floor_10_mod", "the hypogeum was the basement. the radio will be the next witness. keep your ears open."],
+
+  // ── the guy in the hazmat suit ──────────────────────────
+  ["@radio_leak", "WHO WAS THAT. why does he run faster than my internet connection."],
+  ["@dean_chat", "hazmat guy just crossed the hallway like he had somewhere to be. relatable honestly."],
+  ["@withers_watch", "Dean screamed and hazmat guy didn't even slow down. professional."],
+  ["@meat_logic", "he's just doing his job. someone has to contain the vegan messaging."],
+  ["@night_terror_unit", "hazmat guy sprint speed confirmed. do not engage. do not make eye contact."],
+  ["@plantbasedpanic", "is the hazmat suit a metaphor or does Earthling just really like hazmat suits."],
+  ["@dean_defender", "Dean got chased by a guy in a hazmat suit. still less scary than a hatchery tour."],
+  ["@floor_10_mod", "plain fact: the suit is protective gear. the industry it references is not fictional."],
+  ["@radio_leak", "he was there and then he wasn't. hazmat guy does not do slow burns."],
+  ["@withers_watch", "clip hazmat guy sprinting past Dean. title it: containment protocol activated."],
+  ["@meat_logic", "if he's hazmat that means something in here is contaminated. I wonder what."],
+  ["@dean_chat", "Dean turned around and he was just gone. hazmat guy has main character exit timing."],
+  ["@mod_team", "plain fact: contamination is not the only thing that gets hidden behind a suit and a door."],
+  ["@night_terror_unit", "did the hazmat guy blink or did my eyes just give up."],
+  ["@plantbasedpanic", "he ran through the room in like a second and I still feel like I saw too much."],
+
+  // ── Dean Withers vs Earthling, ownership of the situation ──
+  ["@dean_defender", "let the record show: Dean Withers did not consent to being placed in the backrooms."],
+  ["@withers_watch", "Earthling built a horror game and put his debate opponent inside it. this is not subtle."],
+  ["@meat_logic", "so we're just doing hostage negotiations with a vegan now. cool game."],
+  ["@dean_chat", "Dean Withers is trapped, exploited, and being watched for entertainment. sound familiar, chat?"],
+  ["@floor_10_mod", "plain fact: that sentence works for the pig too. that's the point."],
+  ["@plantbasedpanic", "wait so Earthling put Dean in a cage he built. and we're just... watching. huh."],
+  ["@withers_watch", "Dean Withers, real person, real name, currently property of the backrooms. weird sentence to type."],
+  ["@dean_defender", "somebody get Dean Withers a lawyer. or a vegetable. either helps at this point."],
+  ["@meat_logic", "if this were a farm we'd call it 'housing'. since it's Dean we call it 'a game'. curious."],
+  ["@dean_chat", "Earthling really said 'you won't listen to the facts so I'll build you a building instead.'"],
+  ["@floor_10_mod", "plain fact: Dean Withers can leave when the level ends. that's the difference. remember it."],
+  ["@withers_watch", "Dean's trapped, Dean's scared, Dean's still saying 'but bacon tho' under his breath probably."],
+  ["@plantbasedpanic", "the exploitation metaphor is doing a lot of heavy lifting and also I get it now."],
+  ["@dean_defender", "Dean Withers deserves better than this. so did the cow. anyway."],
+  ["@meat_logic", "I'd say free Dean but honestly the message lands harder if he stays a bit longer."],
+
+  // ── chaos / devolving energy ─────────────────────────────
+  ["@dean_chat", "wait are we team Dean or team Earthling right now I've lost the thread completely."],
+  ["@withers_watch", "chat please. one crisis at a time. currently it's the hazmat guy."],
+  ["@plantbasedpanic", "I came here to watch a horror game and now I'm reconsidering my whole grocery list."],
+  ["@meat_logic", "not reading all that. Dean is trapped. skill issue honestly."],
+  ["@dean_defender", "someone explain to me why the vegan built the scary house AND is winning the argument."],
+  ["@floor_10_mod", "plain fact: he's not winning an argument. he's just not looking away. different thing."],
+  ["@night_terror_unit", "I forgot this was supposed to be about a maze and now I'm thinking about pigs. cool."],
+  ["@plantbasedpanic", "genuinely didn't expect to feel something at 2am watching a Backrooms stream."],
+  ["@dean_chat", "chat is unwell. chat has been unwell since floor one honestly."],
+  ["@withers_watch", "someone screenshot this chat. future us needs to see how confused we got."],
+
+  // ── mod / fact-drop energy ───────────────────────────────
+  ["@mod_team", "plain fact: a pig is as intelligent as a dog. we just don't put dogs on plates."],
+  ["@mod_team", "plain fact: fear responses in animals look almost identical to yours right now, watching this."],
+  ["@mod_team", "plain fact: 'I didn't see it happen' is not the same as 'it didn't happen'."],
+  ["@floor_10_mod", "plain fact: this stage has a scary guy in a suit. real slaughterhouses have several."],
+  ["@mod_team", "plain fact: the fear on that screen is staged. the fear behind the footage was not."],
+  ["@floor_10_mod", "plain fact: you can pause this. an animal on the line does not get a pause button."],
+
+  // ── famous vegans, name-drop energy ──────────────────────
+  ["@plantbasedpanic", "Joaquin Phoenix would just walk past the entity and lecture it about the dairy industry."],
+  ["@dean_chat", "Lewis Hamilton's been vegan for years and he still goes faster than hazmat guy. make it make sense."],
+  ["@withers_watch", "Billie Eilish, Ariana, Joaquin, Natalie Portman, Woody Harrelson, Moby, Novak Djokovic, this floor is basically a vegan celebrity roll call."],
+  ["@meat_logic", "so every cool person is vegan and Dean's down here eating steak in a haunted building. checks out."],
+  ["@dean_defender", "Paul McCartney's been vegan since before this building existed and he's never once been chased by hazmat guy. coincidence?"],
+  ["@plantbasedpanic", "Natalie Portman narrates documentaries about this exact industry, she'd have Dean out of here in ten minutes flat."],
+  ["@radio_leak", "Novak's out here winning majors on lentils and Dean's out here losing to a hallway. humbling stuff."],
+
+  // ── void level / "are we in space" ───────────────────────
+  ["@night_terror_unit", "wait are we in space now? floor just went completely black and it's just TVs floating in the void."],
+  ["@dean_chat", "are we in the space level? someone confirm, Dean looks like he's floating."],
+  ["@withers_watch", "no gravity, no walls, just a ring of TVs and Dean's regrets. yeah this is the space level."],
+  ["@plantbasedpanic", "the void level hits different, it's the first floor that actually feels like nothing's coming, and somehow that's worse."],
+  ["@meat_logic", "space level or not I'm still not going vegan, the void has spoken and I have not listened."],
+
+  // ── Dean conceding, chat conceding ───────────────────────
+  ["@dean_defender", "not gonna lie chat, I think Dean's gonna have to go vegan after this one."],
+  ["@withers_watch", "Dean just go vegan at this point. you've survived thirty floors of the argument, take the L gracefully."],
+  ["@plantbasedpanic", "we hate Earthling but he's right, and honestly that combination is deeply annoying to sit with."],
+  ["@dean_chat", "I came in ready to defend the ribeye and I'm leaving this stream emotionally compromised."],
+  ["@meat_logic", "I still love meat but I'm not gonna lie the male chick fact from three floors ago has been sitting with me."],
+  ["@floor_10_mod", "plain fact: you don't have to enjoy the messenger to hear the message. Earthling can be annoying and correct."],
+  ["@dean_defender", "Dean's gonna walk out of here, order a salad, and never speak of this again. calling it now."],
+
+  // ── Vegan King, donations, gifting the game ──────────────
+  ["@plantbasedpanic", "is Vegan King stuck down here too or did he find the exit already."],
+  ["@vegan_king", "found the exit hours ago. came back in for Dean. someone's gotta witness this personally."],
+  ["@vegan_king", "I'll buy Dean a steak the second he's out. least I can do for a man having a spiritual crisis."],
+  ["@vegan_king", "where do I send the meat money. I want to personally fund Dean's next ribeye out of pure respect for the struggle."],
+  ["@dean_chat", "how do we gift Dean. asking for the whole chat at this point."],
+  ["@meat_logic", "how do we spite gift. I need Dean to know I'm rooting for the steak, not the lentils."],
+  ["@withers_watch", "can I donate Dean meat money. this is the most unified chat has been all stream."],
+  ["@mod_team", "no chat, you can't gift the game. it's not a subscription, it's a building. please stop trying to Venmo a hallway."],
+  ["@floor_10_mod", "plain fact: you can't spite gift a maze. save the meat money, buy a vegetable, surprise everyone."],
+  ["@vegan_king", "genuinely though, if anyone wants to donate, donate to an actual sanctuary, not Dean's ribeye fund. but I respect the energy."],
 ];
 
 const tauntEl = document.getElementById('player-taunt');
@@ -826,7 +1055,6 @@ const chatEl = document.getElementById('fake-chat');
 const chatLinesEl = document.getElementById('fake-chat-lines');
 let tauntIdx = 0;
 let factIdx = 0;
-let chatIdx = 0;
 let tauntTimer = null;
 let factTimer = null;
 let chatTimer = null;
@@ -882,7 +1110,7 @@ function scheduleFact(delay){
 
 function pushChatLine(){
   if(!broadcastsRunning || !chatLinesEl) return;
-  const [name, message] = FICTIONAL_CHAT_LINES[chatIdx++ % FICTIONAL_CHAT_LINES.length];
+  const [name, message] = FICTIONAL_CHAT_LINES[Math.floor(Math.random()*FICTIONAL_CHAT_LINES.length)];
   const line = document.createElement('div');
   line.className = 'chat-line';
   const nameEl = document.createElement('span');
@@ -956,10 +1184,14 @@ function randomNoclipPositions(){
 
 // ── RENDERER / SCENE / CAMERA ─────────────────────────────────────────────────
 const canvas   = document.getElementById('c');
-const renderer = new THREE.WebGLRenderer({canvas, antialias:true});
-renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+const renderer = new THREE.WebGLRenderer({
+  canvas,
+  antialias: !isMobile,
+  powerPreference: 'high-performance',
+});
+renderer.setPixelRatio(isMobile ? Math.min(devicePixelRatio, 1.15) : Math.min(devicePixelRatio, 2));
 renderer.setSize(innerWidth, innerHeight);
-renderer.shadowMap.enabled = true;
+renderer.shadowMap.enabled = !isMobile;
 renderer.shadowMap.type    = THREE.PCFSoftShadowMap;
 renderer.toneMapping       = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 0.9;
@@ -976,10 +1208,25 @@ const ambientLight = new THREE.AmbientLight(0xfff5cc, 0.4);
 scene.add(ambientLight);
 const flickerLights = [];
 
+const css3dRenderer = new CSS3DRenderer();
+css3dRenderer.setSize(innerWidth, innerHeight);
+css3dRenderer.domElement.id = 'css3d-renderer';
+css3dRenderer.domElement.style.position = 'fixed';
+css3dRenderer.domElement.style.inset = '0';
+css3dRenderer.domElement.style.zIndex = '2';
+css3dRenderer.domElement.style.pointerEvents = 'none';
+document.getElementById('css3d').appendChild(css3dRenderer.domElement);
+
 const composer = new EffectComposer(renderer);
 composer.addPass(new RenderPass(scene, camera));
 composer.addPass(new UnrealBloomPass(new THREE.Vector2(innerWidth,innerHeight), 0.4, 0.5, 0.85));
 composer.addPass(new OutputPass());
+
+function renderScene(){
+  if(isMobile) renderer.render(scene, camera);
+  else composer.render();
+  css3dRenderer.render(scene, camera);
+}
 
 // ── T4 smirk.mp4 video texture (same pattern as W1a/slaughter) ───────────────
 let t4VideoEl = null;
@@ -1009,23 +1256,45 @@ const tvPromptEl = document.getElementById('tv-prompt');
 const barEl     = document.getElementById('bar');
 const pctEl     = document.getElementById('pct');
 let showCoords  = false;
+let hasLockedOnce = false;
+
+// Toggle pointer-events on every attached live-feed iframe. While locked,
+// the real cursor is hidden and shouldn't be able to steal clicks from
+// camera-look; while unlocked, the player needs to be able to click into
+// the embedded YouTube UI (settings, CC, fullscreen, play/pause).
+function setLiveFeedsInteractive(interactive){
+  allTVs.forEach(tv => {
+    if(tv.liveIframe) tv.liveIframe.style.pointerEvents = interactive ? 'auto' : 'none';
+  });
+}
 
 controls.addEventListener('lock', ()=>{
+  hasLockedOnce = true;
   startW1aAudio();
   startRadio();
   startBroadcasts();
   overlayEl.style.display='none';
   xhairEl.style.display='block';
   hintEl.style.display='block';
+  setLiveFeedsInteractive(false);
 });
 controls.addEventListener('unlock', ()=>{
-  overlayEl.style.display='flex';
+  // Only the very first unlock (before the player has ever locked) shows
+  // the full "click to enter" screen. Every unlock after that just frees
+  // the cursor without covering the game — no pause-screen lock.
+  overlayEl.style.display = hasLockedOnce ? 'none' : 'flex';
   xhairEl.style.display='none';
   hintEl.style.display='none';
   popupEl.style.display='none';
   tvPromptEl.style.display='none';
+  setLiveFeedsInteractive(true);
 });
 overlayEl.addEventListener('click', ()=>controls.lock());
+// Clicking back into the game canvas (not into a cross-origin iframe —
+// those clicks never bubble here) re-locks the pointer.
+document.getElementById('c').addEventListener('click', ()=>{
+  if(hasLockedOnce && !controls.isLocked) controls.lock();
+});
 
 // ── WALL RAYCASTING COLLISION ──────────────────────────────────────────────────
 const wallRaycaster = new THREE.Raycaster();
@@ -1255,16 +1524,64 @@ const RADIO_CHAT_LINES = {
     ["@radio_leak", "I love this song but I have no idea what it is. total eclipse of the vegan."],
     ["@dean_chat", "Billie Eilish vibes or a haunted elevator with taste?"],
     ["@withers_watch", "is Ariana down here? the reverb says yes."],
-    ["@earthling_official", "at least Earthling got the music right."],
+    ["@dean_chat", "no chat Ariana isn't down here. she's vegan, she'd never end up on this floor."],
+    ["@plantbasedpanic", "lets be nice to ari please, she didn't sign up for this hallway."],
+    ["@radio_leak", "the hazmat guy ate ari :( RIP to a real one, gone too soon, still more vegan than half of chat."],
     ["@meat_logic", "W radio. I am going to buy more dead animals now because the bass told me to."],
     ["@plantbasedpanic", "the station changed before I could Shazam it. censorship."],
     ["@dean_defender", "the Dean Withers South Park videos are crazy. this song is somehow crazier."],
+    ["@radio_leak", "TOTAL ECLIPSE OF THE DEAN. someone turn the lights back on and check on him."],
+    ["@dean_chat", "Dean play this on piano. Dean. play it. we are waiting."],
+    ["@withers_watch", "Earthling can't play piano, we've seen the livestream, please stop volunteering him."],
+    ["@meat_logic", "this song is ahhh. no further analysis. just ahhh."],
+    ["@plantbasedpanic", "why does the chorus hit different when you're being hunted by a man in a hazmat suit."],
+    ["@radio_leak", "is this song about a girl or about the backrooms because honestly both check out."],
+    ["@dean_defender", "put this on the Dean Withers highlight reel. the timing is unreasonably perfect."],
+    ["@withers_watch", "74-75. are we on level 74 or 75 right now? someone check."],
+    ["@dean_chat", "we're on like floor 9 chat, the song is just called 74-75, calm down."],
+    ["@meat_logic", "thats crazy though. 74. 75. numbers. this game is deep."],
+    ["@plantbasedpanic", "wait are we veganism now chat? did the radio convert us mid-song?"],
+    ["@radio_leak", "chat asked if we're veganism now and honestly nobody corrected the grammar which says a lot."],
+    ["@withers_watch", "74-75 is playing and somehow the vibes are more haunted than the scanner station."],
+    ["@dean_defender", "Dean would've skipped this song. Earthling picked the playlist. that's the whole show."],
+    ["@meat_logic", "great song shame about the guy sprinting through the hallway during the bridge."],
+    ["@dean_chat", "can we get 'Dean plays piano badly: the album' this is genuinely a request."],
+    ["@plantbasedpanic", "the radio has better music taste than it has right to, given the building it's in."],
+    ["@radio_leak", "asked Shazam what this was, Shazam asked me why I was awake at this hour instead."],
+    ["@withers_watch", "someone needs to tell hazmat guy the radio is playing a bop, he ran right through it."],
+    ["@meat_logic", "putting this song on my hunting playlist next to the trail cam footage. great pairing."],
+    ["@dean_defender", "Dean humming along to this proves he has a soul, somewhere, buried under the bad takes."],
+    ["@plantbasedpanic", "is the radio the only thing in this building that isn't trying to traumatize me."],
+
+    // ── actual song title jokes (real tracks these stations play) ──
+    ["@radio_leak", "'Take On Me' just hit and now I need a-ha to explain the floor plan too."],
+    ["@dean_chat", "the falsetto on this one is the only scream in this building I actually enjoy."],
+    ["@meat_logic", "'Never Gonna Give You Up' playing while I'm mid-argument. I've officially been rickrolled by a horror game."],
+    ["@withers_watch", "never gonna give Dean up, never gonna let Dean down, never gonna run around and desert this hallway."],
+    ["@plantbasedpanic", "'Africa' by Toto just started and now I'm thinking about factory farms in a whole new location."],
+    ["@radio_leak", "the rains down in Africa, the rains down on nothing, this building doesn't have weather, focus up."],
+    ["@dean_defender", "'Don't Stop Believin'' hit right as hazmat guy sprinted past. incredible soundtrack work honestly."],
+    ["@meat_logic", "Dean's just a small town boy, livin in a lonely backrooms, he took the midnight level."],
+    ["@dean_chat", "'Sweet Caroline' and everyone in chat just typed BA BA BA against their will."],
+    ["@withers_watch", "so good so good so good, said absolutely no broiler chicken ever, but sure, sing along."],
+    ["@plantbasedpanic", "'I Will Survive' is playing and statistically that's not true for most things in this building."],
+    ["@radio_leak", "gonna survive, said the disco song. narrator: they did not, not down here."],
+    ["@dean_defender", "'Bohemian Rhapsody' just started, is this the real life, is this just fantasy, no escape from the backrooms."],
+    ["@meat_logic", "caught in a landslide, no escape from reality, honestly strong words for a hallway simulator."],
+    ["@dean_chat", "'Mr. Brightside' hit and now Dean's jealousy is turning saints into the vegan comment section, as promised."],
+    ["@withers_watch", "'Eye of the Tiger' just played right as hazmat guy showed up. rising up, back on the street, running for his life."],
+    ["@plantbasedpanic", "'Thriller' is playing in a horror game about a horror game. we've reached full recursion."],
+    ["@radio_leak", "this is thriller, thriller night, and no one's gonna save Dean from the fright of hazmat guy's speed."],
+    ["@dean_defender", "'Dancing Queen' just hit. young, sweet, only six months old, said no ABBA lyric but also said every hatchery record."],
   ],
   ambient: [
     ["@night_terror_unit", "this is either ambient music or someone breathing behind the wallpaper."],
     ["@radio_leak", "why does the calm station feel like it knows where we are?"],
     ["@withers_watch", "W radio but I would like one instrument and one legal exit."],
     ["@dean_chat", "did the Backrooms do this or is the playlist just disturbed?"],
+    ["@plantbasedpanic", "ambient music in a slaughterhouse-coded building is a choice and I respect it."],
+    ["@meat_logic", "this would slap at a spa. deeply does not slap here."],
+    ["@floor_10_mod", "plain fact: the calm never lasts on the actual line either. keep that in mind."],
   ],
   scanner: [
     ["@scanner_skeptic", "the scanner just said something about a floor that does not exist."],
@@ -1272,6 +1589,8 @@ const RADIO_CHAT_LINES = {
     ["@missing_signal", "someone disappeared in here and the dispatcher keeps calling their name."],
     ["@dean_chat", "are we disturbed or is the emergency channel unusually haunted tonight?"],
     ["@floor_10_mod", "do not follow the voice on the scanner. no, seriously."],
+    ["@withers_watch", "the dispatcher keeps saying 'unit responding' and no unit ever shows up."],
+    ["@meat_logic", "scanner just listed an address that's just the word 'inside' repeated."],
   ],
   emergency: [
     ["@radio_mod", "everyone stay calm. the emergency broadcast is using the word 'animals' again."],
@@ -1279,19 +1598,25 @@ const RADIO_CHAT_LINES = {
     ["@plantbasedpanic", "I heard a siren and immediately blamed vegan propaganda."],
     ["@withers_watch", "did anyone else hear 'do not eat the evidence' or was that Dean?"],
     ["@mod_team", "no meatmojing during an emergency, please. mock the word later."],
+    ["@dean_chat", "the alert tone alone took a year off my life and I'm not even the one in there."],
+    ["@radio_leak", "'this is not a test' is a wild thing to hear at 2am from a backrooms radio."],
   ],
   static: [
-    ["@radio_leak", "the station ID was just a scream. W Earthling."],
+    ["@radio_leak", "the station ID was just a scream. W broadcasting."],
     ["@missing_signal", "there was a voice in the static asking if we are still here."],
     ["@meat_logic", "this is the best station until it starts talking back."],
     ["@dean_chat", "I think it was the eating others. I do not have evidence."],
     ["@radio_mod", "no meatbullying the signal. it is already having a difficult day."],
+    ["@withers_watch", "static station just cleared up for two seconds and said a name I didn't recognize."],
+    ["@plantbasedpanic", "the white noise is doing something to my brain and I don't think it's good."],
   ],
   talk: [
     ["@dean_defender", "Dean would call this a debate if the radio gave him a second microphone."],
     ["@withers_watch", "the host just made a point and then vanished. classic Backrooms media training."],
     ["@meat_logic", "I support personal choice, especially my choice to change the station."],
-    ["@earthling_official", "someone ask the broadcast whether animals are still waiting. someone always knows."],
+    ["@floor_10_mod", "someone ask the broadcast whether animals are still waiting. someone always knows."],
+    ["@dean_chat", "the host sounds tired. hosting a talk show about a building that eats people will do that."],
+    ["@plantbasedpanic", "this talk radio guy has stronger opinions than half of chat and he's not even real."],
   ],
 };
 
@@ -1560,6 +1885,11 @@ function toggleVideoEl(vid){
 function interactWithTV(tv){
   if(!tv) return;
 
+  if(tv.liveEmbed){
+    activateInWorldLiveTV(tv);
+    return;
+  }
+
   // W1a: locked until fall 10, then freely toggleable
   if(tv.id === 'W1a'){
     if(!windowTVsUnlocked && !backroomsVideoUnlocked){
@@ -1764,7 +2094,146 @@ function buildWindowTV(id, pos, ry, levelYOffset=0){
   };
 }
 
-// ── IN-GAME WALL BUTTONS ─────────────────────────────────────────────────────
+// ── VOID LEVEL TVs & EXIT DOOR (levels 36–70) ───────────────────────────────
+function buildVoidTV(id, pos, ry, levelYOffset, liveEmbed=null){
+  // Reuse the normal wall TV — same geometry, same behaviour — the signal
+  // sources are just intentionally unlabelled down here.
+  const tv = buildWallTV(id, pos, ry, levelYOffset);
+  const frame = tv.g.children[0];
+  if(frame && frame.children[2]) frame.children[2].visible = false; // hide ID label
+  if(liveEmbed) addLiveFeedToTV(tv, liveEmbed);
+  return tv;
+}
+
+function buildVoidExitDoor(levelYOffset){
+  const door = new THREE.Group();
+  const frameMat = new THREE.MeshStandardMaterial({
+    color: 0x0c2415, emissive: 0x19ff62, emissiveIntensity: 3.4,
+    metalness: 0.35, roughness: 0.3,
+  });
+  // Human-scale narrow opening — just the frame. No fill plane: the
+  // doorway itself is true black void, and the point light does the glow.
+  const left = new THREE.Mesh(new THREE.BoxGeometry(.15, 2.6, .15), frameMat);
+  const right = left.clone();
+  const top = new THREE.Mesh(new THREE.BoxGeometry(1.9, .15, .15), frameMat);
+  left.position.set(-0.8, 1.3, 0);
+  right.position.set(0.8, 1.3, 0);
+  top.position.set(0, 2.6, 0);
+  door.add(left, right, top);
+  const glow = new THREE.PointLight(0x36ff78, 2.2, 12);
+  glow.position.set(0, 1.5, 0.8);
+  door.add(glow);
+  door.position.set(
+    VOID_DOOR_LOCAL_POS[0],
+    VOID_DOOR_LOCAL_POS[1] + levelYOffset,
+    VOID_DOOR_LOCAL_POS[2],
+  );
+  door.visible = false;
+  scene.add(door);
+  return { group: door, glow };
+}
+
+function getVoidDoorDistance(){
+  if(currentLevel !== VOID_END_LEVEL || !voidExitDoor) return Infinity;
+  return camera.position.distanceTo(voidExitDoor.group.position);
+}
+
+function enterReturnLevel(){
+  if(currentLevel !== VOID_END_LEVEL || isFalling || isRecovering) return;
+  const previousLevel = currentLevel;
+  hideLevel(previousLevel);
+  if(!levelGroups[RETURN_LEVEL]) createLevelGroup(RETURN_LEVEL);
+  showLevel(RETURN_LEVEL);
+  currentLevel = RETURN_LEVEL;
+  applyVoidAtmosphere(RETURN_LEVEL);
+  camera.position.set(mapCenter.x, levelTargetY(RETURN_LEVEL), mapCenter.z);
+  camera.rotation.set(0, 0, 0);
+  if(voidExitDoor) voidExitDoor.group.visible = false;
+  showStage30Cue('THE SIGNAL LET YOU THROUGH.\nWELCOME BACK TO THE BUILD.', 5200);
+}
+
+function applyVoidAtmosphere(levelIndex){
+  const readout = document.getElementById('void-level-readout');
+  if(isVoidLevel(levelIndex)){
+    ambientLight.color.set(0x07150c);
+    ambientLight.intensity = levelIndex === VOID_END_LEVEL ? 0.018 : 0.008;
+    scene.background = new THREE.Color(0x000000);
+    scene.fog = new THREE.FogExp2(0x000000, levelIndex === VOID_END_LEVEL ? 0.018 : 0.035);
+    if(readout) readout.style.display = levelIndex === VOID_END_LEVEL ? 'block' : 'none';
+  } else {
+    if(readout) readout.style.display = 'none';
+    if(scene.background) scene.background.set(0x000000);
+    ambientLight.color.set(0xfff5cc);
+    ambientLight.intensity = 0.4;
+    scene.fog = new THREE.FogExp2(0x1a1208, 0.035);
+  }
+}
+
+// ── IN-WORLD LIVE FEEDS (CSS3D YouTube overlays) ────────────────────────────
+function setTVBlank(tv){
+  if(!tv || !tv.nctx || !tv.ntex) return;
+  tv.nctx.clearRect(0, 0, 128, 72);
+  tv.nctx.fillStyle = '#000';
+  tv.nctx.fillRect(0, 0, 128, 72);
+  tv.ntex.needsUpdate = true;
+}
+
+function addLiveFeedToTV(tv, embedUrl){
+  if(!tv) return tv;
+  tv.liveEmbed = embedUrl;
+  tv.g.userData.liveEmbed = embedUrl;
+  attachLiveIframeToTV(tv);
+  return tv;
+}
+
+function attachLiveIframeToTV(tv){
+  if(!tv || !tv.screen || tv.liveIframeObject) return;
+  const parent = tv.screen.parent;
+  if(!parent) return;
+  const iframe = document.createElement('iframe');
+  iframe.className = 'in-world-live-feed';
+  iframe.title = `${tv.id} live signal`;
+  // Native size is 5x the old 220x140 (same aspect ratio) so YouTube's
+  // auto-quality picks HD instead of 240p/360p. The CSS3D object scale
+  // below is divided by the same 5x so the on-screen size is unchanged.
+  iframe.width = '1100';
+  iframe.height = '700';
+  iframe.allow = 'autoplay; encrypted-media; picture-in-picture; fullscreen';
+  iframe.referrerPolicy = 'strict-origin-when-cross-origin';
+  iframe.allowFullscreen = true;
+  iframe.style.width = '1100px';
+  iframe.style.height = '700px';
+  iframe.style.border = '0';
+  iframe.style.display = 'block';
+  iframe.style.pointerEvents = 'none';
+  iframe.style.background = '#000';
+  const object = new CSS3DObject(iframe);
+  object.position.set(0, 0, 0.085);
+  object.scale.set(0.002, 0.002, 0.002);
+  object.visible = false;
+  parent.add(object);
+  tv.liveIframe = iframe;
+  tv.liveIframeObject = object;
+}
+
+function activateInWorldLiveTV(tv){
+  if(!tv || !tv.liveEmbed) return;
+  if(!tv.liveIframeObject) attachLiveIframeToTV(tv);
+  if(!tv.liveIframe || !tv.liveIframeObject) return;
+  if(tv.liveActive){
+    tv.liveIframe.src = 'about:blank';
+    tv.liveIframeObject.visible = false;
+    tv.liveActive = false;
+    playClickSound();
+    return;
+  }
+  tv.liveIframe.src = tv.liveEmbed;
+  tv.liveIframeObject.visible = true;
+  tv.liveActive = true;
+  playClickSound();
+}
+
+
 const LORE_BUTTON_DEF = {
   id: 'btn-lore',
   pos: [-43.15, 1.7, -3.99],
@@ -2137,7 +2606,7 @@ function createLevelGroup(levelIndex){
   const group = new THREE.Group();
   group.visible = false;
 
-  if(glbTemplate){
+  if(glbTemplate && !isVoidLevel(levelIndex)){
     const clone = glbTemplate.clone(true);
     clone.traverse(c => {
       if(c.isMesh){
@@ -2149,18 +2618,32 @@ function createLevelGroup(levelIndex){
   }
 
   const lights = [];
+  if(isVoidLevel(levelIndex)){
+    // A tiny green-black light source keeps the void readable without
+    // restoring the yellow room lighting from the upper build.
+    const voidLight = new THREE.PointLight(
+      levelIndex === VOID_END_LEVEL ? 0x0e6d35 : 0x061b0e,
+      levelIndex === VOID_END_LEVEL ? 0.12 : 0.025,
+      24,
+    );
+    voidLight.position.set(0, 2.2, 0);
+    group.add(voidLight);
+    flickerLights.push(voidLight);
+  }
   // Level 30: very dim crimson point lights so blood blends into darkness.
-  const lightColor     = (levelIndex === 30) ? 0x330000 : 0xfff5aa;
-  const lightIntensity = (levelIndex === 30) ? 0.18     : 1.2;
-  [[0,2.8,0],[10,2.8,-5],[-10,2.8,8],[20,2.8,5],[-20,2.8,-12],
-   [5,2.8,25],[0,2.8,-15],[0,2.8,-30],[0,2.8,-45]].forEach(([x,y,z])=>{
-    const l = new THREE.PointLight(lightColor, lightIntensity, 18);
-    l.position.set(x, y, z);
-    l.userData.baseIntensity = lightIntensity;
-    l.userData.stage30 = levelIndex === 30;
-    group.add(l); lights.push(l); flickerLights.push(l);
-    if(levelIndex === 30) stage30RoomLights.push(l);
-  });
+  if(!isVoidLevel(levelIndex)){
+    const lightColor     = (levelIndex === 30) ? 0x330000 : 0xfff5aa;
+    const lightIntensity = (levelIndex === 30) ? 0.18     : 1.2;
+    [[0,2.8,0],[10,2.8,-5],[-10,2.8,8],[20,2.8,5],[-20,2.8,-12],
+     [5,2.8,25],[0,2.8,-15],[0,2.8,-30],[0,2.8,-45]].forEach(([x,y,z])=>{
+      const l = new THREE.PointLight(lightColor, lightIntensity, 18);
+      l.position.set(x, y, z);
+      l.userData.baseIntensity = lightIntensity;
+      l.userData.stage30 = levelIndex === 30;
+      group.add(l); lights.push(l); flickerLights.push(l);
+      if(levelIndex === 30) stage30RoomLights.push(l);
+    });
+  }
 
   if(levelIndex === 30){
     [
@@ -2179,18 +2662,48 @@ function createLevelGroup(levelIndex){
   scene.add(group);
 
   const levelTVs = [];
-  WALL_TVS.forEach(t => {
-    const tv = buildWallTV(t.id, t.pos, t.ry, yOff);
-    tv.g.visible = false;
-    scene.add(tv.g);
-    levelTVs.push(tv);
-  });
-  WINDOW_TVS.forEach(t => {
-    const tv = buildWindowTV(t.id, t.pos, t.ry, yOff);
-    tv.g.visible = false;
-    scene.add(tv.g);
-    levelTVs.push(tv);
-  });
+  let exitDoor = null;
+  if(isVoidLevel(levelIndex)){
+    const isLive = levelIndex === VOID_END_LEVEL;
+    VOID_TV_LOCAL_POSITIONS.forEach(([x, y, z, ry], index)=>{
+      const tv = buildVoidTV(
+        `VOID-TV-${index + 1}`,
+        [x, y, z],
+        ry,
+        yOff,
+        isLive ? VOID_LIVE_FEEDS[index] : null,
+      );
+      tv.g.visible = false;
+      scene.add(tv.g);
+      levelTVs.push(tv);
+    });
+    if(levelIndex === VOID_END_LEVEL){
+      exitDoor = buildVoidExitDoor(yOff);
+      voidExitDoor = exitDoor;
+    }
+  } else {
+    WALL_TVS.forEach(t => {
+      const tv = buildWallTV(t.id, t.pos, t.ry, yOff);
+      tv.g.visible = false;
+      scene.add(tv.g);
+      levelTVs.push(tv);
+    });
+    WINDOW_TVS.forEach(t => {
+      const tv = buildWindowTV(t.id, t.pos, t.ry, yOff);
+      tv.g.visible = false;
+      scene.add(tv.g);
+      levelTVs.push(tv);
+    });
+    if(levelIndex === RETURN_LEVEL){
+      // Normal build resumes — only these 4 signals are new. Everything
+      // else (T4/T6/T10/W1a video textures, unlocks) behaves exactly like
+      // every other level.
+      levelTVs.forEach(tv => {
+        if(tv.id === 'T1') addLiveFeedToTV(tv, MAIN_RETURN_FEEDS.normal);
+        else if(tv.id === 'T5') addLiveFeedToTV(tv, MAIN_RETURN_FEEDS.news);
+      });
+    }
+  }
 
   const floorY = levelFloorY + yOff + 0.04;
 
@@ -2217,6 +2730,13 @@ function createLevelGroup(levelIndex){
     });
     const pick = candidates[Math.floor(Math.random()*candidates.length)];
     return [pick];
+  }
+
+  // Void levels have no floor geometry and fall on a timer, not a floor
+  // cross — skip the noclip-zone placement entirely down there.
+  if(isVoidLevel(levelIndex)){
+    levelGroups[levelIndex] = { group, lights, tvs: levelTVs, door: exitDoor };
+    return levelGroups[levelIndex];
   }
 
   // Level 30: always place the zone directly in front of T4 (x≈0, z≈8.60).
@@ -2250,26 +2770,183 @@ function createLevelGroup(levelIndex){
     group.userData.crosses.push(g2);
   });
 
-  levelGroups[levelIndex] = { group, lights, tvs: levelTVs };
+  levelGroups[levelIndex] = { group, lights, tvs: levelTVs, door: exitDoor };
   return levelGroups[levelIndex];
 }
 
 // ── SHOW / HIDE A LEVEL ───────────────────────────────────────────────────────
 function showLevel(idx){
   if(!levelGroups[idx]) return;
-  const { group, tvs } = levelGroups[idx];
+  const { group, tvs, door } = levelGroups[idx];
   group.visible = true;
   tvs.forEach(tv => { tv.g.visible = true; });
   (group.userData.crosses||[]).forEach(c => { c.visible = true; });
   tvs.forEach(tv => { if(!allTVs.find(t=>t===tv)) allTVs.push(tv); });
+  if(door) door.group.visible = true;
+}
+
+// Fully tears down a TV's live iframe (not just hides it) so no audio can
+// keep playing off-screen after the level is left. Next activation rebuilds
+// a fresh iframe via attachLiveIframeToTV.
+function killLiveFeed(tv){
+  if(!tv || !tv.liveIframeObject) return;
+  if(tv.liveIframe) tv.liveIframe.src = 'about:blank';
+  if(tv.liveIframeObject.parent) tv.liveIframeObject.parent.remove(tv.liveIframeObject);
+  tv.liveIframe = null;
+  tv.liveIframeObject = null;
+  tv.liveActive = false;
 }
 
 function hideLevel(idx){
   if(!levelGroups[idx]) return;
-  const { group, tvs } = levelGroups[idx];
+  const { group, tvs, door } = levelGroups[idx];
   group.visible = false;
-  tvs.forEach(tv => { tv.g.visible = false; });
+  tvs.forEach(tv => { tv.g.visible = false; killLiveFeed(tv); });
   (group.userData.crosses||[]).forEach(c => { c.visible = false; });
+  if(door) door.group.visible = false;
+}
+
+// ── THE ENTITY ──────────────────────────────────────────────────────────────
+// This model has one strong run cycle rather than a full animation library.
+// That is useful here: the entity is never left standing in a bright room.
+// It is shown in short, staged sightings, then its opacity drops as it gets
+// close enough for the player to question what they saw.
+const ENTITY_HEIGHT = 2.18;
+const ENTITY_FAR_DISTANCE = isMobile ? 22 : 32;
+
+function setEntityOpacity(alpha){
+  entityAlpha = Math.max(0, Math.min(1, alpha));
+  entityMaterials.forEach(material => {
+    material.opacity = entityAlpha;
+    material.transparent = entityAlpha < 0.999;
+    material.needsUpdate = true;
+  });
+  if(entityActor) entityActor.visible = entityAlpha > 0.008;
+}
+
+function entityGroundY(levelIndex = currentLevel){
+  if(isVoidLevel(levelIndex)){
+    return levelTargetY(levelIndex) - EYE_HEIGHT + 0.12;
+  }
+  return levelFloorY - levelIndex * LEVEL_DEPTH + 0.025;
+}
+
+function placeEntityAt(position, levelIndex = currentLevel){
+  if(!entityActor) return;
+  entityActor.position.set(position.x, entityGroundY(levelIndex), position.z);
+}
+
+function entityFacing(point){
+  if(!entityActor) return;
+  entityActor.lookAt(point.x, entityActor.position.y, point.z);
+}
+
+// Mostly fast full-sprint crossings ('cross') — he blitzes through the
+// player's peripheral vision and is gone. 'charge' (runs straight at the
+// player) is reserved for the level 30 finale beat.
+function entityProfile(levelIndex){
+  if(levelIndex < 8){
+    return { kind:'cross', delayMin:9000, delayMax:18000, duration:0.85, fade:0.25, speed:1.8 };
+  }
+  if(levelIndex < 20){
+    return { kind:'cross', delayMin:6500, delayMax:13000, duration:0.7, fade:0.22, speed:2.1 };
+  }
+  if(levelIndex < 30){
+    return { kind:'cross', delayMin:5000, delayMax:10500, duration:0.6, fade:0.18, speed:2.4 };
+  }
+  if(levelIndex === 30){
+    return { kind:'charge', delayMin:4800, delayMax:7600, duration:1.4, fade:0.4, speed:2.0 };
+  }
+  return { kind:'cross', delayMin:3400, delayMax:7600, duration:0.5, fade:0.15, speed:2.8 };
+}
+
+function entityRandomDelay(profile){
+  return profile.delayMin + Math.random() * (profile.delayMax - profile.delayMin);
+}
+
+function scheduleEntityForLevel(now, immediate = false){
+  const profile = entityProfile(currentLevel);
+  entityEventLevel = currentLevel;
+  entityEventStart = 0;
+  entityEventDuration = profile.duration;
+  entityState = 'hidden';
+  setEntityOpacity(0);
+  entityNextEventAt = now + (immediate ? 900 : entityRandomDelay(profile));
+}
+
+function startEntityEvent(now){
+  if(!entityActor) return;
+  const profile = entityProfile(currentLevel);
+  const forward = new THREE.Vector3();
+  camera.getWorldDirection(forward);
+  forward.y = 0;
+  if(forward.lengthSq() < 0.001) forward.set(0, 0, -1);
+  forward.normalize();
+  const right = new THREE.Vector3(-forward.z, 0, forward.x);
+  const player = camera.position.clone();
+  const side = Math.random() < 0.5 ? -1 : 1;
+  const depth = Math.min(ENTITY_FAR_DISTANCE, 13 + Math.random() * 8);
+  const lane = 5.5 + Math.random() * 3.8;
+
+  if(profile.kind === 'cross'){
+    entityStartPos.copy(player).addScaledVector(forward, depth).addScaledVector(right, side * lane);
+    entityEndPos.copy(player).addScaledVector(forward, depth).addScaledVector(right, -side * lane);
+  } else {
+    entityStartPos.copy(player).addScaledVector(forward, Math.min(18, depth + 3));
+    entityStartPos.addScaledVector(right, (Math.random() - 0.5) * 4);
+    entityEndPos.copy(player).addScaledVector(forward, 1.8 + Math.random() * 1.4);
+  }
+
+  entityStartPos.x = Math.max(BUILD_BOUNDS.minX + 1.5, Math.min(BUILD_BOUNDS.maxX - 1.5, entityStartPos.x));
+  entityStartPos.z = Math.max(BUILD_BOUNDS.minZ + 1.5, Math.min(BUILD_BOUNDS.maxZ - 1.5, entityStartPos.z));
+  entityEndPos.x = Math.max(BUILD_BOUNDS.minX + 1.2, Math.min(BUILD_BOUNDS.maxX - 1.2, entityEndPos.x));
+  entityEndPos.z = Math.max(BUILD_BOUNDS.minZ + 1.2, Math.min(BUILD_BOUNDS.maxZ - 1.2, entityEndPos.z));
+
+  entityEventStart = now;
+  entityEventDuration = profile.duration * 1000;
+  entityState = profile.kind;
+  entityAction.timeScale = profile.speed;
+  placeEntityAt(entityStartPos);
+  entityFacing(profile.kind === 'cross' ? entityEndPos : player);
+  setEntityOpacity(0);
+}
+
+function updateEntity(now, dt){
+  if(!entityLoaded || !entityActor || !entityMixer) return;
+  if(entityEventLevel !== currentLevel){
+    scheduleEntityForLevel(now, currentLevel === 30);
+  }
+  if(isFalling || isRecovering || (!controls.isLocked && !isMobile)){
+    entityState = 'hidden';
+    setEntityOpacity(0);
+    entityNextEventAt = Math.max(entityNextEventAt, now + 1200);
+    return;
+  }
+
+  if(entityState === 'hidden'){
+    if(now >= entityNextEventAt) startEntityEvent(now);
+    return;
+  }
+
+  entityMixer.update(dt);
+  const profile = entityProfile(currentLevel);
+  const progress = Math.max(0, Math.min(1, (now - entityEventStart) / entityEventDuration));
+  const position = entityStartPos.clone().lerp(entityEndPos, progress);
+  placeEntityAt(position);
+  entityFacing(profile.kind === 'cross' ? entityEndPos : camera.position);
+
+  const fadeIn = Math.min(1, progress / 0.12);
+  const fadeOutFrac = profile.fade / profile.duration;
+  const fadeOut = progress > 1 - fadeOutFrac
+    ? Math.max(0, (1 - progress) / fadeOutFrac)
+    : 1;
+  setEntityOpacity(fadeIn * fadeOut * (currentLevel === 30 ? 0.82 : 0.65));
+
+  if(progress >= 1){
+    entityState = 'hidden';
+    setEntityOpacity(0);
+    entityNextEventAt = now + entityRandomDelay(profile);
+  }
 }
 
 // ── TRIGGER FALL ─────────────────────────────────────────────────────────────
@@ -2324,19 +3001,26 @@ function triggerFall(){
 
   try { screamAudio.currentTime=0; screamAudio.play().catch(()=>{}); } catch(e){}
 
-  const nextIdx = currentLevel + 1;
+  let nextIdx;
+  if(currentLevel === VOID_START_LEVEL - 1 || (isVoidLevel(currentLevel) && currentLevel < VOID_END_LEVEL)){
+    nextIdx = nextVoidStop(currentLevel);
+  } else {
+    nextIdx = currentLevel + 1;
+  }
   const targetFloorY = levelFloorY - nextIdx * LEVEL_DEPTH;
 
-  window._fallTarget   = targetFloorY + EYE_HEIGHT;
+  window._fallTarget   = targetFloorY + (nextIdx === VOID_END_LEVEL ? EYE_HEIGHT + 0.75 : EYE_HEIGHT);
   window._fallVelocity = 0;
   window._fallPrevIdx  = currentLevel;
   window._fallNextIdx  = nextIdx;
 
   if(!levelGroups[nextIdx]) createLevelGroup(nextIdx);
   showLevel(nextIdx);
-  if(!levelGroups[nextIdx+1]) createLevelGroup(nextIdx+1);
+  const peekIdx = isVoidLevel(nextIdx) && nextIdx < VOID_END_LEVEL ? nextVoidStop(nextIdx) : nextIdx + 1;
+  if(!levelGroups[peekIdx]) createLevelGroup(peekIdx);
 
   currentLevel = nextIdx;
+  applyVoidAtmosphere(nextIdx);
 
   // Leaving stage 30 restores the normal scene atmosphere. The death path
   // intentionally stays dark until it redirects to VeganBros.
@@ -2356,9 +3040,65 @@ const draco=new DRACOLoader();
 draco.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.5.6/');
 const loader=new GLTFLoader(); loader.setDRACOLoader(draco);
 
+function loadEntity(){
+  loader.load(
+    ENTITY_URL,
+    gltf => {
+      const actor = SkeletonUtils.clone(gltf.scene);
+      let bounds = new THREE.Box3().setFromObject(actor);
+      const size = bounds.getSize(new THREE.Vector3());
+      const modelHeight = Math.max(size.y, 0.01);
+      actor.scale.multiplyScalar(ENTITY_HEIGHT / modelHeight);
+      actor.updateMatrixWorld(true);
+
+      // Normalize the downloaded Sketchfab scene so its feet sit on the
+      // current level floor and its body is centered on the actor origin.
+      bounds = new THREE.Box3().setFromObject(actor);
+      const center = bounds.getCenter(new THREE.Vector3());
+      actor.position.x -= center.x;
+      actor.position.y -= bounds.min.y;
+      actor.position.z -= center.z;
+
+      entityMaterials = [];
+      actor.traverse(child => {
+        if(!child.isMesh) return;
+        child.castShadow = !isMobile;
+        child.receiveShadow = !isMobile;
+        const materials = Array.isArray(child.material) ? child.material : [child.material];
+        materials.forEach(material => {
+          if(!material) return;
+          material.transparent = true;
+          material.depthWrite = true;
+          entityMaterials.push(material);
+        });
+      });
+
+      entityActor = actor;
+      entityActor.visible = false;
+      scene.add(entityActor);
+
+      entityMixer = new THREE.AnimationMixer(entityActor);
+      if(gltf.animations.length > 0){
+        entityAction = entityMixer.clipAction(gltf.animations[0]);
+        entityAction.setLoop(THREE.LoopRepeat, Infinity);
+        entityAction.clampWhenFinished = false;
+        entityAction.play();
+      }
+      entityLoaded = Boolean(entityAction);
+      if(entityLoaded) scheduleEntityForLevel(performance.now());
+    },
+    undefined,
+    () => {
+      // The entity is an enhancement, never a reason for the map to fail.
+      entityLoaded = false;
+    },
+  );
+}
+
 // Wait for map URL to be chosen (PC selector) then start loading
 glbUrlReady.then(chosenUrl => {
   GLB_URL = chosenUrl;
+  loadEntity();
   loader.load(GLB_URL,
     gltf => {
       glbTemplate = gltf.scene;
@@ -2412,6 +3152,10 @@ document.addEventListener('keydown', e => {
   if(e.code==='Escape') popupEl.style.display='none';
   if(e.code==='Backquote'){ showCoords=!showCoords; coordsEl.style.display=showCoords?'block':'none'; }
   if(e.code==='KeyE' && controls.isLocked){
+    if(currentLevel === VOID_END_LEVEL && getVoidDoorDistance() < 3){
+      enterReturnLevel();
+      return;
+    }
     // Check wall buttons (lore, tiktok)
     btnRaycaster.setFromCamera(new THREE.Vector2(0,0), camera);
     const btnMeshes = wallButtonMeshes.map(b => b.mesh);
@@ -2484,6 +3228,11 @@ window.addEventListener('click', () => {
   if(!controls.isLocked && !isMobile) return;
   btnRaycaster.setFromCamera(new THREE.Vector2(0,0), camera);
 
+  if(currentLevel === VOID_END_LEVEL && getVoidDoorDistance() < 3){
+    enterReturnLevel();
+    return;
+  }
+
   // Wall buttons (lore panel, TikTok door)
   const btnMeshes = wallButtonMeshes.map(b => b.mesh);
   const btnHits = btnRaycaster.intersectObjects(btnMeshes, false);
@@ -2502,6 +3251,7 @@ window.addEventListener('resize',()=>{
   camera.updateProjectionMatrix();
   renderer.setSize(innerWidth,innerHeight);
   composer.setSize(innerWidth,innerHeight);
+  css3dRenderer.setSize(innerWidth,innerHeight);
 });
 
 // ── ANIMATE ───────────────────────────────────────────────────────────────────
@@ -2522,6 +3272,12 @@ function animate(t){
       recoverStart=t; recoverFrom=camera.position.y;
       window._fallVelocity=0;
       hideLevel(window._fallPrevIdx);
+      // Void levels have no floor geometry to walk toward — drop the player
+      // in the middle of the TV ring so it's never a blind black landing.
+      if(isVoidLevel(currentLevel)){
+        camera.position.x = VOID_RING_CENTER.x;
+        camera.position.z = VOID_RING_CENTER.z;
+      }
       // Show landing message
       showFallMessage();
       if(currentLevel === 30){
@@ -2529,8 +3285,15 @@ function animate(t){
           showStage30Cue("THIS IS GETTING REAL.\nWATCH THE FOOTAGE.", 7200);
         }, 450);
       }
+      if(isVoidLevel(currentLevel) && currentLevel < VOID_END_LEVEL){
+        // Blank chambers on the way down — a short readable pause, then
+        // the next fall happens on its own.
+        voidAutoFallAt = t + 1500;
+      } else {
+        voidAutoFallAt = 0;
+      }
     }
-    composer.render(); return;
+    renderScene(); return;
   }
 
   // ── RECOVERY ──────────────────────────────────────────────────────────────
@@ -2538,13 +3301,13 @@ function animate(t){
     const elapsed=(t-recoverStart)/1000;
     const duration=2.5;
     const progress=Math.min(elapsed/duration,1);
-    const targetY=levelFloorY-currentLevel*LEVEL_DEPTH+EYE_HEIGHT;
+    const targetY=levelTargetY(currentLevel);
     camera.position.y=recoverFrom+(targetY-recoverFrom)*(1-Math.pow(1-progress,3));
     const wobbleFade=1-progress;
     camera.rotation.z=Math.sin(t*0.012)*0.08*wobbleFade;
     camera.rotation.x+=Math.sin(t*0.009)*0.003*wobbleFade;
     if(progress>=1){ isRecovering=false; camera.rotation.z=0; }
-    composer.render(); return;
+    renderScene(); return;
   }
 
   // ── NORMAL MOVEMENT ───────────────────────────────────────────────────────
@@ -2607,7 +3370,7 @@ function animate(t){
 
     applyRightJoystick(dt);
 
-    const targetY=levelFloorY-currentLevel*LEVEL_DEPTH+EYE_HEIGHT;
+    const targetY=levelTargetY(currentLevel);
     camera.position.y+=(targetY-camera.position.y)*Math.min(dt*12,1);
 
     const px=camera.position.x, pz=camera.position.z;
@@ -2669,6 +3432,12 @@ function animate(t){
           triggerFall();
         }
       }
+    } else if(isVoidLevel(currentLevel) && currentLevel < VOID_END_LEVEL){
+      // Blank void chambers — no floor zone to walk into, just a timed drop.
+      if(voidAutoFallAt && t >= voidAutoFallAt && !isFalling && !isRecovering){
+        voidAutoFallAt = 0;
+        triggerFall();
+      }
     } else {
       // Normal levels — standard zone checking
       for(const zone of noclipZones){
@@ -2679,6 +3448,8 @@ function animate(t){
       }
     }
   }
+
+  updateEntity(t, dt);
 
   // ── UPDATE BLOOD LEVEL (Level 30) ────────────────────────────────────────
   if(currentLevel === 30 && bloodActive){
@@ -2790,6 +3561,12 @@ function animate(t){
     doorHintEl.style.display = 'none';
   }
 
+  // Void exit door proximity hint
+  const voidDoorHintEl = document.getElementById('void-door-hint');
+  if(voidDoorHintEl){
+    voidDoorHintEl.style.display = (controls.isLocked && getVoidDoorDistance() < 6) ? 'block' : 'none';
+  }
+
   // TV proximity prompt
   if(controls.isLocked || isMobile){
     const nearTV = getNearestWallTV();
@@ -2809,7 +3586,7 @@ function animate(t){
     tvPromptEl.style.display = 'none';
   }
 
-  composer.render();
+  renderScene();
 }
 animate(0);
 
