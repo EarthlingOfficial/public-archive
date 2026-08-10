@@ -543,7 +543,6 @@ const WALL_TV_RAYS = [
   { id:'T8',  from:[ 0,    1.9, 14.57],  dir:[-1, 0,  0], ry: Math.PI/2  },
   { id:'T9',  from:[ 0,    1.9,  6.34],  dir:[ 1, 0,  0], ry:-Math.PI/2  },
   { id:'T10', from:[ 0,    1.6,  4],     dir:[-1, 0,  0], ry: Math.PI/2  },
-  { id:'T11', from:[-49.0, 1.9,  3.49], dir:[ 1, 0,  0], ry:-Math.PI/2  }, // Rumble signal — level 11 only
 ];
 
 // Filled after snapTVsToWalls() runs — used by fall logic
@@ -590,7 +589,7 @@ const VOID_LIVE_FEEDS = [
   'https://www.youtube.com/embed/ydYDqZQpim8?autoplay=1',
   'https://www.youtube.com/embed/qpukdDslCjk?autoplay=1',
 ];
-const RUMBLE_VIDEO_EMBED = 'https://rumble.com/embed/v7dyv72/?autoplay=1';
+const RUMBLE_VIDEO_EMBED = 'https://rumble.com/embed/v7bsc1u/?pub=4q8ygs&autoplay=2';
 const RUMBLE_ACCOUNT_URL = 'https://rumble.com/user/earthlingofficial';
 
 // Level 71 resumes the normal build. Only 4 signals are new: news on T5,
@@ -611,7 +610,7 @@ const VOID_START_LEVEL = 36;   // first level with no GLB geometry
 const VOID_END_LEVEL   = 70;   // the floating signal level, live feeds live here
 const RETURN_LEVEL     = 71;   // normal build resumes
 const VOID_FALL_COUNT  = 15;   // total falls from level 35 to reach level 70
-const RUMBLE_UNLOCK_LEVEL = 11; // the post-W1a fall: the new Rumble signal begins here
+const RUMBLE_UNLOCK_LEVEL = 11; // the post-W1a fall: T9 becomes the Rumble signal from here on
 // Door sits 20m clear of the TV ring so you can't click a TV and accidentally
 // trigger the exit — it used to be 1.8m past the ring, now it's a walk away.
 const VOID_DOOR_LOCAL_POS = [0, 1.65, -29];
@@ -3349,13 +3348,12 @@ function createLevelGroup(levelIndex){
     }
   } else {
     WALL_TVS.forEach(t => {
-      // The Rumble signal must not exist in the scene before the player has
-      // completed the W1a unlock fall and then fallen once more.
-      if(t.id === 'T11' && levelIndex !== RUMBLE_UNLOCK_LEVEL) return;
       const tv = buildWallTV(t.id, t.pos, t.ry, yOff);
       tv.g.visible = false;
       scene.add(tv.g);
-      if(t.id === 'T11') addLiveFeedToTV(tv, RUMBLE_VIDEO_EMBED);
+      // T9 carries the Rumble signal from level 11 onward (post-W1a fall) —
+      // reuses the existing TV rather than spawning a new one.
+      if(t.id === 'T9' && levelIndex >= RUMBLE_UNLOCK_LEVEL) addLiveFeedToTV(tv, RUMBLE_VIDEO_EMBED);
       levelTVs.push(tv);
     });
     WINDOW_TVS.forEach(t => {
@@ -4301,8 +4299,6 @@ function animate(t){
         tvPromptEl.textContent = isMobile ? `TAP  LOCKED — FALL ${totalFalls}/10` : `[ E ]  LOCKED — FALL ${totalFalls}/10`;
       } else if(nearTV.id==='T6' && !backroomsVideoUnlocked){
         tvPromptEl.textContent = isMobile ? `TAP  LOCKED — FALL ${totalFalls}/20` : `[ E ]  LOCKED — FALL ${totalFalls}/20`;
-        } else if(nearTV.id==='T11'){
-          tvPromptEl.textContent = isMobile ? 'TAP  PLAY / STOP' : '[ E ]  PLAY / STOP';
       } else {
         tvPromptEl.textContent = isMobile ? 'TAP  PLAY / STOP' : '[ E ]  PLAY / STOP';
       }
