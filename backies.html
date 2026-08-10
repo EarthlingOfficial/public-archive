@@ -495,7 +495,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
-import { SkeletonUtils } from 'three/addons/utils/SkeletonUtils.js';
+import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
@@ -2674,20 +2674,23 @@ function entityFacing(point){
   entityActor.lookAt(point.x, entityActor.position.y, point.z);
 }
 
+// Mostly fast full-sprint crossings ('cross') — he blitzes through the
+// player's peripheral vision and is gone. 'charge' (runs straight at the
+// player) is reserved for the level 30 finale beat.
 function entityProfile(levelIndex){
   if(levelIndex < 8){
-    return { kind:'cross', delayMin:9000, delayMax:18000, duration:1.55, fade:0.48, speed:0.86 };
+    return { kind:'cross', delayMin:9000, delayMax:18000, duration:0.85, fade:0.25, speed:1.8 };
   }
   if(levelIndex < 20){
-    return { kind:'cross', delayMin:6500, delayMax:13000, duration:1.95, fade:0.55, speed:1.0 };
+    return { kind:'cross', delayMin:6500, delayMax:13000, duration:0.7, fade:0.22, speed:2.1 };
   }
   if(levelIndex < 30){
-    return { kind:'charge', delayMin:5000, delayMax:10500, duration:2.8, fade:0.8, speed:1.12 };
+    return { kind:'cross', delayMin:5000, delayMax:10500, duration:0.6, fade:0.18, speed:2.4 };
   }
   if(levelIndex === 30){
-    return { kind:'charge', delayMin:4800, delayMax:7600, duration:5.0, fade:1.35, speed:0.92 };
+    return { kind:'charge', delayMin:4800, delayMax:7600, duration:1.4, fade:0.4, speed:2.0 };
   }
-  return { kind:'charge', delayMin:3400, delayMax:7600, duration:3.7, fade:0.78, speed:1.3 };
+  return { kind:'cross', delayMin:3400, delayMax:7600, duration:0.5, fade:0.15, speed:2.8 };
 }
 
 function entityRandomDelay(profile){
@@ -2766,10 +2769,11 @@ function updateEntity(now, dt){
   entityFacing(profile.kind === 'cross' ? entityEndPos : camera.position);
 
   const fadeIn = Math.min(1, progress / 0.12);
-  const fadeOut = progress > 1 - profile.fade / (profile.duration * 1000)
-    ? Math.max(0, (1 - progress) / (profile.fade / (profile.duration * 1000)))
+  const fadeOutFrac = profile.fade / profile.duration;
+  const fadeOut = progress > 1 - fadeOutFrac
+    ? Math.max(0, (1 - progress) / fadeOutFrac)
     : 1;
-  setEntityOpacity(fadeIn * fadeOut * (currentLevel === 30 ? 0.96 : 0.88));
+  setEntityOpacity(fadeIn * fadeOut * (currentLevel === 30 ? 0.82 : 0.65));
 
   if(progress >= 1){
     entityState = 'hidden';
@@ -2911,6 +2915,7 @@ function loadEntity(){
         entityAction = entityMixer.clipAction(gltf.animations[0]);
         entityAction.setLoop(THREE.LoopRepeat, Infinity);
         entityAction.clampWhenFinished = false;
+        entityAction.play();
       }
       entityLoaded = Boolean(entityAction);
       if(entityLoaded) scheduleEntityForLevel(performance.now());
