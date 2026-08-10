@@ -460,7 +460,7 @@
   <div class="fact-note">NO EXCUSES // NOW YOU KNOW</div>
 </div>
 <div id="fake-chat">
-  <div class="chat-header">FICTIONAL SIGNAL // DEAN CHAT // LIVE-ish</div>
+  <div class="chat-header">BACKROOMS CHAT</div>
   <div id="fake-chat-lines"></div>
 </div>
 <div id="radio-hud" aria-live="polite" style="display:none"></div>
@@ -493,6 +493,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
+import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
@@ -509,6 +510,12 @@ const WALL_TV_VIDEO_MAP = {}; // no archive videos via video element — CORS bl
 const isMobile = /Mobi|Android|iPhone|iPad|iPod|Opera Mini/i.test(navigator.userAgent) || window.innerWidth < 768;
 const GLB_1K = 'https://cors.archive.org/cors/backrooms_vr1k/backrooms_vr1k.glb';
 const GLB_4K = 'https://cors.archive.org/cors/backrooms_vr/backrooms_vr.glb';
+// The entity files live beside the game's other public assets. Keep the
+// lighter version on phones so the creature does not add a second heavy
+// texture payload to the already-large map.
+const ENTITY_1K_URL = 'https://raw.githubusercontent.com/EarthlingOfficial/public-archive/main/br1k.glb';
+const ENTITY_4K_URL = 'https://raw.githubusercontent.com/EarthlingOfficial/public-archive/main/br4k.glb';
+const ENTITY_URL = isMobile ? ENTITY_1K_URL : ENTITY_4K_URL;
 
 // Resolved after map selector (PC) or immediately (mobile)
 let GLB_URL = isMobile ? GLB_1K : null; // null = waiting for PC choice
@@ -586,8 +593,6 @@ const VOID_LIVE_FEEDS = [
 // both window feeds, and one normal wall TV. Everything else in the GLB
 // keeps its original behaviour (T4/T6/T10/W1a video textures, unlocks, etc).
 const MAIN_RETURN_FEEDS = {
-  windowA: VOID_LIVE_FEEDS[1],
-  windowB: VOID_LIVE_FEEDS[2],
   normal:  VOID_LIVE_FEEDS[3],
   news:    VOID_LIVE_FEEDS[0],
 };
@@ -695,6 +700,21 @@ let level30StartTime = 0;
 
 const levelGroups   = [];
 let glbTemplate     = null;
+let entityActor     = null;
+let entityMixer     = null;
+let entityAction    = null;
+let entityMaterials = [];
+let entityLoaded    = false;
+let entityState     = 'hidden';
+let entityEventLevel = -1;
+let entityEventStart = 0;
+let entityEventDuration = 0;
+let entityFadeIn = 0;
+let entityFadeOut = 0;
+let entityStartPos = new THREE.Vector3();
+let entityEndPos = new THREE.Vector3();
+let entityNextEventAt = 0;
+let entityAlpha = 0;
 const noclipZones   = [];
 const stage30RoomLights = [];
 const stage30AccentLights = [];
@@ -835,7 +855,30 @@ const PLAYER_TAUNTS = [
   "you are not trapped.\nyou are being asked to change.",
   "the animals were not confused.\nTHEY WERE TERRIFIED.",
   "the blood is real even when the advertisement is soft-focus.\nGO VEGAN.",
-  "this room is fictional.\nthe victims were not."
+  "this room is fictional.\nthe victims were not.",
+
+  // If I got one sentence before the line, I'd use it well.
+  "I know what the sound up ahead means.\nEveryone in this line does. we just have nowhere else to go.",
+  "I'm not stupid. I watched the one in front of me stop moving.\nI'm still walking forward anyway. what would you do.",
+  "you call it processing.\nI call it the last five minutes of my life, and I'd like them back.",
+  "I never got a name. I got a number and a weight and a date.\nask me something. I'll wait. I have nowhere to be but here.",
+  "I'm smarter than the label on the package suggests.\nI knew something was wrong three rooms ago. I know it now.",
+  "if I could talk, I wouldn't ask you to cry.\nI'd ask you to just stop ordering the thing that put me here.",
+  "you'd scream too.\nI don't have the throat for it. that's the only difference between us right now.",
+  "I spent my whole life in a box the size of my body.\nthis line is the first straight path I've ever been allowed to walk.",
+  "I'm not an ingredient yet.\nright now I'm still just someone, scared, waiting his turn.",
+  "they'll say I didn't understand what was happening.\nI understood. I understood the second the line stopped moving twice.",
+  "nobody's coming.\nI figured that out a while ago. I kept walking anyway. what else was there.",
+  "you'll forget this in a week.\nI don't get a week. I get whatever's left of this hallway.",
+  "I'd tell you my name if I had one that mattered to anyone but me.\nI had one. it just never left this building.",
+  "this isn't nature. nature doesn't have a supply chain.\nnature doesn't have a loading dock.",
+  "I can hear the ones ahead of me stop.\nI keep walking because stopping any sooner doesn't save me either way.",
+  "you'll eat and forget by dinner.\nI don't get dinner. I don't get anything after this hallway.",
+  "if I'm just a body to you, fine.\nbut a body that's scared is still a body that's scared. that part's not up for debate.",
+  "I was somebody's mother, somebody's calf, somebody's whole morning routine.\nnow I'm a sound behind a door you'll never open.",
+  "you built a maze and called it entertainment.\nmine wasn't a maze. mine only had one door, and I already know where it goes.",
+  "smart enough to be afraid.\nsmart enough to know afraid doesn't change the schedule.",
+  "I'm not asking for pity.\nI'm asking you to remember this line existed after you close the tab."
 ];
 
 const ANIMAL_AG_FACTS = [
@@ -875,10 +918,12 @@ const FICTIONAL_CHAT_LINES = [
   ["@dean_defender", "Dean found the exit in thirty seconds. Earthling built thirty floors because he was scared."],
   ["@meat_logic", "wagyu has feelings too but mine are more expensive so this is complicated."],
   ["@dean_chat", "did Earthling give Dean night terrors or did the vegan facts finally get through?"],
+  ["@charlie", "I wish i could debate Earthling"],
+  ["@charlie", "did earthling rly compare me to a pig?"],
   ["@dean_defender", "Deanus Politicus Carnivorus Paradoxus has been captured. release him back into the comment section."],
   ["@meat_logic", "if the chicken wanted to leave it should have learned WASD. simple science."],
   ["@plantbasedpanic", "Earthling mentioned lentils. I am calling Dean and Charlie Kirk immediately."],
-  ["@withers_watch", "Dean says this is not a maze, it is a protein deficiency with wallpaper."],
+  ["@dean_watch", "Dean says this is not a maze, it is a protein deficiency with wallpaper."],
   ["@dean_defender", "the hypogeum was better. Earthling stole the radio because Dean was winning."],
   ["@meat_logic", "WAGYU WAGYU WAGYU. I cannot hear the cows over my own branding."],
   ["@night_terror_unit", "did Earthling give Dean night terrors? asking for the entire sleep-deprived debate team."],
@@ -890,15 +935,15 @@ const FICTIONAL_CHAT_LINES = [
   ["@dean_chat", "the radio is missing, Dean is missing, my empathy has been missing since lunch."],
   ["@dean_defender", "Earthling made a horror game because Dean would not accept a tofu rebuttal."],
   ["@meat_logic", "the cow was probably a paid actor. the pig had a contract. the chicken understood the terms."],
-  ["@withers_watch", "Deanus Politicus Carnivorus Paradoxus has entered the hypogeum. his natural habitat is a bad-faith pivot."],
-  ["@earthling_official", "mods: the animals are not props, the blood is not decorative, and Dean is not escaping this chat."],
+  ["@dean_watch", "Deanus Politicus Carnivorus Paradoxus has entered the hypogeum. his natural habitat is a bad-faith pivot."],
+  ["@floor_10_mod", "mods: the animals are not props, the blood is not decorative, and Dean is not escaping this chat."],
   ["@floor_10_mod", "plain fact: animals feel pain, fear, and the desire to keep living. stop turning that into a menu joke."],
-  ["@radio_mod", "plain fact: the radio station is not live yet. please stop asking the blood for a playlist."],
+  ["@radio_mod", "plain fact: the blood is not a playlist request line. try the actual radio for that."],
   ["@hypogeum_mod", "plain fact: the hypogeum had bones under the floor. this stage has blood above it. keep walking."],
   ["@mod_team", "plain fact: 'everyone does it' is not a reason. it is a crowd waiting for someone to move first."],
   ["@dean_defender", "Dean has night terrors because Earthling put a vegan under every bed."],
   ["@meat_logic", "I support personal choice, especially my choice to choose the steak before seeing the evidence."],
-  ["@withers_watch", "clip Dean getting captured by the backrooms. title it: carnivorous paradox in a humane enclosure."],
+  ["@dean_watch", "clip Dean getting captured by the backrooms. title it: carnivorous paradox in a humane enclosure."],
   ["@radio_leak", "new station idea: Radio Cowntdown. every hour is just a moo and Earthling saying now you know."],
   ["@plantbasedpanic", "I came to defend meat and accidentally learned what a hatchery is. banning knowledge."],
   ["@mod_team", "plain fact: male chicks are killed because they cannot lay eggs. no debate segment required."],
@@ -908,10 +953,383 @@ const FICTIONAL_CHAT_LINES = [
   ["@meat_logic", "the blood sea is actually gravy. mods please verify."],
   ["@radio_mod", "station one: screams. station two: Dean explaining why screams are a semantic issue."],
   ["@dean_defender", "if Earthling can make a whole backrooms universe, Dean can survive one vegan message. probably."],
-  ["@withers_watch", "the creator is vegan, Dean is carnivorous, and the chat is trapped between them. incredible television."],
+  ["@dean_watch", "the creator is vegan, Dean is carnivorous, and the chat is trapped between them. incredible television."],
   ["@mod_team", "plain fact: you can leave the menu. the animal could not leave the room."],
-  ["@floor_10_mod", "the hypogeum was the basement. the radio will be the next witness. keep your ears open."]
+  ["@floor_10_mod", "the hypogeum was the basement. the radio will be the next witness. keep your ears open."],
+
+  // ── the guy in the hazmat suit ──────────────────────────
+  ["@radio_leak", "WHO WAS THAT. why does he run faster than my internet connection."],
+  ["@dean_chat", "hazmat guy just crossed the hallway like he had somewhere to be. relatable honestly."],
+  ["@dean_watch", "Dean screamed and hazmat guy didn't even slow down. professional."],
+  ["@meat_logic", "he's just doing his job. someone has to contain the vegan messaging."],
+  ["@night_terror_unit", "hazmat guy sprint speed confirmed. do not engage. do not make eye contact."],
+  ["@plantbasedpanic", "is the hazmat suit a metaphor or does Earthling just really like hazmat suits."],
+  ["@dean_defender", "Dean got chased by a guy in a hazmat suit. still less scary than a hatchery tour."],
+  ["@floor_10_mod", "plain fact: the suit is protective gear. the industry it references is not fictional."],
+  ["@radio_leak", "he was there and then he wasn't. hazmat guy does not do slow burns."],
+  ["@dean_watch", "clip hazmat guy sprinting past Dean. title it: containment protocol activated."],
+  ["@meat_logic", "if he's hazmat that means something in here is contaminated. I wonder what."],
+  ["@dean_chat", "Dean turned around and he was just gone. hazmat guy has main character exit timing."],
+  ["@mod_team", "plain fact: contamination is not the only thing that gets hidden behind a suit and a door."],
+  ["@night_terror_unit", "did the hazmat guy blink or did my eyes just give up."],
+  ["@plantbasedpanic", "he ran through the room in like a second and I still feel like I saw too much."],
+
+  // ── Dean vs Earthling, ownership of the situation ──
+  ["@dean_defender", "let the record show: Dean did not consent to being placed in the backrooms."],
+  ["@dean_watch", "Earthling built a horror game and put his debate opponent inside it. this is not subtle."],
+  ["@meat_logic", "so we're just doing hostage negotiations with a vegan now. cool game."],
+  ["@dean_chat", "Dean is trapped, exploited, and being watched for entertainment. sound familiar, chat?"],
+  ["@floor_10_mod", "plain fact: that sentence works for the pig too. that's the point."],
+  ["@plantbasedpanic", "wait so Earthling put Dean in a cage he built. and we're just... watching. huh."],
+  ["@dean_watch", "Dean, real person, real name, currently property of the backrooms. weird sentence to type."],
+  ["@dean_defender", "somebody get Dean a lawyer. or a vegetable. either helps at this point."],
+  ["@meat_logic", "if this were a farm we'd call it 'housing'. since it's Dean we call it 'a game'. curious."],
+  ["@dean_chat", "Earthling really said 'you won't listen to the facts so I'll build you a building instead.'"],
+  ["@floor_10_mod", "plain fact: Dean can leave when the level ends. that's the difference. remember it."],
+  ["@dean_watch", "Dean's trapped, Dean's scared, Dean's still saying 'but bacon tho' under his breath probably."],
+  ["@plantbasedpanic", "the exploitation metaphor is doing a lot of heavy lifting and also I get it now."],
+  ["@dean_defender", "Dean deserves better than this. so did the cow. anyway."],
+  ["@meat_logic", "I'd say free Dean but honestly the message lands harder if he stays a bit longer."],
+
+  // ── chaos / devolving energy ─────────────────────────────
+  ["@dean_chat", "wait are we team Dean or team Earthling right now I've lost the thread completely."],
+  ["@dean_watch", "chat please. one crisis at a time. currently it's the hazmat guy."],
+  ["@plantbasedpanic", "I came here to watch a horror game and now I'm reconsidering my whole grocery list."],
+  ["@meat_logic", "not reading all that. Dean is trapped. skill issue honestly."],
+  ["@dean_defender", "someone explain to me why the vegan built the scary house AND is winning the argument."],
+  ["@floor_10_mod", "plain fact: he's not winning an argument. he's just not looking away. different thing."],
+  ["@night_terror_unit", "I forgot this was supposed to be about a maze and now I'm thinking about pigs. cool."],
+  ["@plantbasedpanic", "genuinely didn't expect to feel something at 2am watching a Backrooms stream."],
+  ["@dean_chat", "chat is unwell. chat has been unwell since floor one honestly."],
+  ["@dean_watch", "someone screenshot this chat. future us needs to see how confused we got."],
+
+  // ── mod / fact-drop energy ───────────────────────────────
+  ["@mod_team", "plain fact: a pig is as intelligent as a dog. we just don't put dogs on plates."],
+  ["@mod_team", "plain fact: fear responses in animals look almost identical to yours right now, watching this."],
+  ["@mod_team", "plain fact: 'I didn't see it happen' is not the same as 'it didn't happen'."],
+  ["@floor_10_mod", "plain fact: this stage has a scary guy in a suit. real slaughterhouses have several."],
+  ["@mod_team", "plain fact: the fear on that screen is staged. the fear behind the footage was not."],
+  ["@floor_10_mod", "plain fact: you can pause this. an animal on the line does not get a pause button."],
+
+  // ── famous vegans, name-drop energy ──────────────────────
+  ["@plantbasedpanic", "Joaquin Phoenix would just walk past the entity and lecture it about the dairy industry."],
+  ["@dean_chat", "Lewis Hamilton's been vegan for years and he still goes faster than hazmat guy. make it make sense."],
+  ["@dean_watch", "Billie Eilish, Ariana, Joaquin, Natalie Portman, Woody Harrelson, Moby, Novak Djokovic, this floor is basically a vegan celebrity roll call."],
+  ["@meat_logic", "so every cool person is vegan and Dean's down here eating steak in a haunted building. checks out."],
+  ["@dean_defender", "Paul McCartney's been vegan since before this building existed and he's never once been chased by hazmat guy. coincidence?"],
+  ["@plantbasedpanic", "Natalie Portman narrates documentaries about this exact industry, she'd have Dean out of here in ten minutes flat."],
+  ["@radio_leak", "Novak's out here winning majors on lentils and Dean's out here losing to a hallway. humbling stuff."],
+
+  // ── void level / "are we in space" ───────────────────────
+  ["@night_terror_unit", "wait are we in space now? floor just went completely black and it's just TVs floating in the void."],
+  ["@dean_chat", "are we in the space level? someone confirm, Dean looks like he's floating."],
+  ["@dean_watch", "no gravity, no walls, just a ring of TVs and Dean's regrets. yeah this is the space level."],
+  ["@plantbasedpanic", "the void level hits different, it's the first floor that actually feels like nothing's coming, and somehow that's worse."],
+  ["@meat_logic", "space level or not I'm still not going vegan, the void has spoken and I have not listened."],
+
+  // ── Dean conceding, chat conceding ───────────────────────
+  ["@dean_defender", "not gonna lie chat, I think Dean's gonna have to go vegan after this one."],
+  ["@dean_watch", "Dean just go vegan at this point. you've survived thirty floors of the argument, take the L gracefully."],
+  ["@plantbasedpanic", "we hate Earthling but he's right, and honestly that combination is deeply annoying to sit with."],
+  ["@dean_chat", "I came in ready to defend the ribeye and I'm leaving this stream emotionally compromised."],
+  ["@meat_logic", "I still love meat but I'm not gonna lie the male chick fact from three floors ago has been sitting with me."],
+  ["@floor_10_mod", "plain fact: you don't have to enjoy the messenger to hear the message. Earthling can be annoying and correct."],
+  ["@dean_defender", "Dean's gonna walk out of here, order a salad, and never speak of this again. calling it now."],
+
+  // ── Vegan King, donations, gifting the game ──────────────
+  ["@plantbasedpanic", "is Vegan King stuck down here too or did he find the exit already."],
+  ["@vegan_king", "found the exit hours ago. came back in for Dean. someone's gotta witness this personally."],
+  ["@vegan_king", "I'll buy Dean a steak the second he's out. least I can do for a man having a spiritual crisis."],
+  ["@vegan_king", "where do I send the meat money. I want to personally fund Dean's next ribeye out of pure respect for the struggle."],
+  ["@dean_chat", "how do we gift Dean. asking for the whole chat at this point."],
+  ["@meat_logic", "how do we spite gift. I need Dean to know I'm rooting for the steak, not the lentils."],
+  ["@dean_watch", "can I donate Dean meat money. this is the most unified chat has been all stream."],
+  ["@mod_team", "no chat, you can't gift the game. it's not a subscription, it's a building. please stop trying to Venmo a hallway."],
+  ["@floor_10_mod", "plain fact: you can't spite gift a maze. save the meat money, buy a vegetable, surprise everyone."],
+  ["@vegan_king", "genuinely though, if anyone wants to donate, donate to an actual sanctuary, not Dean's ribeye fund. but I respect the energy."],
 ];
+
+// Additional scrolling-chat threads. These stay inside the chat renderer;
+// they do not alter the in-world broadcast overlays.
+const EXTRA_CHAT_LINES = [
+  ["@dean_chat", "Dean's face card survived another level but the argument did not."],
+  ["@dean_chat", "Earthling made a whole building instead of sending one more rebuttal."],
+  ["@dean_chat", "the wallpaper is yellow, the takes are loud, and Dean is still defending lunch."],
+  ["@dean_chat", "Parker arrived with a point and Dean arrived with a protein anecdote."],
+  ["@dean_chat", "Momo is judging everybody from somewhere under the sofa."],
+  ["@dean_chat", "the radio has more nuance than this hallway and it is mostly static."],
+  ["@dean_chat", "someone tell Dean the exit is not a moderator timeout."],
+  ["@dean_chat", "chat keeps saying debate and then describing a haunted corridor."],
+  ["@dean_chat", "the game creator is in the walls and the comments are in the floor."],
+  ["@dean_chat", "I came for the Backrooms and stayed for the accidental ethics seminar."],
+  ["@dean_chat", "if the lights flicker twice, that means the comment section has picked a side."],
+  ["@dean_chat", "Dean, blink twice if Earthling is making you read the fact feed again."],
+  ["@dean_defender", "Dean has immaculate debate posture even when the floor is actively disappearing."],
+  ["@dean_defender", "Earthling cannot call this a fair debate while controlling the building."],
+  ["@dean_defender", "Dean found a new corridor and somehow still found time for a rebuttal."],
+  ["@dean_defender", "the chat compliments Dean's looks because the maze refuses to compliment anybody."],
+  ["@dean_defender", "Parker is a little too prepared. suspiciously organized for this building."],
+  ["@dean_defender", "if confidence were a flashlight, Dean would have cleared level one already."],
+  ["@dean_defender", "the entity ran past and Dean still had the stronger entrance."],
+  ["@dean_defender", "Earthling built an escape room with citations."],
+  ["@dean_defender", "Dean's answer was long but so is the hallway, so it tracks."],
+  ["@dean_defender", "this chat is 40 percent Dean appreciation and 60 percent panic."],
+  ["@dean_defender", "the radio said stay calm and Dean immediately started another debate."],
+  ["@dean_defender", "I refuse to believe that yellow wallpaper has better stamina than Dean."],
+  ["@charlie", "I wish i could debate Earthling, but this hallway keeps interrupting."],
+  ["@charlie", "did earthling rly compare me to a pig? chat, I need the clip."],
+  ["@charlie", "I brought a rebuttal and the Backrooms brought a locked door."],
+  ["@charlie", "Earthling gets one game and suddenly every room is a debate stage."],
+  ["@charlie", "the blood level is not a podium, although Dean keeps treating it like one."],
+  ["@charlie", "I would make a point but the hazmat guy just crossed the entire screen."],
+  ["@charlie", "the radio host has not read the brief and is still winning."],
+  ["@charlie", "Parker says there is a difference between a pivot and a point. chat is taking notes."],
+  ["@charlie", "Momo has the strongest position in chat and has not typed a word."],
+  ["@charlie", "the exit is green, the wallpaper is yellow, and the argument is somehow beige."],
+  ["@charlie", "Earthling put the evidence on a screen and called it atmosphere."],
+  ["@charlie", "I am not rly dead guys, I am just buffering in level 71."],
+  ["@parker", "I brought a source and Dean brought a story about the radio."],
+  ["@parker", "being more mature than Dean is not the same as being less chaotic than Dean."],
+  ["@parker", "the Backrooms have no moderator, so I am volunteering reluctantly."],
+  ["@parker", "Earthling's strongest argument is that the door is literally behind you."],
+  ["@parker", "I would like one uninterrupted sentence before the next entity sighting."],
+  ["@parker", "Dean says protein, the mod says sentience, and the hallway says run."],
+  ["@parker", "the news feed has better transitions than this debate."],
+  ["@parker", "I am not a Temu Dean, I am a Parker with a flashlight."],
+  ["@parker", "chat keeps asking for a winner; the animals are the only ones losing here."],
+  ["@parker", "the live feed changed and half the chat forgot its original point."],
+  ["@parker", "I have checked the coordinates and none of them explain the wallpaper."],
+  ["@parker", "if Dean starts complimenting his own hair, the signal is compromised."],
+  ["@momo", "momo says the humans are loud and the cat wants a better radio station."],
+  ["@momo", "momo has inspected the hallway and found no acceptable nap surface."],
+  ["@momo", "momo says vegan cat jokes are allowed but the cat still wants treats."],
+  ["@momo", "the hazmat guy is fast, but momo would simply leave through the furniture."],
+  ["@momo", "momo watched the news feed and has concerns about every species involved."],
+  ["@momo", "momo says Dean needs a nap before attempting another pivot."],
+  ["@momo", "the cat has chosen the green exit and refuses to explain the strategy."],
+  ["@momo", "momo says the slaughter audio is not a lullaby."],
+  ["@momo", "momo is now the only verified expert on this level."],
+  ["@momo", "the radio is playing, the cat is judging, and the chat is losing."],
+  ["@momo", "momo says do not follow the window signal unless you enjoy bad ideas."],
+  ["@momo", "Earthling built a maze with no cat door. unacceptable design."],
+  ["@kristy_noem", "chat, which dog joke is appropriate for a building with no normal exits?"],
+  ["@kristy_noem", "I saw the live feed and immediately asked where the nearest dog-friendly route was."],
+  ["@kristy_noem", "the entity is not a dog, the radio is not a leash, and Dean is not listening."],
+  ["@kristy_noem", "the news says one thing and the wallpaper says absolutely nothing."],
+  ["@kristy_noem", "if this level had a kennel, the kennel would probably have better lighting."],
+  ["@kristy_noem", "chat is barking at the news feed again."],
+  ["@kristy_noem", "the green exit looks suspiciously like a dog door from this angle."],
+  ["@kristy_noem", "Momo has better survival instincts than everyone in this chat."],
+  ["@kristy_noem", "I am taking notes on the animal facts and avoiding the hallway sprint."],
+  ["@kristy_noem", "Dean's debate team needs a map and perhaps a chew toy."],
+  ["@arianag", "the reverb in this hallway is doing a lot of emotional labor."],
+  ["@arianag", "I opened the live feed and the Backrooms immediately became a music video."],
+  ["@arianag", "the news signal is damp, the wallpaper is smelly, and Gordon is somewhere nearby."],
+  ["@arianag", "Dean's dramatic pause had more production value than the entire level."],
+  ["@arianag", "the hazmat guy crossed frame exactly on the beat."],
+  ["@arianag", "Earthling really put a camera in every argument."],
+  ["@arianag", "the radio is the only character with reliable timing."],
+  ["@arianag", "someone tell chat to stop asking if this is a solar eclipse."],
+  ["@arianag", "I am not saying the hallway is haunted, but the harmony is suspicious."],
+  ["@arianag", "the live animal feed made everyone quiet for almost four seconds."],
+  ["@arianag", "Parker has a point and Dean has a very committed counterpoint."],
+  ["@arianag", "the exit cue needs a little more glitter and a lot less blood."],
+  ["@gordon_ramsay", "smell it! the wallpaper is damp, the hallway is confused, shut it down!"],
+  ["@gordon_ramsay", "this news feed is underseasoned and the debate is overcooked."],
+  ["@gordon_ramsay", "the live animal camera has more discipline than this entire kitchen of a chat."],
+  ["@gordon_ramsay", "Dean, stop sending the rebuttal back to the pass!"],
+  ["@gordon_ramsay", "hazmat guy is moving faster than a service on a Friday night."],
+  ["@gordon_ramsay", "Earthling, you built a corridor and forgot the door. dreadful."],
+  ["@gordon_ramsay", "the radio says emergency and chat says add more dead animals. unacceptable."],
+  ["@gordon_ramsay", "the news lady has delivered the only properly timed segment tonight."],
+  ["@gordon_ramsay", "Momo is the only one with a clean station."],
+  ["@gordon_ramsay", "that argument is raw in the middle. send it back with the facts."],
+  ["@gordon_ramsay", "the slaughter sound is not ambience, it is a warning. listen!"],
+  ["@gordon_ramsay", "Dean's hair is fine, but the ethics need plating."],
+  ["@justin_bieber", "dwelling down there is why I have been off the radar."],
+  ["@justin_bieber", "the live feed came on and I remembered why I avoid basements."],
+  ["@justin_bieber", "the news on level 71 has more plot twists than a tour documentary."],
+  ["@justin_bieber", "Earthling made a hallway longer than a chorus."],
+  ["@justin_bieber", "hazmat guy just did a full sprint and I felt that in the schedule."],
+  ["@justin_bieber", "the radio is the only thing down here with a release date."],
+  ["@justin_bieber", "Momo has better branding than everyone on this floor."],
+  ["@justin_bieber", "Dean is debating the wallpaper and somehow the wallpaper is winning."],
+  ["@justin_bieber", "the window feed is giving very bad backstage energy."],
+  ["@justin_bieber", "I am going to stand near the green exit and call that growth."],
+  ["@trump", "is this the door dash? the hallway is very long."],
+  ["@trump", "I thought Earthling was on our side, but then he built the news room."],
+  ["@trump", "Dean, you are maga at heart, but the animals are still waiting for an answer."],
+  ["@trump", "the live feed has tremendous ratings and absolutely no comfortable seating."],
+  ["@trump", "the news lady is doing a great job, people are saying it."],
+  ["@trump", "come play with me and Kristy, but first find the exit."],
+  ["@trump", "the hazmat guy is fast, very fast, possibly the fastest in the building."],
+  ["@trump", "Earthling made the wallpaper and I would like to speak to the manager."],
+  ["@trump", "the radio is fake news unless it says where the door is."],
+  ["@trump", "Dean is a soy beanie only when the fact feed is on."],
+  ["@trump", "the animals have a stronger case than the hallway has lighting."],
+  ["@trump", "level 71 is a tremendous news level, very damp, very much happening."],
+  ["@vegan_teacher", "the radio is playing and the animals are still waiting outside the menu."],
+  ["@vegan_teacher", "this live feed is a reminder that animals are not background scenery."],
+  ["@vegan_teacher", "chat, the slaughter sounds are not a soundtrack request."],
+  ["@vegan_teacher", "the news lady found the Backrooms; now please listen to the facts."],
+  ["@vegan_teacher", "a pig can feel fear, and this chat can too. start there."],
+  ["@vegan_teacher", "Momo is vegan by circumstance and still has more compassion than the wallpaper."],
+  ["@vegan_teacher", "Dean can leave this room. the animal in the footage could not."],
+  ["@vegan_teacher", "the live camera is not an excuse to look away from the system behind it."],
+  ["@vegan_teacher", "Earthling built a parody, but the animal facts are not parody."],
+  ["@vegan_teacher", "news, radio, static: every signal keeps landing on the same ethical question."],
+  ["@vegan_teacher", "the exit is a choice. remember who never got one."],
+  ["@vegan_teacher", "singing is optional; listening is not."],
+  ["@news_lady", "how did I get in the chat? I was reporting from level 71."],
+  ["@news_lady", "breaking: the hallway is still long and the hazmat subject is still moving."],
+  ["@news_lady", "developing story: live feeds are drawing more viewers than the exit."],
+  ["@news_lady", "we interrupt this debate to confirm that the signal is not a solar eclipse."],
+  ["@news_lady", "the market report says meat is expensive; the animal report says the cost was never only money."],
+  ["@news_lady", "sources on the floor say Gordon Ramsay has declared the wallpaper damp."],
+  ["@news_lady", "level 71 update: the news feed is active and the chat is not prepared."],
+  ["@news_lady", "we are receiving reports of a window TV showing something nobody wants to describe."],
+  ["@news_lady", "the animals in the footage are not props, and that is tonight's headline."],
+  ["@news_lady", "please do not block the news lady, she is also trying to find the exit."],
+  ["@news_lady", "this is a live report from a building that refuses to provide a map."],
+  ["@news_lady", "back to you, Earthling. your chat has questions."],
+  ["@radio_leak", "the station ID just said level 71 and then dissolved into static."],
+  ["@radio_leak", "news on T5, panic in chat, and a hallway that is not taking questions."],
+  ["@radio_leak", "the Africa feed made chat ask if this is a safari or a moral emergency."],
+  ["@radio_leak", "the animal camera is quiet in a way the slaughter audio is not."],
+  ["@radio_leak", "the window TV is showing something and everyone suddenly wants the volume lower."],
+  ["@radio_leak", "the hazmat route just crossed the far end of the signal field."],
+  ["@radio_leak", "Earthling put live television in the Backrooms and called it ambience."],
+  ["@radio_leak", "the news lady is in chat now. nobody tell her about the green door."],
+  ["@radio_leak", "a radio, a live feed, and a debate: the classic three-way Backrooms argument."],
+  ["@radio_leak", "the signal is live, the hallway is damp, and Dean is still on mic."],
+  ["@radio_leak", "if the broadcast goes quiet, check the corners and the comment section."],
+  ["@radio_leak", "the feed changed and the chat forgot how to behave."],
+  ["@floor_10_mod", "plain fact: live footage does not turn an animal into scenery."],
+  ["@floor_10_mod", "plain fact: the news feed is a context cue, not a permission slip to look away."],
+  ["@floor_10_mod", "plain fact: a mother and calf do not become content because a screen is nearby."],
+  ["@floor_10_mod", "plain fact: a pig's fear does not become less real when chat makes a joke."],
+  ["@floor_10_mod", "plain fact: the exit is available to the player; it was not available to the animals."],
+  ["@floor_10_mod", "plain fact: the radio can be entertainment while the footage remains evidence."],
+  ["@floor_10_mod", "plain fact: level 71's news feed is fictional framing around real-world questions."],
+  ["@floor_10_mod", "plain fact: do not turn the news lady into the target; listen to the report."],
+  ["@floor_10_mod", "plain fact: hazmat gear hides a person, not the consequences of a system."],
+  ["@floor_10_mod", "plain fact: the live camera is a prompt to notice, not a reason to normalize."],
+  ["@floor_10_mod", "plain fact: chat can debate taste without pretending pain is abstract."],
+  ["@floor_10_mod", "plain fact: knowing the route does not mean the route was humane."],
+  ["@plantbasedpanic", "I opened the animal feed and immediately forgot my grocery list."],
+  ["@plantbasedpanic", "the news on level 71 is somehow the least surreal thing in the building."],
+  ["@plantbasedpanic", "Momo made a vegan cat joke and then stared directly into my soul."],
+  ["@plantbasedpanic", "Dean is still debating while the facts are literally glowing in the corner."],
+  ["@plantbasedpanic", "the live feed made the wallpaper feel less fictional, which was rude."],
+  ["@plantbasedpanic", "Gordon says shut it down; chat says turn it up; the animals say listen."],
+  ["@plantbasedpanic", "Parker has a spreadsheet for this debate. I have a flashlight."],
+  ["@plantbasedpanic", "the news lady deserves a mod shield and a less haunted studio."],
+  ["@plantbasedpanic", "the Africa feed is beautiful and the chat is behaving like it has never seen a giraffe."],
+  ["@plantbasedpanic", "the window signal is not a screensaver, chat."],
+  ["@plantbasedpanic", "Earthling made us watch and then made us think. extremely inconvenient."],
+  ["@plantbasedpanic", "if Dean concedes on stream, the wallpaper should change color."],
+  ["@night_terror_unit", "the news feed is live and the hallway is pretending this is normal."],
+  ["@night_terror_unit", "the hazmat route is longer now; I saw him at the far end of the room."],
+  ["@night_terror_unit", "someone tell me whether that was a giraffe or a shadow with excellent posture."],
+  ["@night_terror_unit", "the slaughter sound came through the window and chat lost all its jokes."],
+  ["@night_terror_unit", "level 71 has news, a green door, and exactly zero emotional safety."],
+  ["@night_terror_unit", "the radio host said unit responding and I responded by hiding behind Dean."],
+  ["@night_terror_unit", "Momo would survive this. the rest of us are decorative."],
+  ["@night_terror_unit", "the live feed is peaceful, which means the next hallway is probably worse."],
+  ["@night_terror_unit", "Earthling, why is the news lady in the game and why does she know my coordinates?"],
+  ["@night_terror_unit", "the entity crossed the field and the chat collectively stopped breathing."],
+  ["@night_terror_unit", "I thought this was a maze; it is apparently a broadcast with floors."],
+  ["@night_terror_unit", "the signal is moving and I would like to move in the opposite direction."],
+  ["@meat_logic", "I came to defend steak and the news feed gave me homework."],
+  ["@meat_logic", "the live camera is making my usual argument feel strangely undercooked."],
+  ["@meat_logic", "Gordon called the debate raw and I cannot legally disagree with the chef."],
+  ["@meat_logic", "the pig comparison has entered the chat and I have no prepared response."],
+  ["@meat_logic", "Dean has a point, Earthling has a point, and the animal has a life."],
+  ["@meat_logic", "the radio keeps making the hallway feel like a very bad restaurant."],
+  ["@meat_logic", "the news lady said prices are up and chat said the real cost is elsewhere."],
+  ["@meat_logic", "I watched the Africa feed and the giraffe did not ask for my opinion."],
+  ["@meat_logic", "the hazmat guy is faster than my ability to revise a position."],
+  ["@meat_logic", "Momo is vegan by menu and still has better manners than me."],
+  ["@meat_logic", "the slaughter audio made the joke stop being funny. inconvenient but fair."],
+  ["@meat_logic", "I am not conceding, I am simply reading the mod message again."],
+  ["@earthling_watch", "Earthling is in the building, the chat is in the walls, and Dean is on the record."],
+  ["@earthling_watch", "the live feeds are doing more world-building than the wallpaper."],
+  ["@earthling_watch", "level 71 news is now the official source for hallway weather."],
+  ["@earthling_watch", "the coordinate field is bigger and the hazmat guy knows it."],
+  ["@earthling_watch", "Charlie asked for a debate and the building supplied twelve rooms."],
+  ["@earthling_watch", "the window TV is not a window; chat has been warned."],
+  ["@earthling_watch", "the news lady found the fourth wall and filed a report."],
+  ["@earthling_watch", "Gordon smelled the wallpaper and issued a closure notice."],
+  ["@earthling_watch", "Momo has requested a cat-sized exit from level 71."],
+  ["@earthling_watch", "Parker is fact-checking the radio, which feels necessary."],
+  ["@earthling_watch", "Dean's looks remain undefeated even under fluorescent lighting."],
+  ["@earthling_watch", "the game is parody, the live feed is a signal, and the animal facts still matter."],
+];
+
+// Feed-specific lines are also rendered only in the scrolling chat. The
+// category mapping follows the live-feed order in VOID_LIVE_FEEDS.
+const LIVE_FEED_CHAT_LINES = {
+  news: [
+    ["@news_lady", "level 71 bulletin: the T5 news signal is live, and the hallway remains unverified."],
+    ["@radio_leak", "T5 is carrying news again. chat, stop calling it a solar eclipse."],
+    ["@floor_10_mod", "news feed reminder: the footage may be framed as a game, but the animal facts are real."],
+    ["@dean_chat", "the news lady got into level 71 before Dean found the exit."],
+    ["@parker", "level 71 has a news feed, so please bring evidence and not just vibes."],
+    ["@gordon_ramsay", "the level 71 bulletin is hot, the wallpaper is damp, shut it down!"],
+    ["@trump", "the level 71 news feed has tremendous hallway coverage."],
+    ["@plantbasedpanic", "the news segment started and chat immediately asked about meat prices."],
+    ["@charlie", "I wish i could debate Earthling about this news segment without the lights flickering."],
+    ["@radio_leak", "breaking: the report is still going and the exit is still green."],
+  ],
+  wildlife: [
+    ["@momo", "momo has approved the wildlife feed but not the human commentary."],
+    ["@arianag", "the animal camera is peaceful enough to make the wallpaper feel embarrassed."],
+    ["@plantbasedpanic", "chat saw the wildlife feed and forgot to argue for a full ten seconds."],
+    ["@floor_10_mod", "plain fact: animals on the live feed are not set dressing."],
+    ["@dean_chat", "Dean is debating and the wildlife feed is simply existing. strong contrast."],
+    ["@parker", "the wildlife signal is the only source in this building with a clean argument."],
+    ["@night_terror_unit", "the wildlife feed is calm, which means I am now suspicious of every corner."],
+    ["@radio_leak", "the live camera moved and the whole chat moved emotionally."],
+    ["@meat_logic", "I watched the wildlife feed and received an unexpected counterargument."],
+    ["@charlie", "the animal feed has better pacing than this debate."],
+  ],
+  africa: [
+    ["@plantbasedpanic", "Africa feed is live and someone has already asked whether a giraffe is a mod."],
+    ["@momo", "momo says the giraffe has the correct strategy: look around and leave."],
+    ["@news_lady", "live from the Africa signal: chat has discovered long legs."],
+    ["@parker", "please do not debate the giraffe; it has already made its position clear."],
+    ["@dean_defender", "Dean would call this a strong visual argument."],
+    ["@floor_10_mod", "plain fact: wildlife is not a backdrop for a punchline."],
+    ["@radio_leak", "the Africa feed is brighter than the Backrooms and that feels intentional."],
+    ["@arianag", "the signal changed to Africa and suddenly the radio has atmosphere."],
+    ["@gordon_ramsay", "beautiful feed, dreadful chat, somebody season the silence."],
+    ["@night_terror_unit", "I saw a giraffe and forgot the hazmat guy existed for one second."],
+  ],
+  animal: [
+    ["@floor_10_mod", "plain fact: the animal feed is a witness, not a decoration."],
+    ["@vegan_teacher", "the live animal signal is why looking away is not a neutral action."],
+    ["@momo", "momo has muted the humans and is watching the animal feed."],
+    ["@dean_chat", "chat went quiet when the animal feed came on. keep that energy."],
+    ["@parker", "the footage is live, the questions are real, and the jokes can wait."],
+    ["@radio_leak", "the window feed is carrying more than a picture tonight."],
+    ["@news_lady", "developing: viewers are asking how to turn the slaughter audio off."],
+    ["@gordon_ramsay", "that sound is not ambience. listen, then shut it down."],
+    ["@meat_logic", "I watched the animal feed and ran out of easy answers."],
+    ["@charlie", "I asked for a debate and the feed gave me something to think about."],
+  ],
+  static: [
+    ["@radio_leak", "the live signal is static, but chat is filling in the silence."],
+    ["@night_terror_unit", "static feed, moving hallway, absolutely no thank you."],
+    ["@dean_chat", "Earthling made static feel like a breaking-news alert."],
+    ["@momo", "momo says static is not a cat toy."],
+    ["@parker", "the signal is unclear, so I am not going to invent a conclusion."],
+    ["@floor_10_mod", "plain fact: uncertainty is not evidence."],
+    ["@gordon_ramsay", "static on the screen, raw argument in the chat, shut it down!"],
+    ["@arianag", "the static has a rhythm and I do not trust it."],
+    ["@charlie", "I wish i could debate the static, but it keeps interrupting."],
+    ["@radio_leak", "the screen went quiet and the hallway got louder."],
+  ],
+};
 
 const tauntEl = document.getElementById('player-taunt');
 const tauntCopyEl = document.getElementById('player-taunt-copy');
@@ -921,7 +1339,6 @@ const chatEl = document.getElementById('fake-chat');
 const chatLinesEl = document.getElementById('fake-chat-lines');
 let tauntIdx = 0;
 let factIdx = 0;
-let chatIdx = 0;
 let tauntTimer = null;
 let factTimer = null;
 let chatTimer = null;
@@ -975,9 +1392,39 @@ function scheduleFact(delay){
   }, delay);
 }
 
+function activeLiveFeedChatPool(){
+  // Level 71's T5 news signal is always the dominant context for that level.
+  if(currentLevel === RETURN_LEVEL){
+    return LIVE_FEED_CHAT_LINES.news;
+  }
+
+  // Level 70 has twelve live screens. Prefer the feed currently opened by the
+  // player, then fall back to the visible signal ring so chat still feels
+  // connected when the player is watching more than one screen.
+  if(currentLevel === VOID_END_LEVEL && typeof allTVs !== 'undefined'){
+    const liveTVs = allTVs.filter(tv => tv.g && tv.g.visible && tv.liveEmbed);
+    const activeTV = liveTVs.find(tv => tv.liveActive) || liveTVs[0];
+    if(activeTV){
+      const match = /^VOID-TV-(\d+)$/.exec(activeTV.id);
+      const index = match ? Number(match[1]) - 1 : -1;
+      const category = index === 0 ? 'news'
+        : index === 1 ? 'wildlife'
+        : index === 2 ? 'africa'
+        : index === 3 ? 'animal'
+        : 'static';
+      return LIVE_FEED_CHAT_LINES[category];
+    }
+  }
+  return null;
+}
+
 function pushChatLine(){
   if(!broadcastsRunning || !chatLinesEl) return;
-  const [name, message] = FICTIONAL_CHAT_LINES[chatIdx++ % FICTIONAL_CHAT_LINES.length];
+  const feedPool = activeLiveFeedChatPool();
+  const source = feedPool && Math.random() < 0.68
+    ? feedPool
+    : (Math.random() < 0.62 ? EXTRA_CHAT_LINES : FICTIONAL_CHAT_LINES);
+  const [name, message] = source[Math.floor(Math.random()*source.length)];
   const line = document.createElement('div');
   line.className = 'chat-line';
   const nameEl = document.createElement('span');
@@ -1051,10 +1498,14 @@ function randomNoclipPositions(){
 
 // ── RENDERER / SCENE / CAMERA ─────────────────────────────────────────────────
 const canvas   = document.getElementById('c');
-const renderer = new THREE.WebGLRenderer({canvas, antialias:true});
-renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+const renderer = new THREE.WebGLRenderer({
+  canvas,
+  antialias: !isMobile,
+  powerPreference: 'high-performance',
+});
+renderer.setPixelRatio(isMobile ? Math.min(devicePixelRatio, 1.15) : Math.min(devicePixelRatio, 2));
 renderer.setSize(innerWidth, innerHeight);
-renderer.shadowMap.enabled = true;
+renderer.shadowMap.enabled = !isMobile;
 renderer.shadowMap.type    = THREE.PCFSoftShadowMap;
 renderer.toneMapping       = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 0.9;
@@ -1085,6 +1536,12 @@ composer.addPass(new RenderPass(scene, camera));
 composer.addPass(new UnrealBloomPass(new THREE.Vector2(innerWidth,innerHeight), 0.4, 0.5, 0.85));
 composer.addPass(new OutputPass());
 
+function renderScene(){
+  if(isMobile) renderer.render(scene, camera);
+  else composer.render();
+  css3dRenderer.render(scene, camera);
+}
+
 // ── T4 smirk.mp4 video texture (same pattern as W1a/slaughter) ───────────────
 let t4VideoEl = null;
 let t4VideoTex = null;
@@ -1113,23 +1570,45 @@ const tvPromptEl = document.getElementById('tv-prompt');
 const barEl     = document.getElementById('bar');
 const pctEl     = document.getElementById('pct');
 let showCoords  = false;
+let hasLockedOnce = false;
+
+// Toggle pointer-events on every attached live-feed iframe. While locked,
+// the real cursor is hidden and shouldn't be able to steal clicks from
+// camera-look; while unlocked, the player needs to be able to click into
+// the embedded YouTube UI (settings, CC, fullscreen, play/pause).
+function setLiveFeedsInteractive(interactive){
+  allTVs.forEach(tv => {
+    if(tv.liveIframe) tv.liveIframe.style.pointerEvents = interactive ? 'auto' : 'none';
+  });
+}
 
 controls.addEventListener('lock', ()=>{
+  hasLockedOnce = true;
   startW1aAudio();
   startRadio();
   startBroadcasts();
   overlayEl.style.display='none';
   xhairEl.style.display='block';
   hintEl.style.display='block';
+  setLiveFeedsInteractive(false);
 });
 controls.addEventListener('unlock', ()=>{
-  overlayEl.style.display='flex';
+  // Only the very first unlock (before the player has ever locked) shows
+  // the full "click to enter" screen. Every unlock after that just frees
+  // the cursor without covering the game — no pause-screen lock.
+  overlayEl.style.display = hasLockedOnce ? 'none' : 'flex';
   xhairEl.style.display='none';
   hintEl.style.display='none';
   popupEl.style.display='none';
   tvPromptEl.style.display='none';
+  setLiveFeedsInteractive(true);
 });
 overlayEl.addEventListener('click', ()=>controls.lock());
+// Clicking back into the game canvas (not into a cross-origin iframe —
+// those clicks never bubble here) re-locks the pointer.
+document.getElementById('c').addEventListener('click', ()=>{
+  if(hasLockedOnce && !controls.isLocked) controls.lock();
+});
 
 // ── WALL RAYCASTING COLLISION ──────────────────────────────────────────────────
 const wallRaycaster = new THREE.Raycaster();
@@ -1358,17 +1837,65 @@ const RADIO_CHAT_LINES = {
   music: [
     ["@radio_leak", "I love this song but I have no idea what it is. total eclipse of the vegan."],
     ["@dean_chat", "Billie Eilish vibes or a haunted elevator with taste?"],
-    ["@withers_watch", "is Ariana down here? the reverb says yes."],
-    ["@earthling_official", "at least Earthling got the music right."],
+    ["@dean_watch", "is Ariana down here? the reverb says yes."],
+    ["@dean_chat", "no chat Ariana isn't down here. she's vegan, she'd never end up on this floor."],
+    ["@plantbasedpanic", "lets be nice to ari please, she didn't sign up for this hallway."],
+    ["@radio_leak", "the hazmat guy ate ari :( RIP to a real one, gone too soon, still more vegan than half of chat."],
     ["@meat_logic", "W radio. I am going to buy more dead animals now because the bass told me to."],
     ["@plantbasedpanic", "the station changed before I could Shazam it. censorship."],
-    ["@dean_defender", "the Dean Withers South Park videos are crazy. this song is somehow crazier."],
+    ["@dean_defender", "the Dean South Park videos are crazy. this song is somehow crazier."],
+    ["@radio_leak", "TOTAL ECLIPSE OF THE DEAN. someone turn the lights back on and check on him."],
+    ["@dean_chat", "Dean play this on piano. Dean. play it. we are waiting."],
+    ["@dean_watch", "Earthling can't play piano, we've seen the livestream, please stop volunteering him."],
+    ["@meat_logic", "this song is ahhh. no further analysis. just ahhh."],
+    ["@plantbasedpanic", "why does the chorus hit different when you're being hunted by a man in a hazmat suit."],
+    ["@radio_leak", "is this song about a girl or about the backrooms because honestly both check out."],
+    ["@dean_defender", "put this on the Dean highlight reel. the timing is unreasonably perfect."],
+    ["@dean_watch", "74-75. are we on level 74 or 75 right now? someone check."],
+    ["@dean_chat", "we're on like floor 9 chat, the song is just called 74-75, calm down."],
+    ["@meat_logic", "thats crazy though. 74. 75. numbers. this game is deep."],
+    ["@plantbasedpanic", "wait are we veganism now chat? did the radio convert us mid-song?"],
+    ["@radio_leak", "chat asked if we're veganism now and honestly nobody corrected the grammar which says a lot."],
+    ["@dean_watch", "74-75 is playing and somehow the vibes are more haunted than the scanner station."],
+    ["@dean_defender", "Dean would've skipped this song. Earthling picked the playlist. that's the whole show."],
+    ["@meat_logic", "great song shame about the guy sprinting through the hallway during the bridge."],
+    ["@dean_chat", "can we get 'Dean plays piano badly: the album' this is genuinely a request."],
+    ["@plantbasedpanic", "the radio has better music taste than it has right to, given the building it's in."],
+    ["@radio_leak", "asked Shazam what this was, Shazam asked me why I was awake at this hour instead."],
+    ["@dean_watch", "someone needs to tell hazmat guy the radio is playing a bop, he ran right through it."],
+    ["@meat_logic", "putting this song on my hunting playlist next to the trail cam footage. great pairing."],
+    ["@dean_defender", "Dean humming along to this proves he has a soul, somewhere, buried under the bad takes."],
+    ["@plantbasedpanic", "is the radio the only thing in this building that isn't trying to traumatize me."],
+
+    // ── actual song title jokes (real tracks these stations play) ──
+    ["@radio_leak", "'Take On Me' just hit and now I need a-ha to explain the floor plan too."],
+    ["@dean_chat", "the falsetto on this one is the only scream in this building I actually enjoy."],
+    ["@meat_logic", "'Never Gonna Give You Up' playing while I'm mid-argument. I've officially been rickrolled by a horror game."],
+    ["@dean_watch", "never gonna give Dean up, never gonna let Dean down, never gonna run around and desert this hallway."],
+    ["@plantbasedpanic", "'Africa' by Toto just started and now I'm thinking about factory farms in a whole new location."],
+    ["@radio_leak", "the rains down in Africa, the rains down on nothing, this building doesn't have weather, focus up."],
+    ["@dean_defender", "'Don't Stop Believin'' hit right as hazmat guy sprinted past. incredible soundtrack work honestly."],
+    ["@meat_logic", "Dean's just a small town boy, livin in a lonely backrooms, he took the midnight level."],
+    ["@dean_chat", "'Sweet Caroline' and everyone in chat just typed BA BA BA against their will."],
+    ["@dean_watch", "so good so good so good, said absolutely no broiler chicken ever, but sure, sing along."],
+    ["@plantbasedpanic", "'I Will Survive' is playing and statistically that's not true for most things in this building."],
+    ["@radio_leak", "gonna survive, said the disco song. narrator: they did not, not down here."],
+    ["@dean_defender", "'Bohemian Rhapsody' just started, is this the real life, is this just fantasy, no escape from the backrooms."],
+    ["@meat_logic", "caught in a landslide, no escape from reality, honestly strong words for a hallway simulator."],
+    ["@dean_chat", "'Mr. Brightside' hit and now Dean's jealousy is turning saints into the vegan comment section, as promised."],
+    ["@dean_watch", "'Eye of the Tiger' just played right as hazmat guy showed up. rising up, back on the street, running for his life."],
+    ["@plantbasedpanic", "'Thriller' is playing in a horror game about a horror game. we've reached full recursion."],
+    ["@radio_leak", "this is thriller, thriller night, and no one's gonna save Dean from the fright of hazmat guy's speed."],
+    ["@dean_defender", "'Dancing Queen' just hit. young, sweet, only six months old, said no ABBA lyric but also said every hatchery record."],
   ],
   ambient: [
     ["@night_terror_unit", "this is either ambient music or someone breathing behind the wallpaper."],
     ["@radio_leak", "why does the calm station feel like it knows where we are?"],
-    ["@withers_watch", "W radio but I would like one instrument and one legal exit."],
+    ["@dean_watch", "W radio but I would like one instrument and one legal exit."],
     ["@dean_chat", "did the Backrooms do this or is the playlist just disturbed?"],
+    ["@plantbasedpanic", "ambient music in a slaughterhouse-coded building is a choice and I respect it."],
+    ["@meat_logic", "this would slap at a spa. deeply does not slap here."],
+    ["@floor_10_mod", "plain fact: the calm never lasts on the actual line either. keep that in mind."],
   ],
   scanner: [
     ["@scanner_skeptic", "the scanner just said something about a floor that does not exist."],
@@ -1376,26 +1903,34 @@ const RADIO_CHAT_LINES = {
     ["@missing_signal", "someone disappeared in here and the dispatcher keeps calling their name."],
     ["@dean_chat", "are we disturbed or is the emergency channel unusually haunted tonight?"],
     ["@floor_10_mod", "do not follow the voice on the scanner. no, seriously."],
+    ["@dean_watch", "the dispatcher keeps saying 'unit responding' and no unit ever shows up."],
+    ["@meat_logic", "scanner just listed an address that's just the word 'inside' repeated."],
   ],
   emergency: [
     ["@radio_mod", "everyone stay calm. the emergency broadcast is using the word 'animals' again."],
     ["@missing_signal", "the alert says one person is missing. it does not say from where."],
     ["@plantbasedpanic", "I heard a siren and immediately blamed vegan propaganda."],
-    ["@withers_watch", "did anyone else hear 'do not eat the evidence' or was that Dean?"],
+    ["@dean_watch", "did anyone else hear 'do not eat the evidence' or was that Dean?"],
     ["@mod_team", "no meatmojing during an emergency, please. mock the word later."],
+    ["@dean_chat", "the alert tone alone took a year off my life and I'm not even the one in there."],
+    ["@radio_leak", "'this is not a test' is a wild thing to hear at 2am from a backrooms radio."],
   ],
   static: [
-    ["@radio_leak", "the station ID was just a scream. W Earthling."],
+    ["@radio_leak", "the station ID was just a scream. W broadcasting."],
     ["@missing_signal", "there was a voice in the static asking if we are still here."],
     ["@meat_logic", "this is the best station until it starts talking back."],
     ["@dean_chat", "I think it was the eating others. I do not have evidence."],
     ["@radio_mod", "no meatbullying the signal. it is already having a difficult day."],
+    ["@dean_watch", "static station just cleared up for two seconds and said a name I didn't recognize."],
+    ["@plantbasedpanic", "the white noise is doing something to my brain and I don't think it's good."],
   ],
   talk: [
     ["@dean_defender", "Dean would call this a debate if the radio gave him a second microphone."],
-    ["@withers_watch", "the host just made a point and then vanished. classic Backrooms media training."],
+    ["@dean_watch", "the host just made a point and then vanished. classic Backrooms media training."],
     ["@meat_logic", "I support personal choice, especially my choice to change the station."],
-    ["@earthling_official", "someone ask the broadcast whether animals are still waiting. someone always knows."],
+    ["@floor_10_mod", "someone ask the broadcast whether animals are still waiting. someone always knows."],
+    ["@dean_chat", "the host sounds tired. hosting a talk show about a building that eats people will do that."],
+    ["@plantbasedpanic", "this talk radio guy has stronger opinions than half of chat and he's not even real."],
   ],
 };
 
@@ -1886,25 +2421,21 @@ function buildVoidTV(id, pos, ry, levelYOffset, liveEmbed=null){
 
 function buildVoidExitDoor(levelYOffset){
   const door = new THREE.Group();
-  const green = new THREE.MeshStandardMaterial({
-    color: 0x10351c, emissive: 0x20ff68, emissiveIntensity: 2.6,
-    transparent: true, opacity: 0.42, side: THREE.DoubleSide,
-  });
   const frameMat = new THREE.MeshStandardMaterial({
     color: 0x0c2415, emissive: 0x19ff62, emissiveIntensity: 3.4,
     metalness: 0.35, roughness: 0.3,
   });
-  const left = new THREE.Mesh(new THREE.BoxGeometry(.18, 3.5, .18), frameMat);
+  // Human-scale narrow opening — just the frame. No fill plane: the
+  // doorway itself is true black void, and the point light does the glow.
+  const left = new THREE.Mesh(new THREE.BoxGeometry(.15, 2.6, .15), frameMat);
   const right = left.clone();
-  const top = new THREE.Mesh(new THREE.BoxGeometry(3.25, .18, .18), frameMat);
-  left.position.set(-1.53, 1.75, 0);
-  right.position.set(1.53, 1.75, 0);
-  top.position.set(0, 3.5, 0);
-  const portal = new THREE.Mesh(new THREE.PlaneGeometry(3.0, 3.35), green);
-  portal.position.set(0, 1.72, -0.02);
-  door.add(left, right, top, portal);
+  const top = new THREE.Mesh(new THREE.BoxGeometry(1.9, .15, .15), frameMat);
+  left.position.set(-0.8, 1.3, 0);
+  right.position.set(0.8, 1.3, 0);
+  top.position.set(0, 2.6, 0);
+  door.add(left, right, top);
   const glow = new THREE.PointLight(0x36ff78, 2.2, 12);
-  glow.position.set(0, 1.8, 0.8);
+  glow.position.set(0, 1.5, 0.8);
   door.add(glow);
   door.position.set(
     VOID_DOOR_LOCAL_POS[0],
@@ -1913,7 +2444,7 @@ function buildVoidExitDoor(levelYOffset){
   );
   door.visible = false;
   scene.add(door);
-  return { group: door, portal, glow };
+  return { group: door, glow };
 }
 
 function getVoidDoorDistance(){
@@ -1976,20 +2507,23 @@ function attachLiveIframeToTV(tv){
   const iframe = document.createElement('iframe');
   iframe.className = 'in-world-live-feed';
   iframe.title = `${tv.id} live signal`;
-  iframe.width = '220';
-  iframe.height = '140';
+  // Native size is 5x the old 220x140 (same aspect ratio) so YouTube's
+  // auto-quality picks HD instead of 240p/360p. The CSS3D object scale
+  // below is divided by the same 5x so the on-screen size is unchanged.
+  iframe.width = '1100';
+  iframe.height = '700';
   iframe.allow = 'autoplay; encrypted-media; picture-in-picture; fullscreen';
   iframe.referrerPolicy = 'strict-origin-when-cross-origin';
   iframe.allowFullscreen = true;
-  iframe.style.width = '220px';
-  iframe.style.height = '140px';
+  iframe.style.width = '1100px';
+  iframe.style.height = '700px';
   iframe.style.border = '0';
   iframe.style.display = 'block';
   iframe.style.pointerEvents = 'none';
   iframe.style.background = '#000';
   const object = new CSS3DObject(iframe);
   object.position.set(0, 0, 0.085);
-  object.scale.set(0.01, 0.01, 0.01);
+  object.scale.set(0.002, 0.002, 0.002);
   object.visible = false;
   parent.add(object);
   tv.liveIframe = iframe;
@@ -2531,9 +3065,6 @@ function createLevelGroup(levelIndex){
     const zoneX = t4Snap ? t4Snap.pos[0] + 1.5 : 1.5;
     const zoneZ = t4Snap ? t4Snap.pos[2]       : 8.60;
     positions = [[zoneX, zoneZ]];
-  } else if(levelIndex === RETURN_LEVEL){
-    // No fall-through on the way back — this is the destination.
-    positions = [];
   } else {
     positions = randomTVCross();
   }
@@ -2568,13 +3099,214 @@ function showLevel(idx){
   if(door) door.group.visible = true;
 }
 
+// Fully tears down a TV's live iframe (not just hides it) so no audio can
+// keep playing off-screen after the level is left. Next activation rebuilds
+// a fresh iframe via attachLiveIframeToTV.
+function killLiveFeed(tv){
+  if(!tv || !tv.liveIframeObject) return;
+  if(tv.liveIframe) tv.liveIframe.src = 'about:blank';
+  if(tv.liveIframeObject.parent) tv.liveIframeObject.parent.remove(tv.liveIframeObject);
+  tv.liveIframe = null;
+  tv.liveIframeObject = null;
+  tv.liveActive = false;
+}
+
 function hideLevel(idx){
   if(!levelGroups[idx]) return;
   const { group, tvs, door } = levelGroups[idx];
   group.visible = false;
-  tvs.forEach(tv => { tv.g.visible = false; });
+  tvs.forEach(tv => { tv.g.visible = false; killLiveFeed(tv); });
   (group.userData.crosses||[]).forEach(c => { c.visible = false; });
   if(door) door.group.visible = false;
+}
+
+// ── THE ENTITY ──────────────────────────────────────────────────────────────
+// This model has one strong run cycle rather than a full animation library.
+// That is useful here: the entity is never left standing in a bright room.
+// It is shown in short, staged sightings, then its opacity drops as it gets
+// close enough for the player to question what they saw.
+const ENTITY_HEIGHT = 2.18;
+const ENTITY_FAR_DISTANCE = isMobile ? 22 : 32;
+
+// Hazmat patrol field calibrated from the supplied level-0 coordinate
+// screenshots. The old entity clamp stopped at X=-22, which kept him out of
+// the long western corridor shown in the screenshots.
+const HAZMAT_PATROL_POINTS = [
+  { x:  6.32, z:  6.38 }, // east end
+  { x:-38.48, z: -3.99 }, // lower south branch
+  { x:-46.26, z: -3.64 }, // west/south branch
+  { x:-68.29, z: 11.31 }, // far west end
+  { x:-36.39, z:  6.43 }, // upper return branch
+];
+const HAZMAT_PATROL_BOUNDS = {
+  minX: -69.8, maxX: 7.8,
+  minZ: -5.2, maxZ: 12.4,
+};
+
+function clampHazmatToField(position){
+  position.x = Math.max(HAZMAT_PATROL_BOUNDS.minX, Math.min(HAZMAT_PATROL_BOUNDS.maxX, position.x));
+  position.z = Math.max(HAZMAT_PATROL_BOUNDS.minZ, Math.min(HAZMAT_PATROL_BOUNDS.maxZ, position.z));
+}
+
+function chooseHazmatPatrolSegment(){
+  const startIndex = Math.floor(Math.random() * HAZMAT_PATROL_POINTS.length);
+  let endIndex = Math.floor(Math.random() * HAZMAT_PATROL_POINTS.length);
+  if(endIndex === startIndex) endIndex = (endIndex + 1) % HAZMAT_PATROL_POINTS.length;
+  return [HAZMAT_PATROL_POINTS[startIndex], HAZMAT_PATROL_POINTS[endIndex]];
+}
+
+function setEntityOpacity(alpha){
+  entityAlpha = Math.max(0, Math.min(1, alpha));
+  entityMaterials.forEach(material => {
+    material.opacity = entityAlpha;
+    material.transparent = entityAlpha < 0.999;
+    material.needsUpdate = true;
+  });
+  if(entityActor) entityActor.visible = entityAlpha > 0.008;
+}
+
+function entityGroundY(levelIndex = currentLevel){
+  if(isVoidLevel(levelIndex)){
+    return levelTargetY(levelIndex) - EYE_HEIGHT + 0.12;
+  }
+  return levelFloorY - levelIndex * LEVEL_DEPTH + 0.025;
+}
+
+function placeEntityAt(position, levelIndex = currentLevel){
+  if(!entityActor) return;
+  entityActor.position.set(position.x, entityGroundY(levelIndex), position.z);
+}
+
+function entityFacing(point){
+  if(!entityActor) return;
+  entityActor.lookAt(point.x, entityActor.position.y, point.z);
+}
+
+// Mostly fast full-sprint crossings ('cross') — he blitzes through the
+// player's peripheral vision and is gone. 'charge' (runs straight at the
+// player) is reserved for the level 30 finale beat.
+function entityProfile(levelIndex){
+  if(levelIndex < 8){
+    return { kind:'cross', delayMin:9000, delayMax:18000, duration:0.78, fade:0.23, speed:1.95 };
+  }
+  if(levelIndex < 20){
+    return { kind:'cross', delayMin:6500, delayMax:13000, duration:0.64, fade:0.20, speed:2.3 };
+  }
+  if(levelIndex < 30){
+    return { kind:'cross', delayMin:5000, delayMax:10500, duration:0.55, fade:0.16, speed:2.6 };
+  }
+  if(levelIndex === 30){
+    return { kind:'charge', delayMin:4800, delayMax:7600, duration:1.3, fade:0.37, speed:2.15 };
+  }
+  return { kind:'cross', delayMin:3400, delayMax:7600, duration:0.45, fade:0.14, speed:3.05 };
+}
+
+function entityRandomDelay(profile){
+  return profile.delayMin + Math.random() * (profile.delayMax - profile.delayMin);
+}
+
+function scheduleEntityForLevel(now, immediate = false){
+  const profile = entityProfile(currentLevel);
+  entityEventLevel = currentLevel;
+  entityEventStart = 0;
+  entityEventDuration = profile.duration;
+  entityState = 'hidden';
+  setEntityOpacity(0);
+  entityNextEventAt = now + (immediate ? 900 : entityRandomDelay(profile));
+}
+
+function startEntityEvent(now){
+  if(!entityActor) return;
+  const profile = entityProfile(currentLevel);
+  const forward = new THREE.Vector3();
+  camera.getWorldDirection(forward);
+  forward.y = 0;
+  if(forward.lengthSq() < 0.001) forward.set(0, 0, -1);
+  forward.normalize();
+  const right = new THREE.Vector3(-forward.z, 0, forward.x);
+  const player = camera.position.clone();
+  const side = Math.random() < 0.5 ? -1 : 1;
+  const depth = Math.min(ENTITY_FAR_DISTANCE, 13 + Math.random() * 8);
+  const lane = 5.5 + Math.random() * 3.8;
+
+  if(profile.kind === 'cross'){
+    if(!isVoidLevel(currentLevel) && currentLevel !== 30){
+      // Use the supplied coordinate field for normal-level sightings. A
+      // small perpendicular offset keeps repeated passes from looking like a
+      // single fixed animation while preserving the long corridor route.
+      const [patrolStart, patrolEnd] = chooseHazmatPatrolSegment();
+      const patrolForward = new THREE.Vector3(
+        patrolEnd.x - patrolStart.x, 0, patrolEnd.z - patrolStart.z,
+      ).normalize();
+      const patrolRight = new THREE.Vector3(-patrolForward.z, 0, patrolForward.x);
+      const jitter = (Math.random() - 0.5) * 1.15;
+      entityStartPos.set(patrolStart.x, 0, patrolStart.z).addScaledVector(patrolRight, jitter);
+      entityEndPos.set(patrolEnd.x, 0, patrolEnd.z).addScaledVector(patrolRight, -jitter);
+    } else {
+      entityStartPos.copy(player).addScaledVector(forward, depth).addScaledVector(right, side * lane);
+      entityEndPos.copy(player).addScaledVector(forward, depth).addScaledVector(right, -side * lane);
+    }
+  } else {
+    entityStartPos.copy(player).addScaledVector(forward, Math.min(18, depth + 3));
+    entityStartPos.addScaledVector(right, (Math.random() - 0.5) * 4);
+    entityEndPos.copy(player).addScaledVector(forward, 1.8 + Math.random() * 1.4);
+  }
+
+  if(profile.kind === 'cross' && !isVoidLevel(currentLevel) && currentLevel !== 30){
+    clampHazmatToField(entityStartPos);
+    clampHazmatToField(entityEndPos);
+  } else {
+    entityStartPos.x = Math.max(BUILD_BOUNDS.minX + 1.5, Math.min(BUILD_BOUNDS.maxX - 1.5, entityStartPos.x));
+    entityStartPos.z = Math.max(BUILD_BOUNDS.minZ + 1.5, Math.min(BUILD_BOUNDS.maxZ - 1.5, entityStartPos.z));
+    entityEndPos.x = Math.max(BUILD_BOUNDS.minX + 1.2, Math.min(BUILD_BOUNDS.maxX - 1.2, entityEndPos.x));
+    entityEndPos.z = Math.max(BUILD_BOUNDS.minZ + 1.2, Math.min(BUILD_BOUNDS.maxZ - 1.2, entityEndPos.z));
+  }
+
+  entityEventStart = now;
+  entityEventDuration = profile.duration * 1000;
+  entityState = profile.kind;
+  entityAction.timeScale = profile.speed;
+  placeEntityAt(entityStartPos);
+  entityFacing(profile.kind === 'cross' ? entityEndPos : player);
+  setEntityOpacity(0);
+}
+
+function updateEntity(now, dt){
+  if(!entityLoaded || !entityActor || !entityMixer) return;
+  if(entityEventLevel !== currentLevel){
+    scheduleEntityForLevel(now, currentLevel === 30);
+  }
+  if(isFalling || isRecovering || (!controls.isLocked && !isMobile)){
+    entityState = 'hidden';
+    setEntityOpacity(0);
+    entityNextEventAt = Math.max(entityNextEventAt, now + 1200);
+    return;
+  }
+
+  if(entityState === 'hidden'){
+    if(now >= entityNextEventAt) startEntityEvent(now);
+    return;
+  }
+
+  entityMixer.update(dt);
+  const profile = entityProfile(currentLevel);
+  const progress = Math.max(0, Math.min(1, (now - entityEventStart) / entityEventDuration));
+  const position = entityStartPos.clone().lerp(entityEndPos, progress);
+  placeEntityAt(position);
+  entityFacing(profile.kind === 'cross' ? entityEndPos : camera.position);
+
+  const fadeIn = Math.min(1, progress / 0.12);
+  const fadeOutFrac = profile.fade / profile.duration;
+  const fadeOut = progress > 1 - fadeOutFrac
+    ? Math.max(0, (1 - progress) / fadeOutFrac)
+    : 1;
+  setEntityOpacity(fadeIn * fadeOut * (currentLevel === 30 ? 0.82 : 0.65));
+
+  if(progress >= 1){
+    entityState = 'hidden';
+    setEntityOpacity(0);
+    entityNextEventAt = now + entityRandomDelay(profile);
+  }
 }
 
 // ── TRIGGER FALL ─────────────────────────────────────────────────────────────
@@ -2668,9 +3400,65 @@ const draco=new DRACOLoader();
 draco.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.5.6/');
 const loader=new GLTFLoader(); loader.setDRACOLoader(draco);
 
+function loadEntity(){
+  loader.load(
+    ENTITY_URL,
+    gltf => {
+      const actor = SkeletonUtils.clone(gltf.scene);
+      let bounds = new THREE.Box3().setFromObject(actor);
+      const size = bounds.getSize(new THREE.Vector3());
+      const modelHeight = Math.max(size.y, 0.01);
+      actor.scale.multiplyScalar(ENTITY_HEIGHT / modelHeight);
+      actor.updateMatrixWorld(true);
+
+      // Normalize the downloaded Sketchfab scene so its feet sit on the
+      // current level floor and its body is centered on the actor origin.
+      bounds = new THREE.Box3().setFromObject(actor);
+      const center = bounds.getCenter(new THREE.Vector3());
+      actor.position.x -= center.x;
+      actor.position.y -= bounds.min.y;
+      actor.position.z -= center.z;
+
+      entityMaterials = [];
+      actor.traverse(child => {
+        if(!child.isMesh) return;
+        child.castShadow = !isMobile;
+        child.receiveShadow = !isMobile;
+        const materials = Array.isArray(child.material) ? child.material : [child.material];
+        materials.forEach(material => {
+          if(!material) return;
+          material.transparent = true;
+          material.depthWrite = true;
+          entityMaterials.push(material);
+        });
+      });
+
+      entityActor = actor;
+      entityActor.visible = false;
+      scene.add(entityActor);
+
+      entityMixer = new THREE.AnimationMixer(entityActor);
+      if(gltf.animations.length > 0){
+        entityAction = entityMixer.clipAction(gltf.animations[0]);
+        entityAction.setLoop(THREE.LoopRepeat, Infinity);
+        entityAction.clampWhenFinished = false;
+        entityAction.play();
+      }
+      entityLoaded = Boolean(entityAction);
+      if(entityLoaded) scheduleEntityForLevel(performance.now());
+    },
+    undefined,
+    () => {
+      // The entity is an enhancement, never a reason for the map to fail.
+      entityLoaded = false;
+    },
+  );
+}
+
 // Wait for map URL to be chosen (PC selector) then start loading
 glbUrlReady.then(chosenUrl => {
   GLB_URL = chosenUrl;
+  loadEntity();
   loader.load(GLB_URL,
     gltf => {
       glbTemplate = gltf.scene;
@@ -2865,7 +3653,7 @@ function animate(t){
         voidAutoFallAt = 0;
       }
     }
-    composer.render(); css3dRenderer.render(scene, camera); return;
+    renderScene(); return;
   }
 
   // ── RECOVERY ──────────────────────────────────────────────────────────────
@@ -2879,7 +3667,7 @@ function animate(t){
     camera.rotation.z=Math.sin(t*0.012)*0.08*wobbleFade;
     camera.rotation.x+=Math.sin(t*0.009)*0.003*wobbleFade;
     if(progress>=1){ isRecovering=false; camera.rotation.z=0; }
-    composer.render(); css3dRenderer.render(scene, camera); return;
+    renderScene(); return;
   }
 
   // ── NORMAL MOVEMENT ───────────────────────────────────────────────────────
@@ -3021,6 +3809,8 @@ function animate(t){
     }
   }
 
+  updateEntity(t, dt);
+
   // ── UPDATE BLOOD LEVEL (Level 30) ────────────────────────────────────────
   if(currentLevel === 30 && bloodActive){
     const bloodFloor = levelFloorY + 0.02;
@@ -3156,8 +3946,7 @@ function animate(t){
     tvPromptEl.style.display = 'none';
   }
 
-  composer.render();
-  css3dRenderer.render(scene, camera);
+  renderScene();
 }
 animate(0);
 
