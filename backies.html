@@ -541,7 +541,7 @@ const WALL_TV_RAYS = [
   { id:'T5',  from:[-55.75, 1.9,  4.04], dir:[ 1, 0,  0], ry:-Math.PI/2  }, // moved — was on top of T1
   { id:'T6',  from:[ 0,    1.9,  8],     dir:[ 0, 0, -1], ry: 0          }, // backrooms video fall-20
   { id:'T8',  from:[ 0,    1.9, 14.57],  dir:[-1, 0,  0], ry: Math.PI/2  },
-  { id:'T9',  from:[ 0,    1.9,  6.34],  dir:[ 1, 0,  0], ry:-Math.PI/2  },
+  { id:'T9',  from:[ 0,    1.9,  5.74],  dir:[ 1, 0,  0], ry:-Math.PI/2  }, // nudged left along wall — Rumble feed rides with it (same TV id)
   { id:'T10', from:[ 0,    1.6,  4],     dir:[-1, 0,  0], ry: Math.PI/2  },
 ];
 
@@ -2813,6 +2813,16 @@ function enterReturnLevel(){
   camera.position.set(mapCenter.x, levelTargetY(RETURN_LEVEL), mapCenter.z);
   camera.rotation.set(0, 0, 0);
   if(voidExitDoor) voidExitDoor.group.visible = false;
+  // Every other level transition lands in isRecovering, which blocks the
+  // noclip-zone check for ~2.5s. This teleport skipped that, so on the
+  // (frequent) sessions where level 71's randomized fall-cross lands near
+  // mapCenter (0,0), the zone check fired on the very next frame and
+  // insta-triggered a fall to 72 before the room was even visible — which
+  // also explains T1/T5 being dark up there: those live feeds are only ever
+  // added to level 71's own TV set, not 72's.
+  isRecovering = true;
+  recoverStart = performance.now();
+  recoverFrom = camera.position.y;
   showStage30Cue('THE SIGNAL LET YOU THROUGH.\nWELCOME BACK TO THE BUILD.', 5200);
 }
 
