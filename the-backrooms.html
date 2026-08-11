@@ -468,6 +468,7 @@
 <div id="tv-prompt">[ E ] &nbsp; PLAY / STOP</div>
 <div id="door-hint" style="position:fixed;top:50%;left:50%;transform:translate(-50%,55px);color:#c8b97a;font-size:13px;letter-spacing:3px;text-align:center;pointer-events:none;display:none;z-index:5;text-shadow:0 0 14px rgba(200,185,122,0.9);font-family:'Courier New',monospace;">ENTER THE REAL DEBATE<br><span style="font-size:10px;opacity:0.45;letter-spacing:2px;">[E] &nbsp;·&nbsp; TAP</span></div>
 <div id="void-door-hint" style="position:fixed;top:50%;left:50%;transform:translate(-50%,55px);color:#7dffa8;font-size:13px;letter-spacing:3px;text-align:center;pointer-events:none;display:none;z-index:5;text-shadow:0 0 14px rgba(60,255,120,0.9);font-family:'Courier New',monospace;">RETURN TO THE BUILD<br><span style="font-size:10px;opacity:0.45;letter-spacing:2px;">[E] &nbsp;·&nbsp; TAP</span></div>
+ <div id="rumble-gate-hint" style="position:fixed;top:50%;left:50%;transform:translate(-50%,55px);color:#65b8ff;font-size:13px;letter-spacing:3px;text-align:center;pointer-events:none;display:none;z-index:5;text-shadow:0 0 14px rgba(40,150,255,0.95);font-family:'Courier New',monospace;">ENTER THE RUMBLE ACCOUNT<br><span style="font-size:10px;opacity:0.5;letter-spacing:2px;">[E] &nbsp;·&nbsp; TAP</span></div>
 <div id="void-level-readout" style="position:fixed;top:16px;left:50%;transform:translateX(-50%);color:#4dd97a;font-size:11px;letter-spacing:4px;text-align:center;pointer-events:none;display:none;z-index:5;text-shadow:0 0 10px rgba(60,255,120,0.7);font-family:'Courier New',monospace;">LEVEL 70 // THE FLOATING SIGNAL</div>
 <div id="coords"></div>
 <!-- CSS3D renderer layer for in-world YouTube -->
@@ -540,7 +541,7 @@ const WALL_TV_RAYS = [
   { id:'T5',  from:[-55.75, 1.9,  4.04], dir:[ 1, 0,  0], ry:-Math.PI/2  }, // moved — was on top of T1
   { id:'T6',  from:[ 0,    1.9,  8],     dir:[ 0, 0, -1], ry: 0          }, // backrooms video fall-20
   { id:'T8',  from:[ 0,    1.9, 14.57],  dir:[-1, 0,  0], ry: Math.PI/2  },
-  { id:'T9',  from:[ 0,    1.9,  6.34],  dir:[ 1, 0,  0], ry:-Math.PI/2  },
+  { id:'T9',  from:[ 0,    1.9,  5.74],  dir:[ 1, 0,  0], ry:-Math.PI/2  }, // nudged left along wall — Rumble feed rides with it (same TV id)
   { id:'T10', from:[ 0,    1.6,  4],     dir:[-1, 0,  0], ry: Math.PI/2  },
 ];
 
@@ -588,6 +589,8 @@ const VOID_LIVE_FEEDS = [
   'https://www.youtube.com/embed/ydYDqZQpim8?autoplay=1',
   'https://www.youtube.com/embed/qpukdDslCjk?autoplay=1',
 ];
+const RUMBLE_VIDEO_EMBED = 'https://rumble.com/embed/v7bsc1u/?pub=4q8ygs&autoplay=2';
+const RUMBLE_ACCOUNT_URL = 'https://rumble.com/user/earthlingofficial';
 
 // Level 71 resumes the normal build. Only 4 signals are new: news on T5,
 // both window feeds, and one normal wall TV. Everything else in the GLB
@@ -607,6 +610,7 @@ const VOID_START_LEVEL = 36;   // first level with no GLB geometry
 const VOID_END_LEVEL   = 70;   // the floating signal level, live feeds live here
 const RETURN_LEVEL     = 71;   // normal build resumes
 const VOID_FALL_COUNT  = 15;   // total falls from level 35 to reach level 70
+const RUMBLE_UNLOCK_LEVEL = 11; // the post-W1a fall: T9 becomes the Rumble signal from here on
 // Door sits 20m clear of the TV ring so you can't click a TV and accidentally
 // trigger the exit — it used to be 1.8m past the ring, now it's a walk away.
 const VOID_DOOR_LOCAL_POS = [0, 1.65, -29];
@@ -684,6 +688,7 @@ let isRecovering    = false;
 let recoverStart    = 0;
 let recoverFrom     = 0;
 let voidExitDoor    = null;
+let rumbleAccountGate = null;
 let voidAutoFallAt  = 0;
 let mapCenter       = new THREE.Vector3(0, 0, 0);
 
@@ -1173,7 +1178,7 @@ const EXTRA_CHAT_LINES = [
   ["@vegan_teacher", "chat, the slaughter sounds are not a soundtrack request."],
   ["@vegan_teacher", "the news lady found the Backrooms; now please listen to the facts."],
   ["@vegan_teacher", "a pig can feel fear, and this chat can too. start there."],
-  ["@vegan_teacher", "Momo is vegan by circumstance and still has more compassion than the wallpaper."],
+  ["@vegan_teacher", "Momo wants to be vegan, but Momo is a cat and cats are carnivores. still more compassion than the wallpaper."],
   ["@vegan_teacher", "Dean can leave this room. the animal in the footage could not."],
   ["@vegan_teacher", "the live camera is not an excuse to look away from the system behind it."],
   ["@vegan_teacher", "Earthling built a parody, but the animal facts are not parody."],
@@ -1336,6 +1341,172 @@ const EXTRA_CHAT_LINES = [
   ["@earthling_watch", "the creator is in the debate, the debate is in the building, and the building has no customer service."],
 ];
 
+// A 40-user expansion for the scrolling chat. The generated entries are
+// ordinary chat lines, not a special intermission, so they follow the same
+// timing and feed selection as the original comments.
+const CHAT_EXPANSION_USERS = [
+  "@jade", "@quietvegan", "@sentient_snack", "@plantpowered", "@moral_patience",
+  "@soy_beanie_watch", "@backrooms_botanist", "@sanctuary_runner", "@earthling_ed",
+  "@w1a_witness", "@fall_11", "@level_70_blue", "@liminal_lentil", "@tofu_truth",
+  "@no_meat_no_map", "@cage_free_isnt_free", "@animal_angel", "@vegan_angel",
+  "@angel_on_floor_9", "@speciesism_skeptic", "@sapiencism_watch", "@eco_feminist",
+  "@amy_fitzgerald_fan", "@patriarchy_detector", "@debate_clip_farmer",
+  "@piano_request", "@momo_counsel", "@door_dash_void", "@dolphin_gifter",
+  "@gifted_dean", "@mods_plz", "@really_ok", "@phil_again", "@w_here",
+  "@win_sophistry", "@president_momo", "@haxan_hallway", "@rumble_signal",
+  "@yellow_wallpaper",
+];
+
+const CHAT_EXPANSION_LINES = [
+  ["@jade", "calm reminder: Momo wants to be vegan, but Momo is a cat and cats are carnivores. please do not put a salad in the cat bowl."],
+  ["@jade", "I am staunchly vegan and still willing to admit the Backrooms are not a suitable environment for anyone, including Dean."],
+  ["@jade", "speciesism is the wallpaper pattern here: humans get an exit, animals get an inventory number."],
+  ["@jade", "sapiencism is just speciesism wearing a graduation cap. the hallway is not impressed."],
+  ["@jade", "Amy Fitzgerald and ecofeminism would ask who gets treated as disposable and who gets to call the system normal."],
+  ["@quietvegan", "we can be intense about the message without pretending the cat is an herbivore. facts are part of the bit."],
+  ["@quietvegan", "the vegan angel has entered the yellow room and brought a clipboard, a flashlight, and no tolerance for excuses."],
+  ["@vegan_angel", "vegan angel check: the animal is not a prop, the screen is not absolution, and Dean is still looking for the door."],
+  ["@animal_angel", "one less animal product is one less purchase supporting the machine. now find the fall zone."],
+  ["@sentient_snack", "the joke is parody, the fear in the footage is not. chat, hold both thoughts at once."],
+  ["@plantpowered", "Dean arguing with Donald like it is a real debate while the Backrooms leak through the ceiling is peak meta."],
+  ["@plantpowered", "Donald says MAGA, Dean says define the premise, Charlie interrupts, and the pig still has the strongest argument."],
+  ["@donald", "where do i call for door dash? this hallway is tremendous but the delivery time is frankly a disaster."],
+  ["@donald", "is that a pig squealing? yummo. quite frankly the Backrooms are a total disaster."],
+  ["@donald", "MAGA likes exploitation too much. Dean should be MAGA, but Dean should also be vegan. many people are saying this."],
+  ["@donald", "Dean, you are a total disaster, but the animals have tremendous ratings and the best evidence."],
+  ["@donald", "Earthling made a blue gate for Rumble because green gates are old news and blue is a very successful color."],
+  ["@donald", "I gifted you Dean. I gave you a dolphin. where is the receipt and why is the dolphin in the void."],
+  ["@charlie", "Donald is trying to debate a pig squeal, Dean is trying to define veganism, and I am trying to get a word in."],
+  ["@charlie", "Dean play more piano. piano with no shirt now. chat, please do not make me moderate this."],
+  ["@charlie", "I wish I could debate Earthling, but the entity keeps taking the floor and winning on atmosphere."],
+  ["@dean_watch", "Dean's plant-based liminal horror arc has entered its eleventh fall. W1a footage unlocked, then gravity again."],
+  ["@dean_watch", "Dean, the blue gate is not a debate prompt. unless it is. everything here is a debate prompt."],
+  ["@dean_defender", "Dean has survived another room, another fall, and another comment claiming tofu causes weakness. heroic."],
+  ["@dean_chat", "Dean play more piano. piano with no shirt now. the chat has one request and zero shame."],
+  ["@dean_chat", "Dean's total disaster status is not an argument against veganism, but it is excellent lore."],
+  ["@soy_beanie_watch", "Dean is a soy beanie only when the fact feed is on, according to Donald, which is not a peer-reviewed source."],
+  ["@piano_request", "someone tell Dean the piano is in the next level. someone tell Dean the next level is also the next fall."],
+  ["@w1a_witness", "W1a footage unlocked and then the floor said congratulations, now do it again."],
+  ["@fall_11", "is this the level after W1a or the eleventh fall? either way the Rumble TV finally exists."],
+  ["@rumble_signal", "the new Rumble screen is in the room, not a popup. Escape gives the cursor back like the live feeds."],
+  ["@rumble_signal", "premium or not, the signal belongs on the spare TV and the hallway is not getting a second overlay."],
+  ["@level_70_blue", "blue gate at level 70 confirmed. green returns to the build, blue points to the account."],
+  ["@backrooms_botanist", "the level 70 ring is a greenhouse for bad arguments: no floor, twelve screens, one blue door."],
+  ["@backrooms_botanist", "Earthling Official made the lore recursive. the game points to the video, the video points back to the game."],
+  ["@earthling_ed", "Earthling Official is not the same person as Earthling in the walls, but the meta is absolutely doing cardio."],
+  ["@haxan_hallway", "Haxan energy, slaughter footage, vegan angels, and Donald asking for DoorDash. no notes."],
+  ["@eco_feminist", "eco-feminism says domination stacks. the Backrooms says the same thing with worse lighting."],
+  ["@amy_fitzgerald_fan", "Amy Fitzgerald mention detected. patriarchy, speciesism, and sapiencism are all hiding under the wallpaper."],
+  ["@patriarchy_detector", "the patriarchy built the maze and called the exit a privilege. the animals did not get a key."],
+  ["@speciesism_skeptic", "speciesism is not a magic word to win a debate; it names the double standard chat keeps demonstrating."],
+  ["@sapiencism_watch", "the human exceptionalism speedrun has reached the blue gate."],
+  ["@cage_free_isnt_free", "cage-free is not the same as freedom, and a green label does not turn the slaughterhouse into a sanctuary."],
+  ["@sanctuary_runner", "I gifted you a dolphin. mods, is that allowed in the Backrooms?"],
+  ["@floor_10_mod", "chat you cannot gift dolphins to the Backrooms. please stop trying to send wildlife through the blue gate."],
+  ["@gifted_dean", "I gifted you Dean. the checkout page asked for a shipping address and I entered level 70."],
+  ["@dolphin_gifter", "Dean i gave you a dolphin. it immediately found the exit. dolphin meta is undefeated."],
+  ["@mods_plz", "where are the mods"],
+  ["@mods_plz", "mods plz, Donald is arguing with the audio again"],
+  ["@really_ok", "really ok"],
+  ["@phil_again", "here we go with the bath thing again"],
+  ["@phil_again", "not Phil again"],
+  ["@piano_request", "Dean play more piano"],
+  ["@piano_request", "piano with no shirt now"],
+  ["@momo_counsel", "i think i heard momo"],
+  ["@momo_counsel", "is that Dean in the spotlight"],
+  ["@mods_plz", "chat stop that"],
+  ["@w_here", "W Dean"],
+  ["@win_sophistry", "win sophistry"],
+  ["@president_momo", "we want momo"],
+  ["@president_momo", "momo for president"],
+  ["@really_ok", "thats just weird"],
+  ["@gifted_dean", "guys check my new post!"],
+  ["@gifted_dean", "I gifted you Dean"],
+  ["@dolphin_gifter", "Dean i gave you a dolphin"],
+  ["@floor_10_mod", "chat you cant gift dolphins to the backrooms"],
+  ["@yellow_wallpaper", "the wallpaper heard the phrase vegan angel and started flickering."],
+  ["@yellow_wallpaper", "the room is yellow, the gate is blue, and Donald is somehow still orange."],
+  ["@no_meat_no_map", "no meat, no map, no problem. wait, there is definitely a problem. this is a maze."],
+  ["@liminal_lentil", "lentils have entered the chat and the entity has left the building."],
+  ["@tofu_truth", "tofu is not a personality, but it is a perfectly good answer to the protein panic."],
+  ["@moral_patience", "the mature take is still intense: stop exploiting animals and stop pretending the hallway made the choice."],
+  ["@plantpowered", "veganism is not a purity contest. it is a refusal to make animals pay for a brief taste."],
+  ["@quietvegan", "current politics but make it liminal: power protects the system, the hallway protects nothing."],
+  ["@patriarchy_detector", "Donald wants a strong man argument. the cow wants the door unlocked. guess whose stakes are higher."],
+  ["@charlie", "Donald just called the slaughter sound fake news and Dean asked for the source. this is not a drill."],
+  ["@donald", "fake news unless the signal tells me where the exit is. the animals are real, the ratings are tremendous."],
+  ["@dean_chat", "Dean says the debate is about premises. the Backrooms says the premise is that nobody gets to look away."],
+  ["@dean_defender", "W Dean, but also W the animal who never got to choose the level."],
+  ["@vegan_angel", "vegan angels are not here to make the room pretty. they are here to make the room impossible to ignore."],
+  ["@animal_angel", "the vegan angels are multiplying. the meat logic accounts are buffering."],
+  ["@meat_logic", "I came to say bacon and somehow got a lecture on ecofeminism. the hallway is educational."],
+  ["@plantbasedpanic", "I came to defend steak and left with a sanctuary tab open. Earthling wins the browser war."],
+  ["@earthling_watch", "the game lore says the building grows with the debate. chat is feeding it responsibly and irresponsibly."],
+  ["@w1a_witness", "W1a was the warning. fall 11 is the consequence. T11 is the broadcast."],
+  ["@fall_11", "unlock the footage, fall again, then find the TV. that is not progression, that is a ritual."],
+  ["@rumble_signal", "the spare TV is finally visible. if it is visible before level 11, the Backrooms has betrayed the spec."],
+  ["@level_70_blue", "level 70 is now a choice between return, Rumble, and staring into the signal until the signal stares back."],
+  ["@momo_counsel", "Momo wants to be vegan. Momo is a cat. Momo is also the only one who read the speciesism note."],
+  ["@momo_counsel", "momo does not endorse the menu, the maze, or the phrase 'vegan cat' without a disclaimer."],
+  ["@president_momo", "momo's platform: naps, sanctuary funding, and no more yellow wallpaper."],
+  ["@mods_plz", "mods plz pin the fact that cats are carnivores before the chat starts feeding Momo kale."],
+  ["@news_lady", "breaking: a cat corrects the record while three adults argue about a hallway."],
+  ["@radio_leak", "signal report: Dean is still in the spotlight, Donald is still looking for DoorDash."],
+  ["@gordon", "raw argument, damp wallpaper, no seasoning on the facts. shut it down!"],
+  ["@ari", "the spotlight hit Dean and the chat immediately forgot the entire political premise."],
+  ["@justin", "I am off the radar but somehow on level 70. this is not what the itinerary said."],
+  ["@kristy", "the dog jokes are back, the cat is correcting us, and the animal facts remain undefeated."],
+  ["@kadie", "vegan angels are not here to make the room pretty. they are here to make the room impossible to ignore."],
+  ["@floor_10_mod", "plain fact: the level gate is fiction; the choice not to fund animal exploitation is real."],
+  ["@moral_patience", "the mature take is still intense: stop exploiting animals and stop pretending the hallway made the choice."],
+  ["@really_ok", "really ok, but the debate is now between Donald, Dean, Charlie, a cat, and a blue door."],
+  ["@yellow_wallpaper", "thats just weird, said the wall, after Donald gifted a dolphin to a TV signal."],
+  ["@win_sophistry", "W Dean, W Jade, W Momo's copy edit, W the animal angel."],
+  ["@no_meat_no_map", "chat stop that. also chat stop buying the thing that caused the slaughter footage."],
+  ["@animal_angel", "there is no ethical plot twist where the animal suddenly wanted to be inventory."],
+  ["@vegan_angel", "the blue light is a gate, not a moral excuse. walk through it or keep thinking."],
+  ["@earthling_watch", "Earthling Official, Dean Withers debate lore, Backrooms lore, and current politics all collided in one TV."],
+  ["@dean_chat", "Dean's total disaster arc is now a Rumble unlock condition. incredible game design."],
+  ["@dean_watch", "Donald calling Dean MAGA while the vegan angel reads the fact feed is the exact kind of chaos this chat ordered."],
+  ["@donald", "Dean should be MAGA, Dean should be vegan, and the blue gate should have tremendous catering."],
+  ["@charlie", "I am interjecting: cats are carnivores, debate is not consent, and Earthling should add a piano."],
+  ["@piano_request", "piano with no shirt now, but make the sheet music a vegan angel fact."],
+  ["@momo_counsel", "momo heard the piano and has requested a string section."],
+  ["@door_dash_void", "where do i call for door dash? I have been in the void for twelve minutes."],
+  ["@door_dash_void", "DoorDash says no drivers will enter level 70. cowards."],
+  ["@dolphin_gifter", "the dolphin says the blue gate is a better route than the green gate."],
+  ["@backrooms_botanist", "the game is meta enough to make the video unlock a second video. recursive broadcast unlocked."],
+  ["@rumble_signal", "load on the TV, not the popup. the spare TV has seniority now."],
+  ["@w1a_witness", "the W1a footage is the breadcrumb, the eleventh fall is the trigger, and the TV is the reward."],
+  ["@fall_11", "fall again after W1a. chat said it, the game said it, gravity said it."],
+  ["@quietvegan", "calmly repeating: cats are carnivores, veganism is for humans, Momo wants to be vegan."],
+  ["@jade", "the chat can be chaotic and still be accurate. no vegan cat misinformation in my lobby."],
+  ["@charlie", "Momo for president has a stronger platform than the current debate."],
+  ["@news_lady", "developing: Donald and Dean are debating while the blue gate quietly links to Rumble."],
+  ["@radio_leak", "the radio says W1a unlocked, the chat says fall again, and the floor agrees."],
+  ["@night_terror_unit", "is that Dean in the spotlight or the entity wearing a beanie? I am not checking."],
+  ["@really_ok", "really ok but why is the gate blue"],
+  ["@phil_again", "not Phil again, not another vegan fact, not another fall. actually yes, all three."],
+  ["@w_here", "W Dean, W Jade, W Momo's copy edit, W the animal angel."],
+  ["@mods_plz", "where are the mods"],
+  ["@president_momo", "momo for president"],
+  ["@win_sophistry", "win sophistry"],
+  ["@no_meat_no_map", "chat stop that"],
+  ["@phil_again", "not Phil again"],
+  ["@momo_counsel", "i think i heard momo"],
+  ["@dean_watch", "is that Dean in the spotlight"],
+  ["@gifted_dean", "guys check my new post!"],
+  ["@yellow_wallpaper", "thats just weird"],
+];
+
+// Exactly 500 additional entries, distributed across the 40 new handles.
+// The deterministic rotation keeps the experience varied without adding a
+// second timing system or making any comment more frequent than another.
+const GENERATED_CHAT_LINES = Array.from({ length: 500 }, (_, index) => {
+  const source = CHAT_EXPANSION_LINES[(index * 17 + Math.floor(index / 40)) % CHAT_EXPANSION_LINES.length];
+  return [CHAT_EXPANSION_USERS[index % CHAT_EXPANSION_USERS.length], source[1]];
+});
+
 // Feed-specific lines are also rendered only in the scrolling chat. The
 // category mapping follows the live-feed order in VOID_LIVE_FEEDS.
 const LIVE_FEED_CHAT_LINES = {
@@ -1434,7 +1605,7 @@ const CHAT_NAME_ALIASES = {
   "@arianag": "@ari",
   "@vegan_teacher": "@kadie",
   "@charlie_kirk_fan": "@charlie",
-  "@trump": "@don",
+  "@trump": "@donald",
 };
 
 // The first four signal positions already have established categories. The
@@ -1534,9 +1705,11 @@ function activeLiveFeedChatPool(){
 function pushChatLine(){
   if(!broadcastsRunning || !chatLinesEl) return;
   const feedPool = activeLiveFeedChatPool();
-  const source = feedPool && Math.random() < 0.68
+  const source = feedPool && Math.random() < 0.56
     ? feedPool
-    : (Math.random() < 0.62 ? EXTRA_CHAT_LINES : FICTIONAL_CHAT_LINES);
+    : (Math.random() < 0.58
+      ? GENERATED_CHAT_LINES
+      : (Math.random() < 0.62 ? EXTRA_CHAT_LINES : FICTIONAL_CHAT_LINES));
   const [name, message] = source[Math.floor(Math.random()*source.length)];
   const line = document.createElement('div');
   line.className = 'chat-line';
@@ -1679,6 +1852,7 @@ const tvLinkEl  = document.getElementById('tv-link');
 const tvIdLabel = document.getElementById('tv-id-label');
 const coordsEl  = document.getElementById('coords');
 const doorHintEl = document.getElementById('door-hint');
+const rumbleGateHintEl = document.getElementById('rumble-gate-hint');
 const tvPromptEl = document.getElementById('tv-prompt');
 const barEl     = document.getElementById('bar');
 const pctEl     = document.getElementById('pct');
@@ -2560,9 +2734,72 @@ function buildVoidExitDoor(levelYOffset){
   return { group: door, glow };
 }
 
+function buildRumbleAccountGate(levelYOffset){
+  const gate = new THREE.Group();
+  const frameMat = new THREE.MeshStandardMaterial({
+    color: 0x06254a, emissive: 0x168cff, emissiveIntensity: 4.2,
+    metalness: 0.45, roughness: 0.25,
+  });
+  const left = new THREE.Mesh(new THREE.BoxGeometry(.15, 2.6, .15), frameMat);
+  const right = left.clone();
+  const top = new THREE.Mesh(new THREE.BoxGeometry(1.9, .15, .15), frameMat);
+  left.position.set(-0.8, 1.3, 0);
+  right.position.set(0.8, 1.3, 0);
+  top.position.set(0, 2.6, 0);
+  gate.add(left, right, top);
+
+  const glow = new THREE.PointLight(0x168cff, 2.8, 13);
+  glow.position.set(0, 1.5, 0.8);
+  gate.add(glow);
+
+  const labelCanvas = document.createElement('canvas');
+  labelCanvas.width = 768; labelCanvas.height = 128;
+  const labelCtx = labelCanvas.getContext('2d');
+  labelCtx.fillStyle = 'rgba(0,0,0,0)';
+  labelCtx.fillRect(0, 0, labelCanvas.width, labelCanvas.height);
+  labelCtx.textAlign = 'center'; labelCtx.textBaseline = 'middle';
+  labelCtx.font = 'bold 34px Courier New';
+  labelCtx.fillStyle = '#65b8ff';
+  labelCtx.shadowColor = 'rgba(40,150,255,0.9)';
+  labelCtx.shadowBlur = 18;
+  labelCtx.fillText('RUMBLE // EARTHLINGOFFICIAL', 384, 64);
+  const label = new THREE.Mesh(
+    new THREE.PlaneGeometry(3.1, 0.52),
+    new THREE.MeshBasicMaterial({
+      map: new THREE.CanvasTexture(labelCanvas),
+      transparent: true, side: THREE.DoubleSide, depthWrite: false,
+    }),
+  );
+  label.position.set(0, 3.05, 0.03);
+  gate.add(label);
+
+  gate.position.set(13.2, VOID_TV_LOCAL_POSITIONS[0][1] - 0.5 + levelYOffset, -20);
+  gate.visible = false;
+  scene.add(gate);
+
+  const hitbox = new THREE.Mesh(
+    new THREE.BoxGeometry(2.2, 3.0, 0.18),
+    new THREE.MeshBasicMaterial({ visible: false }),
+  );
+  hitbox.position.copy(gate.position);
+  hitbox.visible = false;
+  scene.add(hitbox);
+  wallButtonMeshes.push({ mesh: hitbox, url: RUMBLE_ACCOUNT_URL, gate: true });
+  return { group: gate, glow, hitbox };
+}
+
 function getVoidDoorDistance(){
   if(currentLevel !== VOID_END_LEVEL || !voidExitDoor) return Infinity;
   return camera.position.distanceTo(voidExitDoor.group.position);
+}
+
+function getRumbleGateDistance(){
+  if(currentLevel !== VOID_END_LEVEL || !rumbleAccountGate) return Infinity;
+  return camera.position.distanceTo(rumbleAccountGate.group.position);
+}
+
+function openRumbleAccount(){
+  window.open(RUMBLE_ACCOUNT_URL, '_blank', 'noopener,noreferrer');
 }
 
 function enterReturnLevel(){
@@ -2576,6 +2813,16 @@ function enterReturnLevel(){
   camera.position.set(mapCenter.x, levelTargetY(RETURN_LEVEL), mapCenter.z);
   camera.rotation.set(0, 0, 0);
   if(voidExitDoor) voidExitDoor.group.visible = false;
+  // Every other level transition lands in isRecovering, which blocks the
+  // noclip-zone check for ~2.5s. This teleport skipped that, so on the
+  // (frequent) sessions where level 71's randomized fall-cross lands near
+  // mapCenter (0,0), the zone check fired on the very next frame and
+  // insta-triggered a fall to 72 before the room was even visible — which
+  // also explains T1/T5 being dark up there: those live feeds are only ever
+  // added to level 71's own TV set, not 72's.
+  isRecovering = true;
+  recoverStart = performance.now();
+  recoverFrom = camera.position.y;
   showStage30Cue('THE SIGNAL LET YOU THROUGH.\nWELCOME BACK TO THE BUILD.', 5200);
 }
 
@@ -3107,12 +3354,16 @@ function createLevelGroup(levelIndex){
     if(levelIndex === VOID_END_LEVEL){
       exitDoor = buildVoidExitDoor(yOff);
       voidExitDoor = exitDoor;
+      rumbleAccountGate = buildRumbleAccountGate(yOff);
     }
   } else {
     WALL_TVS.forEach(t => {
       const tv = buildWallTV(t.id, t.pos, t.ry, yOff);
       tv.g.visible = false;
       scene.add(tv.g);
+      // T9 carries the Rumble signal from level 11 onward (post-W1a fall) —
+      // reuses the existing TV rather than spawning a new one.
+      if(t.id === 'T9' && levelIndex >= RUMBLE_UNLOCK_LEVEL) addLiveFeedToTV(tv, RUMBLE_VIDEO_EMBED);
       levelTVs.push(tv);
     });
     WINDOW_TVS.forEach(t => {
@@ -3210,6 +3461,10 @@ function showLevel(idx){
   (group.userData.crosses||[]).forEach(c => { c.visible = true; });
   tvs.forEach(tv => { if(!allTVs.find(t=>t===tv)) allTVs.push(tv); });
   if(door) door.group.visible = true;
+  if(idx === VOID_END_LEVEL && rumbleAccountGate){
+    rumbleAccountGate.group.visible = true;
+    rumbleAccountGate.hitbox.visible = true;
+  }
 }
 
 // Fully tears down a TV's live iframe (not just hides it) so no audio can
@@ -3231,6 +3486,10 @@ function hideLevel(idx){
   tvs.forEach(tv => { tv.g.visible = false; killLiveFeed(tv); });
   (group.userData.crosses||[]).forEach(c => { c.visible = false; });
   if(door) door.group.visible = false;
+  if(idx === VOID_END_LEVEL && rumbleAccountGate){
+    rumbleAccountGate.group.visible = false;
+    rumbleAccountGate.hitbox.visible = false;
+  }
 }
 
 // ── THE ENTITY ──────────────────────────────────────────────────────────────
@@ -3614,6 +3873,10 @@ document.addEventListener('keydown', e => {
   if(e.code==='Escape') popupEl.style.display='none';
   if(e.code==='Backquote'){ showCoords=!showCoords; coordsEl.style.display=showCoords?'block':'none'; }
   if(e.code==='KeyE' && controls.isLocked){
+    if(currentLevel === VOID_END_LEVEL && getRumbleGateDistance() < 3){
+      openRumbleAccount();
+      return;
+    }
     if(currentLevel === VOID_END_LEVEL && getVoidDoorDistance() < 3){
       enterReturnLevel();
       return;
@@ -3689,6 +3952,11 @@ const btnRaycaster = new THREE.Raycaster();
 window.addEventListener('click', () => {
   if(!controls.isLocked && !isMobile) return;
   btnRaycaster.setFromCamera(new THREE.Vector2(0,0), camera);
+
+  if(currentLevel === VOID_END_LEVEL && getRumbleGateDistance() < 3){
+    openRumbleAccount();
+    return;
+  }
 
   if(currentLevel === VOID_END_LEVEL && getVoidDoorDistance() < 3){
     enterReturnLevel();
@@ -4027,6 +4295,9 @@ function animate(t){
   const voidDoorHintEl = document.getElementById('void-door-hint');
   if(voidDoorHintEl){
     voidDoorHintEl.style.display = (controls.isLocked && getVoidDoorDistance() < 6) ? 'block' : 'none';
+  }
+  if(rumbleGateHintEl){
+    rumbleGateHintEl.style.display = (controls.isLocked && getRumbleGateDistance() < 6) ? 'block' : 'none';
   }
 
   // TV proximity prompt
