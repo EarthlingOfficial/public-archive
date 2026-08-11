@@ -501,6 +501,7 @@ import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { CSS3DObject, CSS3DRenderer } from 'three/addons/renderers/CSS3DRenderer.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 
 
 // ── ARCHIVE.ORG VIDEO POOL FOR WALL TVS ──────────────────────────────────────
@@ -705,6 +706,31 @@ let level30StartTime = 0;
 
 const levelGroups   = [];
 let glbTemplate     = null;
+
+// ── FOREST-FLOOR BUSH (grows through the floor with depth) ─────────────────
+// Desktop gets the 4K texture pack, mobile gets the 1K pack — same mesh/UVs,
+// just a smaller texture, matching the plant-pack tiering plan.
+const BUSH_URL_DESKTOP = 'https://files.catbox.moe/zvxg7t.glb';
+const BUSH_URL_MOBILE  = 'https://files.catbox.moe/546bdh.glb';
+let bushTemplate        = null;
+let bushPendingLevels   = []; // levels created before bushTemplate finished loading
+// Local Y offset (relative to the level floor) at level 0 vs at BUSH_FULL_LEVEL.
+// Negative = sunk below the floor. Tune these two once you see the real
+// model's height in-game — START should leave just a tip visible on level 0,
+// END should read as "almost entirely through" without z-fighting the floor.
+const BUSH_RISE_START_Y = -1.8;
+const BUSH_RISE_END_Y   = -0.05;
+const BUSH_FULL_LEVEL   = 70; // level index at which the bush is ~fully through
+// Pulls the bush footprint in toward center on X/Z only (Y untouched) so less
+// of it sits outside the building's walls where it's never seen. 1 = no
+// change; lower = tighter footprint. Tune to match your actual room size.
+const BUSH_XZ_SCALE     = 0.6;
+
+function bushOffsetForLevel(levelIndex){
+  const t = Math.max(0, Math.min(1, levelIndex / BUSH_FULL_LEVEL));
+  return BUSH_RISE_START_Y + (BUSH_RISE_END_Y - BUSH_RISE_START_Y) * t;
+}
+
 let entityActor     = null;
 let entityMixer     = null;
 let entityAction    = null;
@@ -1800,6 +1826,14 @@ renderer.outputColorSpace  = THREE.SRGBColorSpace;
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x000000);
 scene.fog = new THREE.FogExp2(0x1a1208, 0.035);
+
+// Neutral studio-lit PMREM map, kept for the bush's materials only (applied
+// in loadBushFloor below) — NOT assigned to scene.environment, since that
+// would reflect it onto every PBR material in the scene (TVs, walls, etc),
+// which is what caused the overexposed/grey-washed look.
+const pmremGenerator = new THREE.PMREMGenerator(renderer);
+const bushEnvMap = pmremGenerator.fromScene(new RoomEnvironment(), 0.04).texture;
+pmremGenerator.dispose();
 
 const camera = new THREE.PerspectiveCamera(80, innerWidth/innerHeight, 0.05, 500);
 camera.position.set(0, EYE_HEIGHT, 0);
@@ -3335,6 +3369,9 @@ function createLevelGroup(levelIndex){
   group.position.y = yOff;
   scene.add(group);
 
+  if(bushTemplate) addBushToLevel(levelIndex, group);
+  else bushPendingLevels.push({ levelIndex, group });
+
   const levelTVs = [];
   let exitDoor = null;
   if(isVoidLevel(levelIndex)){
@@ -3816,10 +3853,60 @@ function loadEntity(){
   );
 }
 
+function loadBushFloor(){
+  const bushUrl = isMobile ? BUSH_URL_MOBILE : BUSH_URL_DESKTOP;
+  loader.load(
+    bushUrl,
+    gltf => {
+      const template = gltf.scene;
+      // Normalize so the model's own base sits at local y=0, independent of
+      // how the source GLB was authored — makes bushOffsetForLevel() math
+      // (which assumes 0 = resting on the floor) reliable regardless of pack.
+      const bounds = new THREE.Box3().setFromObject(template);
+      const center = bounds.getCenter(new THREE.Vector3());
+      template.position.x -= center.x;
+      template.position.y -= bounds.min.y;
+      template.position.z -= center.z;
+      template.traverse(c => {
+        if(!c.isMesh) return;
+        c.castShadow = !isMobile;
+        c.receiveShadow = true;
+        const materials = Array.isArray(c.material) ? c.material : [c.material];
+        materials.forEach(material => {
+          if(!material) return;
+          material.envMap = bushEnvMap;
+          material.envMapIntensity = 0.35;
+          material.needsUpdate = true;
+        });
+      });
+      bushTemplate = template;
+
+      // Backfill any levels that were already created before this finished loading.
+      bushPendingLevels.forEach(({ levelIndex, group }) => addBushToLevel(levelIndex, group));
+      bushPendingLevels = [];
+    },
+    undefined,
+    () => {
+      // The forest floor is an enhancement, never a reason for the map to fail.
+      bushTemplate = null;
+    },
+  );
+}
+
+function addBushToLevel(levelIndex, group){
+  if(!bushTemplate) return;
+  const clone = bushTemplate.clone(true);
+  clone.scale.x = BUSH_XZ_SCALE;
+  clone.scale.z = BUSH_XZ_SCALE;
+  clone.position.y = levelFloorY + bushOffsetForLevel(levelIndex);
+  group.add(clone);
+}
+
 // Wait for map URL to be chosen (PC selector) then start loading
 glbUrlReady.then(chosenUrl => {
   GLB_URL = chosenUrl;
   loadEntity();
+  loadBushFloor();
   loader.load(GLB_URL,
     gltf => {
       glbTemplate = gltf.scene;
