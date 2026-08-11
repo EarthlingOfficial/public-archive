@@ -501,6 +501,7 @@ import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { CSS3DObject, CSS3DRenderer } from 'three/addons/renderers/CSS3DRenderer.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 
 
 // ── ARCHIVE.ORG VIDEO POOL FOR WALL TVS ──────────────────────────────────────
@@ -705,6 +706,41 @@ let level30StartTime = 0;
 
 const levelGroups   = [];
 let glbTemplate     = null;
+
+// ── FOREST-FLOOR BUSH (grows through the floor with depth) ─────────────────
+// Desktop gets the 4K texture pack, mobile gets the 1K pack — same mesh/UVs,
+// just a smaller texture, matching the plant-pack tiering plan.
+// 4K/HIRES: full-detail conversion. 1K/FAST: separately converted, lighter version.
+const BUSH_URL_4K = 'https://files.catbox.moe/iyef3r.glb';
+const BUSH_URL_1K = 'https://files.catbox.moe/iu7jws.glb';
+let bushTemplate        = null;
+let bushPendingLevels   = []; // levels created before bushTemplate finished loading
+// Rise range as a FRACTION of the bush's own measured height (set once it
+// loads, see loadBushFloor) instead of a guessed absolute number — so it
+// always scales correctly no matter how tall the actual asset turns out to be.
+// -0.9 = 90% buried (small tip visible) at level 0. 0.05 = poking 5% of its
+// own height above the floor by BUSH_FULL_LEVEL ("almost entirely through").
+const BUSH_RISE_START_FRAC = -0.9;
+const BUSH_RISE_END_FRAC   = 0.05;
+const BUSH_FULL_LEVEL      = 70; // level index at which the bush is ~fully through
+let bushHeight = 1; // real value set after load; 1 is just a safe fallback
+// Pulls the bush footprint in toward center on X/Z only (Y untouched) so less
+// of it sits outside the building's walls where it's never seen. 1 = no
+// change; lower = tighter footprint. Tune to match your actual room size.
+const BUSH_XZ_SCALE     = 0.6;
+// Rotate 90° so the bush's long axis runs along the building's length
+// instead of across it. Nudge shifts the whole footprint forward slightly
+// after rotating — tune both to eyeball-match your room once in-game.
+const BUSH_ROTATION_Y   = Math.PI / 2;
+const BUSH_NUDGE_X      = 0;
+const BUSH_NUDGE_Z      = 0.5;
+
+function bushOffsetForLevel(levelIndex){
+  const t = Math.max(0, Math.min(1, levelIndex / BUSH_FULL_LEVEL));
+  const frac = BUSH_RISE_START_FRAC + (BUSH_RISE_END_FRAC - BUSH_RISE_START_FRAC) * t;
+  return frac * bushHeight;
+}
+
 let entityActor     = null;
 let entityMixer     = null;
 let entityAction    = null;
@@ -1800,6 +1836,14 @@ renderer.outputColorSpace  = THREE.SRGBColorSpace;
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x000000);
 scene.fog = new THREE.FogExp2(0x1a1208, 0.035);
+
+// Neutral studio-lit PMREM map, kept for the bush's materials only (applied
+// in loadBushFloor below) — NOT assigned to scene.environment, since that
+// would reflect it onto every PBR material in the scene (TVs, walls, etc),
+// which is what caused the overexposed/grey-washed look.
+const pmremGenerator = new THREE.PMREMGenerator(renderer);
+const bushEnvMap = pmremGenerator.fromScene(new RoomEnvironment(), 0.04).texture;
+pmremGenerator.dispose();
 
 const camera = new THREE.PerspectiveCamera(80, innerWidth/innerHeight, 0.05, 500);
 camera.position.set(0, EYE_HEIGHT, 0);
@@ -3335,6 +3379,9 @@ function createLevelGroup(levelIndex){
   group.position.y = yOff;
   scene.add(group);
 
+  if(bushTemplate) addBushToLevel(levelIndex, group);
+  else bushPendingLevels.push({ levelIndex, group });
+
   const levelTVs = [];
   let exitDoor = null;
   if(isVoidLevel(levelIndex)){
@@ -3816,10 +3863,73 @@ function loadEntity(){
   );
 }
 
+function loadBushFloor(bushUrl){
+  loader.load(
+    bushUrl,
+    gltf => {
+      const template = gltf.scene;
+      // Normalize so the model's own base sits at local y=0, independent of
+      // how the source GLB was authored — makes bushOffsetForLevel() math
+      // (which assumes 0 = resting on the floor) reliable regardless of pack.
+      const bounds = new THREE.Box3().setFromObject(template);
+      const center = bounds.getCenter(new THREE.Vector3());
+      bushHeight = Math.max(bounds.getSize(new THREE.Vector3()).y, 0.01);
+      template.position.x -= center.x;
+      template.position.y -= bounds.min.y;
+      template.position.z -= center.z;
+      let loggedBushMaterialCheck = false;
+      template.traverse(c => {
+        if(!c.isMesh) return;
+        c.castShadow = !isMobile;
+        c.receiveShadow = true;
+        const materials = Array.isArray(c.material) ? c.material : [c.material];
+        materials.forEach(material => {
+          if(!material) return;
+          if(!loggedBushMaterialCheck){
+            loggedBushMaterialCheck = true;
+            console.log('[BUSH CHECK] material:', material.name || '(unnamed)',
+              '| has texture map:', Boolean(material.map),
+              '| base color:', material.color ? material.color.getHexString() : 'n/a');
+          }
+          material.envMap = bushEnvMap;
+          material.envMapIntensity = 0.35;
+          material.needsUpdate = true;
+        });
+      });
+      bushTemplate = template;
+
+      // Backfill any levels that were already created before this finished loading.
+      bushPendingLevels.forEach(({ levelIndex, group }) => addBushToLevel(levelIndex, group));
+      bushPendingLevels = [];
+    },
+    undefined,
+    () => {
+      // The forest floor is an enhancement, never a reason for the map to fail.
+      bushTemplate = null;
+    },
+  );
+}
+
+function addBushToLevel(levelIndex, group){
+  if(!bushTemplate) return;
+  const clone = bushTemplate.clone(true);
+  clone.scale.x = BUSH_XZ_SCALE;
+  clone.scale.z = BUSH_XZ_SCALE;
+  clone.rotation.y = BUSH_ROTATION_Y;
+  clone.position.x = BUSH_NUDGE_X;
+  clone.position.z = BUSH_NUDGE_Z;
+  clone.position.y = levelFloorY + bushOffsetForLevel(levelIndex);
+  group.add(clone);
+}
+
 // Wait for map URL to be chosen (PC selector) then start loading
 glbUrlReady.then(chosenUrl => {
   GLB_URL = chosenUrl;
   loadEntity();
+  // Bush quality now follows the same FAST/HIRES pick as the map itself
+  // (chosenUrl === GLB_1K on mobile automatically, since mobile always
+  // resolves to GLB_1K without showing the selector).
+  loadBushFloor(chosenUrl === GLB_4K ? BUSH_URL_4K : BUSH_URL_1K);
   loader.load(GLB_URL,
     gltf => {
       glbTemplate = gltf.scene;
