@@ -1,0 +1,778 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Reddit Missing Persons Suppression: The Sally Contarino Case File | Earthling Official</title>
+<meta name="description" content="A documented record of how posts about missing Australian woman Sally Grace Contarino were removed, downvoted, and suspended on Reddit — screenshots, mod messages, and a live timeline of suppression.">
+<link rel="canonical" href="https://earthlingofficial.com/reddit-exposed.html">
+
+<!-- Open Graph -->
+<meta property="og:type" content="article">
+<meta property="og:title" content="Reddit Missing Persons Suppression: The Sally Contarino Case File">
+<meta property="og:description" content="Screenshots, mod messages and a live timeline documenting how posts about missing Australian woman Sally Grace Contarino keep vanishing from Reddit.">
+<meta property="og:url" content="https://earthlingofficial.com/reddit-exposed.html">
+<meta property="og:image" content="https://earthlingofficial.com/salredfallen.png">
+<meta property="og:image:width" content="898">
+<meta property="og:image:height" content="845">
+<meta property="og:image:type" content="image/png">
+<meta property="og:site_name" content="Earthling Official">
+<meta property="article:section" content="Missing Persons">
+
+<!-- Twitter -->
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Reddit Missing Persons Suppression: The Sally Contarino Case File">
+<meta name="twitter:description" content="A documented record of how posts about missing Australian woman Sally Grace Contarino were removed, downvoted, and suspended on Reddit.">
+<meta name="twitter:image" content="https://earthlingofficial.com/salredfallen.png">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,700;1,9..144,500&family=Source+Serif+4:ital,wght@0,400;0,600;1,400&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "NewsArticle",
+  "headline": "Reddit Missing Persons Suppression: The Sally Contarino Case File",
+  "description": "A documented record of how posts about missing Australian woman Sally Grace Contarino were removed, downvoted, and suspended on Reddit.",
+  "image": "https://earthlingofficial.com/salredfallen.png",
+  "author": { "@type": "Organization", "name": "Earthling Official", "url": "https://earthlingofficial.com/" },
+  "publisher": {
+    "@type": "Organization",
+    "name": "Earthling Official",
+    "logo": { "@type": "ImageObject", "url": "https://earthlingofficial.com/images/earthling-logo.png" }
+  },
+  "mainEntityOfPage": { "@type": "WebPage", "@id": "https://earthlingofficial.com/reddit-exposed.html" },
+  "datePublished": "2026-08-09",
+  "dateModified": "2026-08-09"
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://earthlingofficial.com/" },
+    { "@type": "ListItem", "position": 2, "name": "Find Sally Contarino", "item": "https://earthlingofficial.com/find-sally-contarino.html" },
+    { "@type": "ListItem", "position": 3, "name": "Reddit Exposed", "item": "https://earthlingofficial.com/reddit-exposed.html" }
+  ]
+}
+</script>
+
+<style>
+:root{
+  --bg:#0c0d0f;
+  --bg-panel:#131418;
+  --bg-raised:#191b20;
+  --ink:#e9e6df;
+  --ink-dim:#96938b;
+  --ink-faint:#5c5a55;
+  --line:#2a2c31;
+  --redact:#b8302a;
+  --redact-dim:#5a1c19;
+  --citrine:#cf9a2f;
+  --citrine-dim:#8a6a26;
+  --green-conf:#4f7a5c;
+  --radius:2px;
+  --serif-display:'Fraunces',serif;
+  --serif-body:'Source Serif 4',serif;
+  --mono:'IBM Plex Mono',monospace;
+}
+*{box-sizing:border-box;}
+html{scroll-behavior:smooth;}
+body{
+  margin:0;
+  background:var(--bg);
+  color:var(--ink);
+  font-family:var(--serif-body);
+  font-size:17px;
+  line-height:1.65;
+  -webkit-font-smoothing:antialiased;
+}
+img{max-width:100%;display:block;}
+a{color:var(--citrine);}
+a:hover{color:#e0b756;}
+.wrap{max-width:900px;margin:0 auto;padding:0 24px;}
+.wrap-wide{max-width:1080px;margin:0 auto;padding:0 24px;}
+
+/* skip link */
+.skip-link{position:absolute;left:-999px;top:0;background:var(--citrine);color:#0c0d0f;padding:10px 16px;z-index:999;}
+.skip-link:focus{left:12px;top:12px;}
+
+/* breadcrumbs */
+.crumbs{
+  font-family:var(--mono);
+  font-size:12px;
+  letter-spacing:.02em;
+  color:var(--ink-faint);
+  padding:16px 24px;
+  border-bottom:1px solid var(--line);
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+  max-width:1080px;
+  margin:0 auto;
+}
+.crumbs a{color:var(--ink-dim);text-decoration:none;}
+.crumbs a:hover{color:var(--citrine);}
+.crumbs span{color:var(--ink-faint);}
+
+/* masthead */
+.masthead{
+  border-bottom:1px solid var(--line);
+  padding:14px 24px;
+}
+.masthead .wrap-wide{display:flex;align-items:center;justify-content:space-between;}
+.brand{
+  font-family:var(--mono);
+  font-size:13px;
+  letter-spacing:.14em;
+  text-transform:uppercase;
+  color:var(--ink);
+  text-decoration:none;
+}
+.brand b{color:var(--citrine);}
+.masthead nav a{
+  font-family:var(--mono);
+  font-size:12px;
+  color:var(--ink-dim);
+  text-decoration:none;
+  margin-left:20px;
+}
+.masthead nav a:hover{color:var(--citrine);}
+
+/* case stamp / hero */
+.case-strip{
+  font-family:var(--mono);
+  font-size:11px;
+  letter-spacing:.12em;
+  text-transform:uppercase;
+  color:var(--redact);
+  border:1px solid var(--redact-dim);
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  padding:6px 12px;
+  margin-bottom:22px;
+}
+.case-strip::before{content:"●";font-size:8px;color:var(--redact);animation:pulse 1.8s infinite;}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:.25;}}
+
+.hero{padding:56px 0 40px;border-bottom:1px solid var(--line);}
+.hero h1{
+  font-family:var(--serif-display);
+  font-weight:700;
+  font-size:clamp(32px,5.4vw,54px);
+  line-height:1.08;
+  margin:0 0 20px;
+  letter-spacing:-.01em;
+}
+.hero .redact-word{
+  background:var(--redact);
+  color:var(--redact);
+  border-radius:1px;
+  padding:0 6px;
+  user-select:none;
+}
+.hero p.lede{
+  font-size:20px;
+  color:var(--ink-dim);
+  max-width:64ch;
+  margin:0 0 26px;
+}
+.hero .meta{
+  font-family:var(--mono);
+  font-size:12px;
+  color:var(--ink-faint);
+  display:flex;
+  gap:18px;
+  flex-wrap:wrap;
+}
+.hero .meta strong{color:var(--ink-dim);font-weight:500;}
+
+/* stat rail */
+.stat-rail{
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  border-top:1px solid var(--line);
+  border-bottom:1px solid var(--line);
+}
+.stat{
+  padding:22px 20px;
+  border-right:1px solid var(--line);
+}
+.stat:last-child{border-right:none;}
+.stat .num{font-family:var(--serif-display);font-weight:700;font-size:30px;color:var(--citrine);}
+.stat .lbl{font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--ink-faint);margin-top:4px;}
+
+/* section generic */
+section{padding:56px 0;}
+section.alt{background:var(--bg-panel);}
+.eyebrow{
+  font-family:var(--mono);
+  font-size:12px;
+  letter-spacing:.14em;
+  text-transform:uppercase;
+  color:var(--citrine);
+  margin-bottom:10px;
+}
+h2{
+  font-family:var(--serif-display);
+  font-weight:600;
+  font-size:clamp(26px,3.6vw,36px);
+  margin:0 0 18px;
+  line-height:1.15;
+}
+h3{
+  font-family:var(--serif-display);
+  font-weight:600;
+  font-size:22px;
+  margin:32px 0 10px;
+}
+p{margin:0 0 18px;color:var(--ink);}
+p.dim{color:var(--ink-dim);}
+
+/* timeline (the pattern) */
+.timeline{border-left:2px solid var(--redact-dim);margin-left:6px;padding-left:28px;}
+.tl-item{position:relative;padding-bottom:34px;}
+.tl-item:last-child{padding-bottom:0;}
+.tl-item::before{
+  content:"";
+  position:absolute;
+  left:-34px;
+  top:4px;
+  width:11px;height:11px;
+  background:var(--bg);
+  border:2px solid var(--redact);
+  border-radius:50%;
+}
+.tl-item .tl-tag{
+  font-family:var(--mono);
+  font-size:11px;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+  color:var(--redact);
+  margin-bottom:6px;
+}
+.tl-item h4{font-family:var(--serif-display);font-size:19px;margin:0 0 8px;font-weight:600;}
+.tl-item p{margin:0;color:var(--ink-dim);}
+
+/* exhibit cards */
+.exhibit{
+  background:var(--bg-raised);
+  border:1px solid var(--line);
+  margin-bottom:28px;
+}
+.exhibit-head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:10px 16px;
+  border-bottom:1px solid var(--line);
+  font-family:var(--mono);
+  font-size:11px;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+  color:var(--ink-faint);
+}
+.exhibit-head .tag{color:var(--citrine);}
+.exhibit img{border-bottom:1px solid var(--line);}
+.exhibit-cap{padding:16px 18px 18px;}
+.exhibit-cap p{margin:0;font-size:15.5px;color:var(--ink-dim);}
+.exhibit-cap p strong{color:var(--ink);}
+
+/* Privacy overlays for Reddit account names in reproduced screenshots. */
+.censor-frame{
+  position:relative;
+  width:100%;
+  overflow:hidden;
+  border-bottom:1px solid var(--line);
+}
+.censor-frame > img{
+  width:100%;
+  border-bottom:0;
+}
+.username-redaction{
+  position:absolute;
+  z-index:2;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  overflow:hidden;
+  min-height:2.5%;
+  padding:0 4px;
+  background:#08090a;
+  border:1px solid var(--redact);
+  color:var(--redact);
+  font:500 clamp(7px,1.05vw,11px)/1 var(--mono);
+  letter-spacing:.05em;
+  text-transform:uppercase;
+  white-space:nowrap;
+  pointer-events:none;
+}
+.username-redaction::after{content:"CENSORED";}
+
+/* two-col grid of exhibits */
+.exhibit-grid{display:grid;grid-template-columns:1fr 1fr;gap:22px;}
+@media (max-width:760px){.exhibit-grid{grid-template-columns:1fr;}}
+
+/* carousel */
+.carousel{position:relative;border:1px solid var(--line);background:var(--bg-raised);}
+.carousel-track{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:thin;scrollbar-color:var(--citrine-dim) var(--bg-panel);}
+.carousel-track::-webkit-scrollbar{height:8px;}
+.carousel-track::-webkit-scrollbar-thumb{background:var(--citrine-dim);}
+.carousel-slide{flex:0 0 100%;scroll-snap-align:start;}
+.carousel-slide img{width:100%;border-bottom:1px solid var(--line);}
+.carousel-cap{padding:16px 20px 20px;}
+.carousel-cap .exhibit-tag{font-family:var(--mono);font-size:11px;color:var(--citrine);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px;}
+.carousel-cap p{margin:0;color:var(--ink-dim);font-size:15.5px;}
+.carousel-nav{display:flex;justify-content:space-between;align-items:center;padding:10px 16px;border-top:1px solid var(--line);font-family:var(--mono);font-size:11px;color:var(--ink-faint);}
+.carousel-btns button{
+  background:none;border:1px solid var(--line);color:var(--ink-dim);
+  font-family:var(--mono);font-size:14px;width:30px;height:30px;cursor:pointer;
+}
+.carousel-btns button:hover{border-color:var(--citrine);color:var(--citrine);}
+.carousel-btns{display:flex;gap:8px;}
+.dots{display:flex;gap:6px;}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--line);}
+.dot.active{background:var(--citrine);}
+
+/* confirmation callouts */
+.confirm{
+  border-left:3px solid var(--green-conf);
+  background:rgba(79,122,92,.08);
+  padding:14px 18px;
+  margin:22px 0;
+  font-size:15.5px;
+  color:var(--ink-dim);
+}
+.confirm .lbl{font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--green-conf);margin-bottom:6px;}
+
+/* pull quote */
+blockquote{
+  border-left:3px solid var(--citrine);
+  margin:26px 0;
+  padding:4px 0 4px 20px;
+  font-family:var(--serif-display);
+  font-style:italic;
+  font-size:20px;
+  color:var(--ink);
+}
+
+/* case update box */
+.update-box{
+  border:1px solid var(--citrine-dim);
+  background:rgba(207,154,47,.06);
+  padding:24px;
+}
+.update-box h3{margin-top:0;}
+.update-box ul{margin:0;padding-left:20px;color:var(--ink-dim);}
+.update-box li{margin-bottom:10px;}
+
+/* footer / cta */
+.cta{
+  border-top:1px solid var(--line);
+  border-bottom:1px solid var(--line);
+  padding:44px 0;
+  text-align:center;
+}
+.cta h2{margin-bottom:10px;}
+.cta-btns{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;margin-top:22px;}
+.btn{
+  font-family:var(--mono);
+  font-size:13px;
+  text-transform:uppercase;
+  letter-spacing:.06em;
+  text-decoration:none;
+  padding:13px 22px;
+  border:1px solid var(--citrine);
+  color:var(--citrine);
+}
+.btn:hover{background:var(--citrine);color:#0c0d0f;}
+.btn.solid{background:var(--citrine);color:#0c0d0f;}
+.btn.solid:hover{background:#e0b756;border-color:#e0b756;}
+
+footer{padding:30px 0 60px;}
+footer .wrap{border-top:1px solid var(--line);padding-top:24px;}
+footer p{font-family:var(--mono);font-size:12px;color:var(--ink-faint);margin:0 0 8px;}
+footer a{color:var(--ink-dim);}
+.disclaimer{font-size:13px;color:var(--ink-faint);max-width:70ch;}
+
+.tickers{font-family:var(--mono);font-size:11px;color:var(--ink-faint);letter-spacing:.05em;padding:10px 0;border-bottom:1px solid var(--line);overflow:hidden;white-space:nowrap;}
+.tickers span{padding:0 26px;}
+
+@media (max-width:640px){
+  .stat-rail{grid-template-columns:1fr 1fr;}
+  .stat{border-bottom:1px solid var(--line);}
+  .stat:nth-child(2n){border-right:none;}
+}
+</style>
+</head>
+<body>
+
+<a href="#main" class="skip-link">Skip to content</a>
+
+<div class="masthead">
+  <div class="wrap-wide">
+    <a href="https://earthlingofficial.com/" class="brand"><b>EARTHLING</b> OFFICIAL</a>
+    <nav>
+      <a href="https://earthlingofficial.com/find-sally-contarino.html">Find Sally</a>
+      <a href="https://earthlingofficial.com/">Home</a>
+    </nav>
+  </div>
+</div>
+
+<nav class="crumbs" aria-label="Breadcrumb">
+  <a href="https://earthlingofficial.com/">Home</a><span>/</span>
+  <a href="https://earthlingofficial.com/find-sally-contarino.html">Find Sally Contarino</a><span>/</span>
+  <span style="color:var(--ink-dim)">Reddit Exposed</span>
+</nav>
+
+<div class="tickers" aria-hidden="true">
+  <span>CASE LLV260600083886 — OPEN</span>
+  <span>SALLY GRACE CONTARINO — MISSING SINCE JUNE 20, 2026</span>
+  <span>REDDIT REMOVAL LOG — UPDATED IN REAL TIME</span>
+  <span>CASE LLV260600083886 — OPEN</span>
+  <span>SALLY GRACE CONTARINO — MISSING SINCE JUNE 20, 2026</span>
+</div>
+
+<main id="main">
+
+<header class="hero">
+  <div class="wrap">
+    <div class="case-strip">Live tracking &middot; last edited today</div>
+    <h1>A missing woman's posts keep getting <span class="redact-word">removed</span> from the site that calls itself the heart of the internet.</h1>
+    <p class="lede">This is the running record: every screenshot, every mod message, every removal notice tied to posts about Sally Grace Contarino, 26, missing from Las Vegas since June 20, 2026. Four accounts down. Hundreds of thousands of views deleted. One pattern.</p>
+    <div class="meta">
+      <span><strong>Case:</strong> LVMPD LLV260600083886</span>
+      <span><strong>Missing since:</strong> June 20, 2026</span>
+      <span><strong>Filed with:</strong> eSafety Commissioner</span>
+    </div>
+  </div>
+</header>
+
+<div class="stat-rail wrap-wide" style="padding-left:0;padding-right:0;">
+  <div class="stat"><div class="num">~350K</div><div class="lbl">Views deleted across posts</div></div>
+  <div class="stat"><div class="num">4</div><div class="lbl">Accounts suspended</div></div>
+  <div class="stat"><div class="num">1</div><div class="lbl">Mod messaged in advance, ignored</div></div>
+  <div class="stat"><div class="num">1</div><div class="lbl">Missing woman, still not home</div></div>
+</div>
+
+<!-- WHO IS SALLY -->
+<section>
+  <div class="wrap">
+    <div class="eyebrow">The Case</div>
+    <h2>Who is Sally Contarino, and why does this keep happening</h2>
+    <p>Sally Grace Contarino is a 26-year-old woman from Melbourne who travelled solo through the western United States in June 2026, with stops in Las Vegas, Mt. Charleston and a planned leg through Southern California. She last messaged a friend on June 20 to say she was heading out for a hike near Lone Mountain. She never boarded her return flight to Melbourne the next day, and nobody has confirmed hearing from her since.</p>
+    <p>Police footage places her at a Smith's Marketplace on West Skye Canyon Drive at 1:02pm that Saturday, buying supplies. Days earlier, on June 17, a stranger with a headset camera approached her outside a 7-Eleven on Boulder Highway and asked for her number on video — footage that later became one of the most-watched pieces of the public record around her disappearance. Her sister Amy has said the family fears foul play. Las Vegas Metro has called her an endangered missing adult and continues ground and K9 searches.</p>
+    <p>One detail the family has specifically asked the public to watch for: a citrine pendant on a silver chain, designed by Bali-based jeweller John Hardy, that Sally was known to wear often and that wasn't found among her belongings. It's the kind of small, specific, findable detail that missing persons cases live or die on — the kind of detail that depends entirely on strangers seeing it and remembering.</p>
+    <p class="dim">Full details, CCTV timeline and how to report a sighting: <a href="https://earthlingofficial.com/find-sally-contarino.html">earthlingofficial.com/find-sally-contarino.html</a></p>
+  </div>
+</section>
+
+<!-- THE PATTERN -->
+<section class="alt">
+  <div class="wrap">
+    <div class="eyebrow">The Pattern</div>
+    <h2>Three attempts. Three removals. Same result.</h2>
+    <p class="dim">This isn't one bad night on Reddit. It's a repeating sequence, and it repeated again today.</p>
+
+    <div class="timeline">
+      <div class="tl-item">
+        <div class="tl-tag">Attempt 01</div>
+        <h4>Bullied, mass-reported, account gone</h4>
+        <p>A post about Sally picked up traction — hundreds of upvotes, tens of thousands of views. Then the pile-on started: mockery in the comments, a wave of reports, and the account was gone. No warning, no explanation. Best estimate is automated moderation acting on the malicious reports rather than any actual violation. Roughly 200,000 views on Sally-related content vanished with it.</p>
+      </div>
+      <div class="tl-item">
+        <div class="tl-tag">Attempt 02</div>
+        <h4>DM'd the mod team first. Silence. Then removal anyway.</h4>
+        <p>Learning from round one, the next post went out to r/MissingPersons with the moderators messaged in advance, in good faith, before posting. No reply came back. The post ran to 114 upvotes and dozens of comments before a mod removed it, told the community the title was "simply not true," and locked it. A separate comment thread confirms the same account posted here again — deleted, suspended, gone.</p>
+      </div>
+      <div class="tl-item">
+        <div class="tl-tag">Attempt 03 — Today</div>
+        <h4>A handful of Sally's posts got through. Then a sweep took all of them at once.</h4>
+        <p>Over the past couple of weeks, a few posts about Sally had finally been staying up. Today, after one more post went out, every one of them — old and new — was removed within the same window, and the account carrying them was suspended again. This page is being written in that window.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- EXHIBIT: the mod DM -->
+<section>
+  <div class="wrap-wide">
+    <div class="eyebrow">Exhibit A — The Leaked DM</div>
+    <h2>What the moderator actually said, and what he told the public</h2>
+    <p class="wrap" style="padding:0;max-width:900px;">Reddit's AutoMod summarised the posts in a moderator DM as "aggressive, conspiratorial rhetoric" and "harassment" targeting Reddit's admins. What the post actually said was closer to: <em>Reddit's automated system is infringing on a missing persons case.</em> That DM was then accidentally surfaced to the public — the same mod who publicly criticised the poster for "having a go" at the moderation team had tagged this exact private message into a public thread.</p>
+
+    <div class="exhibit-grid">
+      <div class="exhibit">
+        <div class="exhibit-head"><span>Exhibit A.1</span><span class="tag">Mod DM · AutoMod summary</span></div>
+        <img src="redmod.jpg" alt="AutoMod-generated summary shown to a Reddit moderator, describing posts about Sally Contarino as targeting Reddit administration with 'aggressive, conspiratorial rhetoric' and accusing them of harassment.">
+        <div class="exhibit-cap"><p>The internal summary a mod was shown before publicly criticising the same posts he'd just been primed against. <strong>The posts themselves never mentioned conspiracy</strong> — they said the automated removal system was interfering with a missing persons case.</p></div>
+      </div>
+      <div class="exhibit">
+        <div class="exhibit-head"><span>Exhibit A.2</span><span class="tag">Mod removal notice</span></div>
+        <img src="salokremove.jpg" data-redactions="9,1,37,4;9,44.4,28,4;13,64.2,20,4" alt="Missing Persons moderator team removing a post about Sally Contarino, stating the title 'mentions things that are simply not true' and inviting the poster to resubmit with a different link.">
+        <div class="exhibit-cap"><p>The mod who never answered the advance DM, now publicly ruling the post untrue and locking the thread — while inviting a resubmission with a "better title."</p></div>
+      </div>
+    </div>
+
+    <div class="confirm">
+      <div class="lbl">Independently confirmed</div>
+      <p>A commenter in that same thread — with no connection to the original poster — replied to confirm they'd separately had a comment on Sally's case auto-removed, unprompted, calling it "weird" that a case tied to a social media creator would get this kind of treatment instead of the usual traction a case like this attracts.</p>
+    </div>
+
+    <div class="exhibit">
+      <div class="exhibit-head"><span>Exhibit A.3</span><span class="tag">Community reaction · r/MissingPersons</span></div>
+      <img src="salproof.jpg" data-redactions="20,2,23,6" alt="A Reddit user confirming that a comment about Sally Contarino was automatically removed, describing the removal as unusually fast for a case connected to a social media creator.">
+      <div class="exhibit-cap"><p>A separate user's own comment on Sally's case got auto-removed within the same thread — confirmation that this wasn't isolated to one account.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- EXHIBIT: r/missingpersons removal -->
+<section class="alt">
+  <div class="wrap-wide">
+    <div class="eyebrow">Exhibit B — The Biggest Missing Persons Sub, Locked</div>
+    <h2>114 upvotes, dozens of comments, gone in one line</h2>
+    <p class="wrap" style="padding:0;max-width:900px;">This was posted to one of Reddit's largest missing-persons communities. It gathered real engagement from people who wanted to help. Then a human moderator — not an automated filter this time — removed it outright.</p>
+    <div class="exhibit-grid">
+      <div class="exhibit">
+        <div class="exhibit-head"><span>Exhibit B.1</span><span class="tag">r/MissingPersons · before removal</span></div>
+        <img src="salmp.jpg" data-redactions="15,16.5,20,7" alt="A post about Sally Contarino in r/MissingPersons with 114 upvotes and dozens of comments, before it was removed by a human moderator.">
+        <div class="exhibit-cap"><p>114 upvotes, 31 comments — real reach, real people engaging on a missing woman's case, in the community built for exactly this.</p></div>
+      </div>
+      <div class="exhibit">
+        <div class="exhibit-head"><span>Exhibit B.2</span><span class="tag">Removal &amp; lock notice</span></div>
+        <img src="saldone.jpg" data-redactions="13,3.5,27,6;13,84,25,7" alt="A Reddit user commenting on the removed post: 'And just like that, the story is done, and she is gone. It's bonkers how many people vanish into thin air every year, never to be found.'">
+        <div class="exhibit-cap"><p>A stranger's read on Sally's removal, and it's hard to argue with: the story just ends, mid-search, because the platform decided it should.</p></div>
+      </div>
+    </div>
+
+    <div class="exhibit" style="max-width:900px;margin:0 auto;">
+      <div class="exhibit-head"><span>Exhibit B.3</span><span class="tag">A stranger, apologising</span></div>
+      <img src="salsorryrem.jpg" data-redactions="11,53,31,6" alt="A Reddit user commenting under a Sally Contarino post that they are sorry the posts keep getting removed, saying Sally is important and asking if the poster would feel comfortable posting again.">
+      <div class="exhibit-cap"><p>Someone with no stake in this beyond wanting Sally found, apologising on Reddit's behalf and asking if it was even safe to try posting again. It wasn't hesitation without reason — the very next attempt was removed too.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- EXHIBIT: hypocrisy - automated tweet / bikini -->
+<section>
+  <div class="wrap-wide">
+    <div class="eyebrow">Exhibit C — What Gets Promoted vs. What Gets Buried</div>
+    <h2>"The more automated the internet gets, the more we need people to be people"</h2>
+    <p class="wrap" style="padding:0;max-width:900px;">That's a direct line from Reddit's own account, promoting its CEO's TED talk on building "a more human internet." It arrived in the same window that Reddit's automated system was blacklisting a missing persons page and removing posts about a real missing woman.</p>
+
+    <div class="exhibit-grid">
+      <div class="exhibit">
+        <div class="exhibit-head"><span>Exhibit C.1</span><span class="tag">@Reddit on X</span></div>
+        <img src="salautomated.jpg" alt="Official Reddit account post on X promoting CEO Steve Huffman's TED talk about needing more human spaces online, with a reply from Earthling Official noting Reddit's automated system had blacklisted a missing persons website.">
+        <div class="exhibit-cap"><p>Reddit's own reply-guy energy about "human spaces online," directly under a thread where automation had already made a missing woman's case harder to find.</p></div>
+      </div>
+      <div class="exhibit">
+        <div class="exhibit-head"><span>Exhibit C.2</span><span class="tag">Reddit's editorial priorities</span></div>
+        <img src="salkini.jpg" alt="A Reddit-produced Instagram post captioned 'The girls have the recs,' featuring an interview with a woman in a bikini, alongside a comment from Earthling Official noting Sally Contarino is still missing while Reddit legal has them blocked.">
+        <div class="exhibit-cap"><p>While a missing persons page sat blacklisted and Reddit's legal team stayed unresponsive, Reddit's own content arm was out producing lifestyle interviews. Not a crime — just a clear picture of where the platform's attention actually goes.</p></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- EXHIBIT: community toxicity carousel -->
+<section class="alt">
+  <div class="wrap">
+    <div class="eyebrow">Exhibit D — What Survives the Downvote</div>
+    <h2>Cynicism gets upvoted. "Let's find Sally" doesn't.</h2>
+    <p>Reddit's voting system is supposed to surface what the community values. Here's what it actually did with a live missing persons case:</p>
+  </div>
+
+    <div class="wrap-wide">
+    <div class="exhibit-grid">
+      <div class="exhibit">
+        <div class="exhibit-head"><span>D.1 — Asking the question: +16. Answering it: −7.</span><span class="tag">Exhibit D</span></div>
+        <img src="saldownvote.jpg" data-redactions="13,3,31,6;19,45,24,6" alt="A Reddit user asking 'What is an earthling official?' receives 16 upvotes; the original poster's reply explaining it's their website with a page for Sally receives -7 downvotes.">
+        <div class="exhibit-cap"><p>A stranger asking what Earthling Official even is picks up 16 upvotes. The reply explaining it's a missing persons page for Sally — with an invitation to visit and share it — gets buried at −7.</p></div>
+      </div>
+      <div class="exhibit">
+        <div class="exhibit-head"><span>D.2 — Calling it "weird" outperforms explaining it</span><span class="tag">Exhibit D</span></div>
+        <img src="salnotweird.jpg" data-redactions="9,1.5,24,6;14,22.5,32,6;14,32,24,6;14,44.5,24,6" alt="A Reddit comment calling the poster 'weird' is upvoted, while the poster's reply explaining it isn't weird to help find a missing person receives fewer upvotes.">
+        <div class="exhibit-cap"><p>A comment calling the poster "weird" gets the upvotes. The reply pointing out that making a page for a missing woman isn't the strange part gets a fraction of the traction — worth sitting with, in a community built around finding missing people.</p></div>
+      </div>
+      <div class="exhibit">
+        <div class="exhibit-head"><span>D.3 — A subreddit made just for Sally, and nothing survives</span><span class="tag">Exhibit D</span></div>
+        <img src="salgroup.png" data-redactions="11,49,32,8" alt="A Reddit community created specifically for Sally Contarino, showing no posts other than one from Earthling Official, which is marked as removed by Reddit's filters.">
+        <div class="exhibit-cap"><p>Someone cared enough to start r/SallyContarino. The only post that ever ran in it was a Sally awareness link — and it's marked removed by Reddit's filters.</p></div>
+      </div>
+      <div class="exhibit">
+        <div class="exhibit-head"><span>D.4 — Google still indexes what Reddit deleted</span><span class="tag">Exhibit D</span></div>
+        <img src="salgoogle.png" alt="A Google search for 'sally contarino reddit' shows a deleted Reddit thread ranking as the second result, alongside another surviving thread noting posts kept getting removed.">
+        <div class="exhibit-cap"><p>Search "sally contarino reddit" and a deleted thread still ranks near the top — Google's cache outlasting Reddit's own moderation. The surviving thread underneath it opens with a stranger apologising that the posts keep vanishing.</p></div>
+      </div>
+      <div class="exhibit">
+        <div class="exhibit-head"><span>D.5 — 13,000 views, then a "server error"</span><span class="tag">Exhibit D</span></div>
+        <img src="salserver.jpg" alt="A Reddit 'server error' message displayed over a Sally Contarino post that had 13,000 views, 43 upvotes and 19 comments before the account was suspended.">
+        <div class="exhibit-cap"><p>Reddit's own error message covering a post that had already reached 13K views, 43 upvotes and 19 comments — the account behind it suspended in the same stroke.</p></div>
+      </div>
+      <div class="exhibit">
+        <div class="exhibit-head"><span>D.6 — Taken to the eSafety Commissioner</span><span class="tag">Exhibit D</span></div>
+        <img src="salredpen.jpg" alt="A post from Earthling Official on X showing Sally Contarino's citrine pendant and a screenshot of a deleted Reddit post, tagging the eSafety Commissioner and referencing a report about explicit content with no age gate.">
+        <div class="exhibit-cap"><p>The pendant appeal and the removal notice, side by side, filed publicly and formally — alongside a separate concern about Reddit's handling of explicit content with no age verification.</p></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- EXHIBIT F: not an isolated account -->
+<section>
+  <div class="wrap-wide">
+    <div class="eyebrow">Exhibit F — It Wasn't Just One Account</div>
+    <h2>A completely unrelated post about Sally. No link to this site. Removed anyway.</h2>
+    <p class="wrap" style="padding:0;max-width:900px;">This wasn't a different attempt on the same account, and it didn't carry a link back here. A separate Reddit user posted their own question about Sally's case in r/MissingPersons. It picked up real engagement — 27 upvotes, 18 comments, people asking why the case wasn't getting more attention. Then it was removed by Reddit's filters, same as everything else.</p>
+
+    <div class="exhibit-grid">
+      <div class="exhibit">
+        <div class="exhibit-head"><span>Exhibit F.1</span><span class="tag">r/MissingPersons · unrelated account</span></div>
+        <img src="littleinterest.png" data-redactions="27,4.5,28,6;22,35,26,6;22,78,32,6" alt="A separate Reddit user's post asking what happened to Sally Contarino, with 27 upvotes and 18 comments, removed by Reddit's filters, alongside a comment asking why the case has so little attention.">
+        <div class="exhibit-cap"><p>Someone else's post, someone else's account, no earthlingofficial link anywhere in it — removed all the same. Underneath it, a stranger is asking why a missing woman's case isn't getting more coverage. The answer is sitting right above their comment.</p></div>
+      </div>
+    </div>
+
+    <div class="confirm">
+      <div class="lbl">Then the account that made this page tried once more</div>
+      <p>Weeks after the first suspension, another attempt to share Sally's case — this time with a title naming the pattern outright. It didn't survive either.</p>
+    </div>
+
+    <div class="exhibit" style="max-width:640px;">
+      <div class="exhibit-head"><span>Exhibit F.2</span><span class="tag">"The story AI tried to silence"</span></div>
+      <img src="redditflatface.png" alt="A post titled 'Sally Grace Contarino Missing Las Vegas. The story AI tried to silence' displaying a server error and marked as removed by Reddit's filters.">
+      <div class="exhibit-cap"><p>Named the pattern in the title. Got removed anyway, within the same window — server error on top of it.</p></div>
+    </div>
+
+    <div class="confirm">
+      <div class="lbl">What actually happened, in order</div>
+      <p>The account behind this page was over two years old and had barely been used before Sally went missing. It posted about her case and about an unrelated vegan advocacy project in the appropriate subreddits for each. Shortly after, replies turned personal — pile-on comments telling the poster to "take your meds" and similar — and not long after that, the account was suspended outright. Reddit then sent unsolicited mental-health check-in emails, triggered by other users reporting the account, which only added to the pile-on rather than helping. A new account was created, used to explain — carefully, and without the original link — that the case still needed attention and pointing people to this site instead. Moderators were messaged in advance in good faith and never replied, while the same account was watched getting downvoted and blamed in public. Since then, most attempts to share Sally's case — including posts with no connection to this site's link, and attempts routed through a VPN — have been removed or resulted in another suspension. The pattern is consistent enough to describe. The exact reason a specific link or account gets targeted this heavily is not something that can be proven from the outside, so this page states what happened and leaves the "why" for the reader to weigh against the timeline above.</p>
+    </div>
+  </div>
+</section>
+
+<!-- REAL PEOPLE -->
+<section class="alt">
+  <div class="wrap">
+    <div class="eyebrow">Beyond the Suppression</div>
+    <h2>The people who showed up anyway</h2>
+    <p>For every removal, there were strangers who read Sally's case and responded like it mattered — because it does.</p>
+  </div>
+
+  <div class="wrap-wide">
+    <div class="exhibit-grid">
+      <div class="exhibit">
+        <div class="exhibit-head"><span>A local mother, remembering</span><span class="tag">r/MissingPersons</span></div>
+        <img src="schoolfriend.png" data-redactions="21,22,16,6;14,53,21,6;14,72,13,6" alt="Reddit comments from local users discussing Sally Contarino's last known movements, including one from the mother of one of Sally's primary school friends offering condolences to her family.">
+        <div class="exhibit-cap"><p>The mother of one of Sally's primary school friends, writing to Sally's family directly: not a day goes by they aren't thought of.</p></div>
+      </div>
+      <div class="exhibit">
+        <div class="exhibit-head"><span>A message shared with the family's blessing</span><span class="tag">r/MissingPersons</span></div>
+        <img src="blessing.png" data-redactions="23,1,22,5;26.5,66.5,22,6;27.5,80.5,23,6" alt="A Reddit comment sharing a message on behalf of Sally Contarino's family, thanking everyone who has searched, shared her story, or refused to let her be forgotten.">
+        <div class="exhibit-cap"><p>Posted with Lucy's blessing — a direct thank-you from Sally's family to everyone still searching, still sharing, still refusing to let her be forgotten.</p></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- WIDER MEDIA SUPPRESSION -->
+<section>
+  <div class="wrap">
+    <div class="eyebrow">Beyond Reddit</div>
+    <h2>Even the news coverage has a paywall on it</h2>
+    <p>Reddit isn't the only place friction shows up. Coverage of Sally's case from major outlets — including the Herald Sun — sits behind a paywall, same as it has for other missing persons cases covered by outlets like the Daily Mail. "The pattern isn't a conspiracy in the cinematic sense. It's simpler and duller than that: attention is worth money, moderation is automated at scale, and a missing person's case doesn't get special-cased through either system just because a family is waiting," said an AI chatbot. Perhaps missing persons cases should get special treatment. What we are left with is territorial mods controlling the narrative, a 3-week radio silence and two brand new paywalled articles.</p>
+    <div class="exhibit" style="max-width:640px;">
+      <div class="exhibit-head"><span>Exhibit E</span><span class="tag">Herald Sun · paywalled coverage</span></div>
+      <img src="salpay.jpg" alt="A Herald Sun article about Sally Contarino's case displayed behind a paywall.">
+      <div class="exhibit-cap"><p>Public interest coverage of an active missing persons case, locked behind a subscription.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- CASE UPDATE -->
+<section class="alt">
+  <div class="wrap">
+    <div class="eyebrow">Real-Time Update</div>
+    <h2>Where the actual case stands right now</h2>
+    <div class="update-box">
+      <h3>As of this week</h3>
+      <ul>
+        <li>Sally Contarino remains missing more than seven weeks after she was last confirmed seen, on CCTV, near a Las Vegas supermarket on June 20.</li>
+        <li>Her sister Amy has spoken publicly from Melbourne, saying the family now fears foul play was involved and that they simply want her home.</li>
+        <li>Las Vegas Metro has classified her as an endangered missing adult; ground and K9 search units have continued operating in the area around her last known movements.</li>
+        <li>The family's clearest lead remains the citrine pendant on a silver chain, a John Hardy design, that Sally wore often and that was not found with the belongings left at her accommodation.</li>
+        <li>The video recorded outside a Boulder Highway convenience store on June 17 — a stranger approaching Sally on camera to ask for her number — remains one of the last public documents of her before she vanished. Police have said the man who filmed it cooperated and handed the footage over.</li>
+      </ul>
+    </div>
+    <p style="margin-top:22px;">If you were in Las Vegas, Mt. Charleston, or Southern California in June 2026 and have any information — however small it seems — contact LVMPD Missing Persons directly at <strong>(702) 828-2907</strong>, or email <strong>missingpersons@lvmpd.com</strong>. Full timeline, CCTV stills and the pendant photo: <a href="https://earthlingofficial.com/find-sally-contarino.html">earthlingofficial.com/find-sally-contarino.html</a>.</p>
+  </div>
+</section>
+
+<div class="wrap">
+  <blockquote>"Why are you bullying me for making a website for a missing woman? That's strange behaviour." — reply left on Reddit, minutes before the account was suspended again.</blockquote>
+</div>
+
+<!-- CTA -->
+<div class="cta">
+  <div class="wrap">
+    <h2>This page stays up because it isn't hosted on Reddit</h2>
+    <p class="dim">Every screenshot here is dated and kept as it was posted. If a new removal happens, it gets added — not edited over.</p>
+    <div class="cta-btns">
+      <a class="btn solid" href="https://earthlingofficial.com/find-sally-contarino.html">Go to the Sally Contarino case page</a>
+      <a class="btn" href="https://earthlingofficial.com/">Visit Earthling Official</a>
+    </div>
+  </div>
+</div>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    <p>Published by Earthling Official &middot; earthlingofficial.com &middot; Last updated: <time datetime="2026-08-09">August 9, 2026</time></p>
+    <p class="disclaimer">This page documents the poster's own experience and screenshots relating to moderation on Reddit. Screenshots are reproduced for commentary and documentation of a matter of public interest. Reddit and its moderators have not been asked to comment prior to publication; if that changes, this page will be updated to reflect it. Sally Grace Contarino's case remains an active investigation with the Las Vegas Metropolitan Police Department. This page is not intended to target, harass, or encourage harassment of any individual, moderator, or account named or shown here — please don't brigade, review-bomb, or send abuse to anyone pictured. The goal is a documented, missing person found, nothing else.</p>
+  </div>
+</footer>
+
+<script>
+  (() => {
+    const addUsernameRedactions = () => {
+      document.querySelectorAll('img[data-redactions]').forEach((image) => {
+        if (image.parentElement?.classList.contains('censor-frame')) return;
+
+        const frame = document.createElement('div');
+        frame.className = 'censor-frame';
+        image.parentNode.insertBefore(frame, image);
+        frame.appendChild(image);
+
+        image.dataset.redactions.split(';').forEach((coordinates) => {
+          const values = coordinates.split(',').map(Number);
+          if (values.length !== 4 || values.some((value) => !Number.isFinite(value))) return;
+
+          const [left, top, width, height] = values;
+          const redaction = document.createElement('span');
+          redaction.className = 'username-redaction';
+          redaction.setAttribute('aria-hidden', 'true');
+          redaction.style.left = `${left}%`;
+          redaction.style.top = `${top}%`;
+          redaction.style.width = `${width}%`;
+          redaction.style.height = `${height}%`;
+          frame.appendChild(redaction);
+        });
+      });
+    };
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', addUsernameRedactions);
+    } else {
+      addUsernameRedactions();
+    }
+  })();
+</script>
+
+</body>
+</html>
