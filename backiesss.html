@@ -748,16 +748,15 @@ const BUSH_URL_1K = 'https://files.catbox.moe/iu7jws.glb';
 let bushTemplate        = null;
 let bushInstance        = null; // one shared live valley instance; never duplicate per level
 let bushPendingLevels   = []; // active valley level waiting for the preload
-// Rise range as a FRACTION of the bush's own measured height (set once it
-// loads, see loadBushFloor) instead of a guessed absolute number — so it
+// Rise is measured as a FRACTION of the bush's own measured height (set once
+// it loads, see loadBushFloor) instead of a guessed absolute number — so it
 // always scales correctly no matter how tall the actual asset turns out to be.
 // -0.9 = 90% buried (small tip visible) when the valley first appears.
-// The lower end profile intentionally leaves part of the root mass buried so
-// it reads as a valley below the building instead of cutting through it.
+// This is intentionally open-ended for now: the hallway keeps sinking through
+// the forest until the final stopping point is chosen after an in-game look.
 const BUSH_VISIBLE_START_LEVEL = 75;
 const BUSH_RISE_START_FRAC = -0.9;
-const BUSH_RISE_END_FRAC   = -0.52;
-const BUSH_FULL_LEVEL      = 105; // keep the valley shelf low while the player enters it
+const BUSH_RISE_PER_LEVEL_FRAC = 0.018;
 let bushHeight = 1; // real value set after load; 1 is just a safe fallback
 // Pulls the bush footprint in toward center on X/Z only (Y untouched) so less
 // of it sits outside the building's walls where it's never seen. 1 = no
@@ -771,11 +770,11 @@ const BUSH_NUDGE_X      = -27.20;
 const BUSH_NUDGE_Z      = 4.12;
 
 function bushOffsetForLevel(levelIndex){
-  const revealSpan = Math.max(1, BUSH_FULL_LEVEL - BUSH_VISIBLE_START_LEVEL);
-  const t = Math.max(0, Math.min(1,
-    (levelIndex - BUSH_VISIBLE_START_LEVEL) / revealSpan
-  ));
-  const frac = BUSH_RISE_START_FRAC + (BUSH_RISE_END_FRAC - BUSH_RISE_START_FRAC) * t;
+  // Do not clamp this to an artificial "full" level. The forest should keep
+  // moving through the hallway after level 90/100 rather than freezing halfway
+  // through the reveal. The single rate is deliberately easy to tune later.
+  const levelsDown = Math.max(0, levelIndex - BUSH_VISIBLE_START_LEVEL);
+  const frac = BUSH_RISE_START_FRAC + levelsDown * BUSH_RISE_PER_LEVEL_FRAC;
   return frac * bushHeight;
 }
 
@@ -1428,7 +1427,9 @@ const CHAT_EXPANSION_USERS = [
   "@piano_request", "@momo_counsel", "@door_dash_void", "@dolphin_gifter",
   "@gifted_dean", "@mods_plz", "@really_ok", "@phil_again", "@w_here",
   "@win_sophistry", "@president_momo", "@haxan_hallway", "@rumble_signal",
-  "@yellow_wallpaper",
+  "@yellow_wallpaper", "@freefalling", "@antenna_unc", "@kexp_listener",
+  "@soma_signal", "@radio_listener", "@plant_floor", "@valley_watch",
+  "@scanner_sideeye", "@dean_paradox", "@quietly_conflicted", "@valley_signal",
 ];
 
 const CHAT_EXPANSION_LINES = [
@@ -1571,9 +1572,40 @@ const CHAT_EXPANSION_LINES = [
   ["@dean_watch", "is that Dean in the spotlight"],
   ["@gifted_dean", "guys check my new post!"],
   ["@yellow_wallpaper", "thats just weird"],
+  ["@antenna_unc", "what even is oldie antenna. is that a station or did the wallpaper invent a phrase."],
+  ["@antenna_unc", "lol unc antenna, the radio has officially become somebody's dad's car."],
+  ["@kexp_listener", "KEXP energy detected. the scanner says emergency, the song says stay weird."],
+  ["@soma_signal", "SomaFM mixing with the Backrooms and vegan chat is somehow the most coherent station here."],
+  ["@soma_signal", "Groove Salad is playing while the hallway sinks into a forest. tasteful, terrifying, perfect."],
+  ["@soma_signal", "Drone Zone is less a station and more the sound of Dean avoiding the central question."],
+  ["@soma_signal", "Secret Agent is on and the scanner is acting like it knows who moved the plants."],
+  ["@plant_floor", "the forest is finally coming through. please do not call the plants decorative, chat."],
+  ["@plant_floor", "if the hallway keeps sinking, the roots are going to become the actual moderators."],
+  ["@valley_watch", "level 90 and the valley is still not all the way in. keep going, Earthling."],
+  ["@valley_watch", "the plants are showing through bit by bit. this is the best kind of environmental glitch."],
+  ["@valley_watch", "do not stop the descent yet. the HD forest has not finished entering the room."],
+  ["@scanner_sideeye", "woah, did the scanner just say murder, or did it say the hallway is murdering the floor plan."],
+  ["@scanner_sideeye", "scanner guy said 'inside' again. very helpful, very normal, definitely not a forest underneath us."],
+  ["@scanner_sideeye", "the scanner is mixing crime-show tension with vegan facts. chat has stopped pretending it can multitask."],
+  ["@dean_paradox", "Dean asks whether taste preference justifies the system, chat asks whether he heard the plants moving."],
+  ["@dean_paradox", "the smirk clip question is a deflection from the animals. chat, answer the moral question before the smoke question."],
+  ["@dean_paradox", "Dean says things are getting real and threatens bans. mods: keep it fictional, keep it civil, keep walking."],
+  ["@quietly_conflicted", "I came in unsure about veganism and now I am watching a forest enter a hallway. not sure what to do with that."],
+  ["@quietly_conflicted", "the vegan argument is loud, but the animal footage is quieter and somehow harder to ignore."],
+  ["@quietly_conflicted", "I still have questions, but 'taste preference' is not feeling like a complete answer anymore."],
+  ["@dean_chat", "the valley is entering the hallway and Dean is still trying to win on a technicality. priorities."],
+  ["@plantbasedpanic", "the forest has better evidence than the debate and it is literally just growing through the room."],
+  ["@floor_10_mod", "chat reminder: scanner sounds in this game are fictional atmosphere, not reports about real people."],
+  ["@floor_10_mod", "do not post personal information when the chat jokes about a doxxing plot. report it and keep the mystery in-game."],
+  ["@dean_defender", "Dean should give up trying to make the whole chat vegan and start by answering one question honestly."],
+  ["@dean_watch", "the plants came through before Dean conceded. statistically, that feels on brand."],
+  ["@momo_counsel", "Momo has inspected the valley and confirms: cats are carnivores, plants are not a cat diet, chat is still confused."],
+  ["@yellow_wallpaper", "the wall is yellow, the valley is green, and the floor is apparently optional now."],
+  ["@haxan_hallway", "Haxan hallway, SomaFM, scanner crimes, and plants through the floor. no one explain this, just keep it moving."],
+  ["@valley_signal", "the valley signal is getting stronger every level. do not mistake the halfway reveal for the destination."],
 ];
 
-// Exactly 500 additional entries, distributed across the 40 new handles.
+// Exactly 500 additional entries, distributed across the 50 new handles.
 // The deterministic rotation keeps the experience varied without adding a
 // second timing system or making any comment more frequent than another.
 const GENERATED_CHAT_LINES = Array.from({ length: 500 }, (_, index) => {
@@ -2261,6 +2293,36 @@ const RADIO_CHAT_LINES = {
     ["@plantbasedpanic", "'Thriller' is playing in a horror game about a horror game. we've reached full recursion."],
     ["@radio_leak", "this is thriller, thriller night, and no one's gonna save Dean from the fright of hazmat guy's speed."],
     ["@dean_defender", "'Dancing Queen' just hit. young, sweet, only six months old, said no ABBA lyric but also said every hatchery record."],
+    ["@freefalling", "Free Fallin' is on and the hallway is falling with it. free falliiiing!"],
+    ["@radio_listener", "'(Everything I Do) I Do It for You' is playing right when Dean refuses to concede."],
+    ["@radio_listener", "'Jump' is a funny choice when the building has already made falling the main mechanic."],
+    ["@radio_listener", "'Never Ending Story' is the only accurate title for this hallway."],
+    ["@radio_listener", "'My Girl' just made the valley reveal suspiciously wholesome."],
+    ["@radio_listener", "'It's a Sin' came on after that argument about taste and responsibility. perfect timing."],
+    ["@antenna_unc", "what even is oldie antenna. the station ID sounds like it was found in an attic."],
+    ["@antenna_unc", "lol unc antenna, somebody's dad is controlling the Backrooms playlist."],
+    ["@kexp_listener", "KEXP is playing something cool and obscure and chat is already asking for the title."],
+    ["@soma_signal", "SomaFM is mixing with the Backrooms and vegan themes so well I am suspicious of the playlist."],
+    ["@soma_signal", "Groove Salad while the plants break through the floor is honestly a perfect bit."],
+    ["@soma_signal", "Drone Zone sounds like the hallway before it admits the valley is underneath us."],
+    ["@soma_signal", "Secret Agent station, scanner noise, Dean arguing. the building has a media strategy."],
+    ["@radio_listener", "'Girls Just Want to Have Fun' is on while the plants just want to come through."],
+    ["@radio_listener", "'Give a Little Bit' is playing while the hallway gives the valley a little bit more every level."],
+    ["@radio_listener", "'Heaven Is a Place on Earth' came on right as the forest took over the room."],
+    ["@radio_listener", "'Baby Give It Up' is on. Dean should give up trying to make chat forget the animal question."],
+    ["@radio_listener", "'Rule the World' is playing and the plants are already winning the level."],
+    ["@valley_watch", "level 90 and the forest still has more to reveal. do not stop the descent."],
+    ["@valley_watch", "the HD valley is finally becoming the room instead of just peeking through it."],
+    ["@plant_floor", "plants through the hallway floor is the first environmental effect that actually feels alive."],
+    ["@plant_floor", "the roots are coming in slowly. chat, let the scene breathe before asking for another fall."],
+    ["@scanner_sideeye", "woah did the scanner say murder or did it say the floor plan is being murdered."],
+    ["@scanner_sideeye", "scanner guy said 'inside' again. I am not going inside anything else."],
+    ["@dean_paradox", "the smirk question is not the same question as whether taste justifies exploitation. chat is noticing the pivot."],
+    ["@dean_paradox", "Dean says things are getting real and the forest immediately gets more real than the argument."],
+    ["@quietly_conflicted", "I am still unsure, but the animals are not a philosophical abstraction just because chat is loud."],
+    ["@quietly_conflicted", "I came for the radio and accidentally started thinking about dairy."],
+    ["@floor_10_mod", "scanner audio is fictional atmosphere. do not turn in-game mystery into claims about real people."],
+    ["@floor_10_mod", "no personal information in chat, even as a joke. keep the doxxing bit fictional and report it."],
   ],
   ambient: [
     ["@night_terror_unit", "this is either ambient music or someone breathing behind the wallpaper."],
