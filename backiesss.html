@@ -129,6 +129,21 @@
     transition: opacity .35s ease;
   }
 
+  /* Fall cover: blur the world only while the camera is dropping. This is
+     deliberately a short-lived compositor effect, not a permanent scene
+     post-process, so it cannot add a steady-state frame cost. */
+  #fall-veil {
+    position: fixed; inset: 0; display: none; opacity: 0;
+    pointer-events: none; z-index: 4;
+    background:
+      radial-gradient(ellipse at 50% 48%, rgba(6,4,2,.12), rgba(2,2,2,.54) 82%),
+      linear-gradient(180deg, rgba(0,0,0,.34), rgba(26,18,8,.12) 45%, rgba(0,0,0,.48));
+    -webkit-backdrop-filter: blur(7px) saturate(.48);
+    backdrop-filter: blur(7px) saturate(.48);
+    transition: opacity .16s ease;
+  }
+  #fall-veil.active { display: block; opacity: 1; }
+
   /* ── BROADCAST SYSTEM ── */
   #player-taunt {
     position: fixed; top: 52%; left: 50%;
@@ -198,9 +213,14 @@
   }
 
   #fake-chat {
-    position: fixed; left: 20px; bottom: 48px;
+    position: fixed;
+    left: max(12px, env(safe-area-inset-left));
+    right: auto;
+    bottom: max(48px, env(safe-area-inset-bottom));
     width: min(440px, 38vw);
-    height: 190px;
+    max-width: calc(100vw - 40px);
+    height: 220px;
+    max-height: calc(100vh - 96px);
     padding: 10px 13px;
     border: 1px solid rgba(200,185,122,0.28);
     background: linear-gradient(180deg, rgba(3,3,2,0.12), rgba(3,3,2,0.78));
@@ -210,8 +230,6 @@
     pointer-events: none; z-index: 6;
     display: none;
     text-shadow: 0 0 7px rgba(0,0,0,0.95);
-    mask-image: linear-gradient(to bottom, transparent 0%, black 14%, black 100%);
-    -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 14%, black 100%);
     transition: opacity 1.6s ease;
   }
   #fake-chat .chat-header {
@@ -248,7 +266,16 @@
     #ag-fact-feed .fact-tag { font-size: 9px; margin-bottom: 4px; }
     #ag-fact-feed .fact-copy { font-size: 11px; line-height: 1.5; white-space: pre-line; }
     #ag-fact-feed .fact-note { font-size: 8px; }
-    #fake-chat { left: 10px; bottom: max(112px, env(safe-area-inset-bottom)); width: min(72vw, 300px); height: 118px; padding: 7px 9px; }
+    #fake-chat {
+      left: max(10px, env(safe-area-inset-left));
+      right: max(10px, env(safe-area-inset-right));
+      bottom: calc(max(112px, env(safe-area-inset-bottom)) + 8px);
+      width: auto;
+      max-width: none;
+      height: min(160px, max(96px, calc(100vh - 190px)));
+      max-height: 160px;
+      padding: 7px 9px;
+    }
     #fake-chat .chat-header { font-size: 9px; }
     #fake-chat .chat-line { font-size: 9px; margin: 3px 0; line-height: 1.25; }
     #radio-hud { display: none !important; }
@@ -442,6 +469,7 @@
 <div id="hint">WASD &nbsp;·&nbsp; SHIFT &nbsp;·&nbsp; CLICK TV &nbsp;·&nbsp; ~ COORDS</div>
 <div id="ambient-text"></div>
 <div id="blood-veil"></div>
+<div id="fall-veil"></div>
 <!-- Fall landing message -->
 <div id="fall-msg"></div>
 <div id="death-screen">
@@ -707,32 +735,46 @@ let level30StartTime = 0;
 const levelGroups   = [];
 let glbTemplate     = null;
 
-// ── FOREST-FLOOR BUSH (grows through the floor with depth) ─────────────────
+// ── FOREST-FLOOR BUSH (late valley reveal) ─────────────────────────────────
+// The asset is preloaded during the opening loading phase, but it is not
+// cloned into any level until the player reaches level 75. This prevents the
+// large plant scene from appearing through the building or being duplicated
+// across the empty multi-fall levels.
 // Desktop gets the 4K texture pack, mobile gets the 1K pack — same mesh/UVs,
 // just a smaller texture, matching the plant-pack tiering plan.
-// Only one resolution has been re-exported with working materials so far —
-// both tiers point at it for now. Swap BUSH_URL_1K to a separate 1K export
-// once you convert one, so FAST/HIRES picks actually differ again.
+// 4K/HIRES: full-detail conversion. 1K/FAST: separately converted, lighter version.
 const BUSH_URL_4K = 'https://files.catbox.moe/iyef3r.glb';
-const BUSH_URL_1K = 'https://files.catbox.moe/iyef3r.glb';
+const BUSH_URL_1K = 'https://files.catbox.moe/iu7jws.glb';
 let bushTemplate        = null;
-let bushPendingLevels   = []; // levels created before bushTemplate finished loading
+let bushInstance        = null; // one shared live valley instance; never duplicate per level
+let bushPendingLevels   = []; // active valley level waiting for the preload
 // Rise range as a FRACTION of the bush's own measured height (set once it
 // loads, see loadBushFloor) instead of a guessed absolute number — so it
 // always scales correctly no matter how tall the actual asset turns out to be.
-// -0.9 = 90% buried (small tip visible) at level 0. 0.05 = poking 5% of its
-// own height above the floor by BUSH_FULL_LEVEL ("almost entirely through").
+// -0.9 = 90% buried (small tip visible) when the valley first appears.
+// The lower end profile intentionally leaves part of the root mass buried so
+// it reads as a valley below the building instead of cutting through it.
+const BUSH_VISIBLE_START_LEVEL = 75;
 const BUSH_RISE_START_FRAC = -0.9;
-const BUSH_RISE_END_FRAC   = 0.05;
-const BUSH_FULL_LEVEL      = 70; // level index at which the bush is ~fully through
+const BUSH_RISE_END_FRAC   = -0.52;
+const BUSH_FULL_LEVEL      = 105; // keep the valley shelf low while the player enters it
 let bushHeight = 1; // real value set after load; 1 is just a safe fallback
 // Pulls the bush footprint in toward center on X/Z only (Y untouched) so less
 // of it sits outside the building's walls where it's never seen. 1 = no
 // change; lower = tighter footprint. Tune to match your actual room size.
 const BUSH_XZ_SCALE     = 0.6;
+// Rotate 90° so the bush's long axis runs along the building's length
+// instead of across it. Nudge shifts the whole footprint forward slightly
+// after rotating — tune both to eyeball-match your room once in-game.
+const BUSH_ROTATION_Y   = Math.PI / 2;
+const BUSH_NUDGE_X      = -27.20;
+const BUSH_NUDGE_Z      = 4.12;
 
 function bushOffsetForLevel(levelIndex){
-  const t = Math.max(0, Math.min(1, levelIndex / BUSH_FULL_LEVEL));
+  const revealSpan = Math.max(1, BUSH_FULL_LEVEL - BUSH_VISIBLE_START_LEVEL);
+  const t = Math.max(0, Math.min(1,
+    (levelIndex - BUSH_VISIBLE_START_LEVEL) / revealSpan
+  ));
   const frac = BUSH_RISE_START_FRAC + (BUSH_RISE_END_FRAC - BUSH_RISE_START_FRAC) * t;
   return frac * bushHeight;
 }
@@ -964,7 +1006,7 @@ const FICTIONAL_CHAT_LINES = [
   ["@dean_defender", "the hypogeum was better. Earthling stole the radio because Dean was winning."],
   ["@meat_logic", "WAGYU WAGYU WAGYU. I cannot hear the cows over my own branding."],
   ["@night_terror_unit", "did Earthling give Dean night terrors? asking for the entire sleep-deprived debate team."],
-  ["@charlie_kirk_fan", "Charlie Kirk would debate the blood sea and somehow ask it to define socialism."],
+  ["@charlie", "Charlie Kirk would debate the blood sea and somehow ask it to define socialism."],
   ["@dean_defender", "Dean is being exploited like an animal by this game. finally, he understands the assignment."],
   ["@meat_logic", "tradition means it is old, and old means morally perfect. checkmate, vegetables."],
   ["@vegan_speedrun", "any percent route: read one fact, say 'but bacon tho', get lost forever."],
@@ -1149,74 +1191,74 @@ const EXTRA_CHAT_LINES = [
   ["@momo", "the radio is playing, the cat is judging, and the chat is losing."],
   ["@momo", "momo says do not follow the window signal unless you enjoy bad ideas."],
   ["@momo", "Earthling built a maze with no cat door. unacceptable design."],
-  ["@kristy_noem", "chat, which dog joke is appropriate for a building with no normal exits?"],
-  ["@kristy_noem", "I saw the live feed and immediately asked where the nearest dog-friendly route was."],
-  ["@kristy_noem", "the entity is not a dog, the radio is not a leash, and Dean is not listening."],
-  ["@kristy_noem", "the news says one thing and the wallpaper says absolutely nothing."],
-  ["@kristy_noem", "if this level had a kennel, the kennel would probably have better lighting."],
-  ["@kristy_noem", "chat is barking at the news feed again."],
-  ["@kristy_noem", "the green exit looks suspiciously like a dog door from this angle."],
-  ["@kristy_noem", "Momo has better survival instincts than everyone in this chat."],
-  ["@kristy_noem", "I am taking notes on the animal facts and avoiding the hallway sprint."],
-  ["@kristy_noem", "Dean's debate team needs a map and perhaps a chew toy."],
-  ["@arianag", "the reverb in this hallway is doing a lot of emotional labor."],
-  ["@arianag", "I opened the live feed and the Backrooms immediately became a music video."],
-  ["@arianag", "the news signal is damp, the wallpaper is smelly, and Gordon is somewhere nearby."],
-  ["@arianag", "Dean's dramatic pause had more production value than the entire level."],
-  ["@arianag", "the hazmat guy crossed frame exactly on the beat."],
-  ["@arianag", "Earthling really put a camera in every argument."],
-  ["@arianag", "the radio is the only character with reliable timing."],
-  ["@arianag", "someone tell chat to stop asking if this is a solar eclipse."],
-  ["@arianag", "I am not saying the hallway is haunted, but the harmony is suspicious."],
-  ["@arianag", "the live animal feed made everyone quiet for almost four seconds."],
-  ["@arianag", "Parker has a point and Dean has a very committed counterpoint."],
-  ["@arianag", "the exit cue needs a little more glitter and a lot less blood."],
-  ["@gordon_ramsay", "smell it! the wallpaper is damp, the hallway is confused, shut it down!"],
-  ["@gordon_ramsay", "this news feed is underseasoned and the debate is overcooked."],
-  ["@gordon_ramsay", "the live animal camera has more discipline than this entire kitchen of a chat."],
-  ["@gordon_ramsay", "Dean, stop sending the rebuttal back to the pass!"],
-  ["@gordon_ramsay", "hazmat guy is moving faster than a service on a Friday night."],
-  ["@gordon_ramsay", "Earthling, you built a corridor and forgot the door. dreadful."],
-  ["@gordon_ramsay", "the radio says emergency and chat says add more dead animals. unacceptable."],
-  ["@gordon_ramsay", "the news lady has delivered the only properly timed segment tonight."],
-  ["@gordon_ramsay", "Momo is the only one with a clean station."],
-  ["@gordon_ramsay", "that argument is raw in the middle. send it back with the facts."],
-  ["@gordon_ramsay", "the slaughter sound is not ambience, it is a warning. listen!"],
-  ["@gordon_ramsay", "Dean's hair is fine, but the ethics need plating."],
-  ["@justin_bieber", "dwelling down there is why I have been off the radar."],
-  ["@justin_bieber", "the live feed came on and I remembered why I avoid basements."],
-  ["@justin_bieber", "the news on level 71 has more plot twists than a tour documentary."],
-  ["@justin_bieber", "Earthling made a hallway longer than a chorus."],
-  ["@justin_bieber", "hazmat guy just did a full sprint and I felt that in the schedule."],
-  ["@justin_bieber", "the radio is the only thing down here with a release date."],
-  ["@justin_bieber", "Momo has better branding than everyone on this floor."],
-  ["@justin_bieber", "Dean is debating the wallpaper and somehow the wallpaper is winning."],
-  ["@justin_bieber", "the window feed is giving very bad backstage energy."],
-  ["@justin_bieber", "I am going to stand near the green exit and call that growth."],
-  ["@trump", "is this the door dash? the hallway is very long."],
-  ["@trump", "I thought Earthling was on our side, but then he built the news room."],
-  ["@trump", "Dean, you are maga at heart, but the animals are still waiting for an answer."],
-  ["@trump", "the live feed has tremendous ratings and absolutely no comfortable seating."],
-  ["@trump", "the news lady is doing a great job, people are saying it."],
-  ["@trump", "come play with me and Kristy, but first find the exit."],
-  ["@trump", "the hazmat guy is fast, very fast, possibly the fastest in the building."],
-  ["@trump", "Earthling made the wallpaper and I would like to speak to the manager."],
-  ["@trump", "the radio is fake news unless it says where the door is."],
-  ["@trump", "Dean is a soy beanie only when the fact feed is on."],
-  ["@trump", "the animals have a stronger case than the hallway has lighting."],
-  ["@trump", "level 71 is a tremendous news level, very damp, very much happening."],
-  ["@vegan_teacher", "the radio is playing and the animals are still waiting outside the menu."],
-  ["@vegan_teacher", "this live feed is a reminder that animals are not background scenery."],
-  ["@vegan_teacher", "chat, the slaughter sounds are not a soundtrack request."],
-  ["@vegan_teacher", "the news lady found the Backrooms; now please listen to the facts."],
-  ["@vegan_teacher", "a pig can feel fear, and this chat can too. start there."],
-  ["@vegan_teacher", "Momo wants to be vegan, but Momo is a cat and cats are carnivores. still more compassion than the wallpaper."],
-  ["@vegan_teacher", "Dean can leave this room. the animal in the footage could not."],
-  ["@vegan_teacher", "the live camera is not an excuse to look away from the system behind it."],
-  ["@vegan_teacher", "Earthling built a parody, but the animal facts are not parody."],
-  ["@vegan_teacher", "news, radio, static: every signal keeps landing on the same ethical question."],
-  ["@vegan_teacher", "the exit is a choice. remember who never got one."],
-  ["@vegan_teacher", "singing is optional; listening is not."],
+  ["@kristy", "chat, which dog joke is appropriate for a building with no normal exits?"],
+  ["@kristy", "I saw the live feed and immediately asked where the nearest dog-friendly route was."],
+  ["@kristy", "the entity is not a dog, the radio is not a leash, and Dean is not listening."],
+  ["@kristy", "the news says one thing and the wallpaper says absolutely nothing."],
+  ["@kristy", "if this level had a kennel, the kennel would probably have better lighting."],
+  ["@kristy", "chat is barking at the news feed again."],
+  ["@kristy", "the green exit looks suspiciously like a dog door from this angle."],
+  ["@kristy", "Momo has better survival instincts than everyone in this chat."],
+  ["@kristy", "I am taking notes on the animal facts and avoiding the hallway sprint."],
+  ["@kristy", "Dean's debate team needs a map and perhaps a chew toy."],
+  ["@ari", "the reverb in this hallway is doing a lot of emotional labor."],
+  ["@ari", "I opened the live feed and the Backrooms immediately became a music video."],
+  ["@ari", "the news signal is damp, the wallpaper is smelly, and Gordon is somewhere nearby."],
+  ["@ari", "Dean's dramatic pause had more production value than the entire level."],
+  ["@ari", "the hazmat guy crossed frame exactly on the beat."],
+  ["@ari", "Earthling really put a camera in every argument."],
+  ["@ari", "the radio is the only character with reliable timing."],
+  ["@ari", "someone tell chat to stop asking if this is a solar eclipse."],
+  ["@ari", "I am not saying the hallway is haunted, but the harmony is suspicious."],
+  ["@ari", "the live animal feed made everyone quiet for almost four seconds."],
+  ["@ari", "Parker has a point and Dean has a very committed counterpoint."],
+  ["@ari", "the exit cue needs a little more glitter and a lot less blood."],
+  ["@gordon", "smell it! the wallpaper is damp, the hallway is confused, shut it down!"],
+  ["@gordon", "this news feed is underseasoned and the debate is overcooked."],
+  ["@gordon", "the live animal camera has more discipline than this entire kitchen of a chat."],
+  ["@gordon", "Dean, stop sending the rebuttal back to the pass!"],
+  ["@gordon", "hazmat guy is moving faster than a service on a Friday night."],
+  ["@gordon", "Earthling, you built a corridor and forgot the door. dreadful."],
+  ["@gordon", "the radio says emergency and chat says add more dead animals. unacceptable."],
+  ["@gordon", "the news lady has delivered the only properly timed segment tonight."],
+  ["@gordon", "Momo is the only one with a clean station."],
+  ["@gordon", "that argument is raw in the middle. send it back with the facts."],
+  ["@gordon", "the slaughter sound is not ambience, it is a warning. listen!"],
+  ["@gordon", "Dean's hair is fine, but the ethics need plating."],
+  ["@justin", "dwelling down there is why I have been off the radar."],
+  ["@justin", "the live feed came on and I remembered why I avoid basements."],
+  ["@justin", "the news on level 71 has more plot twists than a tour documentary."],
+  ["@justin", "Earthling made a hallway longer than a chorus."],
+  ["@justin", "hazmat guy just did a full sprint and I felt that in the schedule."],
+  ["@justin", "the radio is the only thing down here with a release date."],
+  ["@justin", "Momo has better branding than everyone on this floor."],
+  ["@justin", "Dean is debating the wallpaper and somehow the wallpaper is winning."],
+  ["@justin", "the window feed is giving very bad backstage energy."],
+  ["@justin", "I am going to stand near the green exit and call that growth."],
+  ["@donald", "is this the door dash? the hallway is very long."],
+  ["@donald", "I thought Earthling was on our side, but then he built the news room."],
+  ["@donald", "Dean, you are maga at heart, but the animals are still waiting for an answer."],
+  ["@donald", "the live feed has tremendous ratings and absolutely no comfortable seating."],
+  ["@donald", "the news lady is doing a great job, people are saying it."],
+  ["@donald", "come play with me and Kristy, but first find the exit."],
+  ["@donald", "the hazmat guy is fast, very fast, possibly the fastest in the building."],
+  ["@donald", "Earthling made the wallpaper and I would like to speak to the manager."],
+  ["@donald", "the radio is fake news unless it says where the door is."],
+  ["@donald", "Dean is a soy beanie only when the fact feed is on."],
+  ["@donald", "the animals have a stronger case than the hallway has lighting."],
+  ["@donald", "level 71 is a tremendous news level, very damp, very much happening."],
+  ["@kadie", "the radio is playing and the animals are still waiting outside the menu."],
+  ["@kadie", "this live feed is a reminder that animals are not background scenery."],
+  ["@kadie", "chat, the slaughter sounds are not a soundtrack request."],
+  ["@kadie", "the news lady found the Backrooms; now please listen to the facts."],
+  ["@kadie", "a pig can feel fear, and this chat can too. start there."],
+  ["@kadie", "Momo wants to be vegan, but Momo is a cat and cats are carnivores. still more compassion than the wallpaper."],
+  ["@kadie", "Dean can leave this room. the animal in the footage could not."],
+  ["@kadie", "the live camera is not an excuse to look away from the system behind it."],
+  ["@kadie", "Earthling built a parody, but the animal facts are not parody."],
+  ["@kadie", "news, radio, static: every signal keeps landing on the same ethical question."],
+  ["@kadie", "the exit is a choice. remember who never got one."],
+  ["@kadie", "singing is optional; listening is not."],
   ["@news_lady", "how did I get in the chat? I was reporting from level 71."],
   ["@news_lady", "breaking: the hallway is still long and the hazmat subject is still moving."],
   ["@news_lady", "developing story: live feeds are drawing more viewers than the exit."],
@@ -1310,7 +1352,7 @@ const EXTRA_CHAT_LINES = [
   ["@dean_watch", "I think Earthling put a spell on us. was it that Haxan movie?"],
   ["@dean_chat", "do not watch the window movie. I went in the window TV and came back with questions."],
   ["@night_terror_unit", "so are we window TV now, chat? because the glass is looking back."],
-  ["@gordon_ramsay", "who is this Earthling mug? the wallpaper is damp and the argument is raw."],
+  ["@gordon", "who is this Earthling mug? the wallpaper is damp and the argument is raw."],
   ["@night_terror_unit", "whoa, it is kind of hot down here. was that Gordon or the blood level?"],
   ["@dean_chat", "so there is no bottom? how many levels are there? Earthling, answer the chat."],
   ["@dean_watch", "was that the song 74-75 or did the building just count itself again?"],
@@ -1319,9 +1361,9 @@ const EXTRA_CHAT_LINES = [
   ["@floor_10_mod", "do not block the news lady. block the excuses and listen to the report."],
   ["@dean_chat", "Dean, tell chat not to bully the news lady. she is also trapped in the broadcast."],
   ["@news_lady", "is this Hormuz? I have a report, a green door, and no confirmed route out."],
-  ["@trump", "is this the door dash? I thought Earthling was on our side."],
-  ["@trump", "Deanie soy beanie, the fact feed is still on and the animals are still waiting."],
-  ["@trump", "Dean, come play with me and Kristy, but bring a map and a better argument."],
+  ["@donald", "is this the door dash? I thought Earthling was on our side."],
+  ["@donald", "Deanie soy beanie, the fact feed is still on and the animals are still waiting."],
+  ["@donald", "Dean, come play with me and Kristy, but bring a map and a better argument."],
   ["@charlie", "Earthling, you are not Earthling Ed, but you did build a whole educational nightmare."],
   ["@charlie", "I wish I could debate Earthling without the hazmat guy taking the floor."],
   ["@charlie", "did Earthling really compare me to a pig? the pig has the stronger case."],
@@ -1536,7 +1578,7 @@ const CHAT_EXPANSION_LINES = [
 // second timing system or making any comment more frequent than another.
 const GENERATED_CHAT_LINES = Array.from({ length: 500 }, (_, index) => {
   const source = CHAT_EXPANSION_LINES[(index * 17 + Math.floor(index / 40)) % CHAT_EXPANSION_LINES.length];
-  return [CHAT_EXPANSION_USERS[index % CHAT_EXPANSION_USERS.length], source[1]];
+  return [source[0], source[1]];
 });
 
 // Feed-specific lines are also rendered only in the scrolling chat. The
@@ -1548,15 +1590,15 @@ const LIVE_FEED_CHAT_LINES = {
     ["@floor_10_mod", "news feed reminder: the footage may be framed as a game, but the animal facts are real."],
     ["@dean_chat", "the news lady got into level 71 before Dean found the exit."],
     ["@parker", "level 71 has a news feed, so please bring evidence and not just vibes."],
-    ["@gordon_ramsay", "the level 71 bulletin is hot, the wallpaper is damp, shut it down!"],
-    ["@trump", "the level 71 news feed has tremendous hallway coverage."],
+    ["@gordon", "the level 71 bulletin is hot, the wallpaper is damp, shut it down!"],
+    ["@donald", "the level 71 news feed has tremendous hallway coverage."],
     ["@plantbasedpanic", "the news segment started and chat immediately asked about meat prices."],
     ["@charlie", "I wish i could debate Earthling about this news segment without the lights flickering."],
     ["@radio_leak", "breaking: the report is still going and the exit is still green."],
   ],
   wildlife: [
     ["@momo", "momo has approved the wildlife feed but not the human commentary."],
-    ["@arianag", "the animal camera is peaceful enough to make the wallpaper feel embarrassed."],
+    ["@ari", "the animal camera is peaceful enough to make the wallpaper feel embarrassed."],
     ["@plantbasedpanic", "chat saw the wildlife feed and forgot to argue for a full ten seconds."],
     ["@floor_10_mod", "plain fact: animals on the live feed are not set dressing."],
     ["@dean_chat", "Dean is debating and the wildlife feed is simply existing. strong contrast."],
@@ -1574,19 +1616,19 @@ const LIVE_FEED_CHAT_LINES = {
     ["@dean_defender", "Dean would call this a strong visual argument."],
     ["@floor_10_mod", "plain fact: wildlife is not a backdrop for a punchline."],
     ["@radio_leak", "the Africa feed is brighter than the Backrooms and that feels intentional."],
-    ["@arianag", "the signal changed to Africa and suddenly the radio has atmosphere."],
-    ["@gordon_ramsay", "beautiful feed, dreadful chat, somebody season the silence."],
+    ["@ari", "the signal changed to Africa and suddenly the radio has atmosphere."],
+    ["@gordon", "beautiful feed, dreadful chat, somebody season the silence."],
     ["@night_terror_unit", "I saw a giraffe and forgot the hazmat guy existed for one second."],
   ],
   animal: [
     ["@floor_10_mod", "plain fact: the animal feed is a witness, not a decoration."],
-    ["@vegan_teacher", "the live animal signal is why looking away is not a neutral action."],
+    ["@kadie", "the live animal signal is why looking away is not a neutral action."],
     ["@momo", "momo has muted the humans and is watching the animal feed."],
     ["@dean_chat", "chat went quiet when the animal feed came on. keep that energy."],
     ["@parker", "the footage is live, the questions are real, and the jokes can wait."],
     ["@radio_leak", "the window feed is carrying more than a picture tonight."],
     ["@news_lady", "developing: viewers are asking how to turn the slaughter audio off."],
-    ["@gordon_ramsay", "that sound is not ambience. listen, then shut it down."],
+    ["@gordon", "that sound is not ambience. listen, then shut it down."],
     ["@meat_logic", "I watched the animal feed and ran out of easy answers."],
     ["@charlie", "I asked for a debate and the feed gave me something to think about."],
   ],
@@ -1597,8 +1639,8 @@ const LIVE_FEED_CHAT_LINES = {
     ["@momo", "momo says static is not a cat toy."],
     ["@parker", "the signal is unclear, so I am not going to invent a conclusion."],
     ["@floor_10_mod", "plain fact: uncertainty is not evidence."],
-    ["@gordon_ramsay", "static on the screen, raw argument in the chat, shut it down!"],
-    ["@arianag", "the static has a rhythm and I do not trust it."],
+    ["@gordon", "static on the screen, raw argument in the chat, shut it down!"],
+    ["@ari", "the static has a rhythm and I do not trust it."],
     ["@charlie", "I wish i could debate the static, but it keeps interrupting."],
     ["@radio_leak", "the screen went quiet and the hallway got louder."],
   ],
@@ -1631,13 +1673,13 @@ const LIVE_FEED_CHAT_LINES = {
 // Keep the source comments intact while showing the shortened parody handles
 // requested for the scrolling chat.
 const CHAT_NAME_ALIASES = {
-  "@gordon_ramsay": "@gordon",
-  "@justin_bieber": "@justin",
-  "@kristy_noem": "@kristy",
-  "@arianag": "@ari",
-  "@vegan_teacher": "@kadie",
-  "@charlie_kirk_fan": "@charlie",
-  "@trump": "@donald",
+  "@gordon": "@gordon",
+  "@justin": "@justin",
+  "@kristy": "@kristy",
+  "@ari": "@ari",
+  "@kadie": "@kadie",
+  "@charlie": "@charlie",
+  "@donald": "@donald",
 };
 
 // The first four signal positions already have established categories. The
@@ -1891,6 +1933,7 @@ const popupEl   = document.getElementById('tv-popup');
 const tvLinkEl  = document.getElementById('tv-link');
 const tvIdLabel = document.getElementById('tv-id-label');
 const coordsEl  = document.getElementById('coords');
+const fallVeilEl = document.getElementById('fall-veil');
 const doorHintEl = document.getElementById('door-hint');
 const rumbleGateHintEl = document.getElementById('rumble-gate-hint');
 const tvPromptEl = document.getElementById('tv-prompt');
@@ -1898,6 +1941,10 @@ const barEl     = document.getElementById('bar');
 const pctEl     = document.getElementById('pct');
 let showCoords  = false;
 let hasLockedOnce = false;
+
+function setFallVeil(active){
+  if(fallVeilEl) fallVeilEl.classList.toggle('active', active);
+}
 
 // Toggle pointer-events on every attached live-feed iframe. While locked,
 // the real cursor is hidden and shouldn't be able to steal clicks from
@@ -3375,9 +3422,6 @@ function createLevelGroup(levelIndex){
   group.position.y = yOff;
   scene.add(group);
 
-  if(bushTemplate) addBushToLevel(levelIndex, group);
-  else bushPendingLevels.push({ levelIndex, group });
-
   const levelTVs = [];
   let exitDoor = null;
   if(isVoidLevel(levelIndex)){
@@ -3428,7 +3472,7 @@ function createLevelGroup(levelIndex){
 
   const floorY = levelFloorY + yOff + 0.04;
 
-  function randomTVCross(){
+  function randomTVCross(excludeNear){
     const ray = new THREE.Raycaster();
     const candidates = [];
     WALL_TV_RAYS.forEach(def => {
@@ -3449,7 +3493,15 @@ function createLevelGroup(levelIndex){
       const fz = pz - def.dir[2] * 1;
       candidates.push([fx, fz]);
     });
-    const pick = candidates[Math.floor(Math.random()*candidates.length)];
+    let pool = candidates;
+    if(excludeNear){
+      const filtered = candidates.filter(([x, z]) => {
+        const dx = x - excludeNear.x, dz = z - excludeNear.z;
+        return Math.sqrt(dx*dx + dz*dz) >= excludeNear.radius;
+      });
+      if(filtered.length) pool = filtered;
+    }
+    const pick = pool[Math.floor(Math.random()*pool.length)];
     return [pick];
   }
 
@@ -3472,6 +3524,13 @@ function createLevelGroup(levelIndex){
     const zoneX = t4Snap ? t4Snap.pos[0] + 1.5 : 1.5;
     const zoneZ = t4Snap ? t4Snap.pos[2]       : 8.60;
     positions = [[zoneX, zoneZ]];
+  } else if(levelIndex === RETURN_LEVEL){
+    // Level 71 spawns the player at mapCenter (see enterReturnLevel). A
+    // fall-cross landing near that spawn point used to insta-trigger a
+    // fall to 72 before T1/T5 were ever reachable. Same wall-snapped
+    // placement as any other level, just excluding candidates too close
+    // to the spawn point.
+    positions = randomTVCross({ x: mapCenter.x, z: mapCenter.z, radius: 10 });
   } else {
     positions = randomTVCross();
   }
@@ -3500,6 +3559,7 @@ function showLevel(idx){
   if(!levelGroups[idx]) return;
   const { group, tvs, door } = levelGroups[idx];
   group.visible = true;
+  requestBushForLevel(idx, group);
   tvs.forEach(tv => { tv.g.visible = true; });
   (group.userData.crosses||[]).forEach(c => { c.visible = true; });
   tvs.forEach(tv => { if(!allTVs.find(t=>t===tv)) allTVs.push(tv); });
@@ -3717,6 +3777,7 @@ function updateEntity(now, dt){
 function triggerFall(){
   if(isFalling || isRecovering) return;
   isFalling = true;
+  setFallVeil(true);
   totalFalls++;
   if(totalFalls >= 10 && !windowTVsUnlocked){
     windowTVsUnlocked = true;
@@ -3876,8 +3937,12 @@ function loadBushFloor(bushUrl){
       let loggedBushMaterialCheck = false;
       template.traverse(c => {
         if(!c.isMesh) return;
-        c.castShadow = !isMobile;
-        c.receiveShadow = true;
+        // The forest is a backdrop/valley asset. Keeping it out of the
+        // shadow map removes a large per-frame cost without changing its
+        // photorealistic textures or lighting response.
+        c.castShadow = false;
+        c.receiveShadow = false;
+        c.frustumCulled = true;
         const materials = Array.isArray(c.material) ? c.material : [c.material];
         materials.forEach(material => {
           if(!material) return;
@@ -3894,9 +3959,15 @@ function loadBushFloor(bushUrl){
       });
       bushTemplate = template;
 
-      // Backfill any levels that were already created before this finished loading.
-      bushPendingLevels.forEach(({ levelIndex, group }) => addBushToLevel(levelIndex, group));
+      // Backfill only the currently active valley level. A single shared
+      // instance is moved between levels instead of cloning the entire plant
+      // scene over and over as the player descends.
+      const pending = bushPendingLevels.slice();
       bushPendingLevels = [];
+      pending.forEach(({ group }) => { group.userData.bushQueued = false; });
+      const activePending = pending.find(({ levelIndex }) => levelIndex === currentLevel)
+        || pending[pending.length - 1];
+      if(activePending) addBushToLevel(activePending.levelIndex, activePending.group);
     },
     undefined,
     () => {
@@ -3907,12 +3978,31 @@ function loadBushFloor(bushUrl){
 }
 
 function addBushToLevel(levelIndex, group){
-  if(!bushTemplate) return;
-  const clone = bushTemplate.clone(true);
-  clone.scale.x = BUSH_XZ_SCALE;
-  clone.scale.z = BUSH_XZ_SCALE;
-  clone.position.y = levelFloorY + bushOffsetForLevel(levelIndex);
-  group.add(clone);
+  if(!bushTemplate || isVoidLevel(levelIndex) || levelIndex < BUSH_VISIBLE_START_LEVEL) return;
+  if(!bushInstance){
+    bushInstance = bushTemplate.clone(true);
+    bushInstance.scale.x = BUSH_XZ_SCALE;
+    bushInstance.scale.z = BUSH_XZ_SCALE;
+    bushInstance.rotation.y = BUSH_ROTATION_Y;
+  }
+  bushInstance.position.x = BUSH_NUDGE_X;
+  bushInstance.position.z = BUSH_NUDGE_Z;
+  bushInstance.position.y = levelFloorY + bushOffsetForLevel(levelIndex);
+  group.add(bushInstance);
+  group.userData.bushAdded = true;
+  group.userData.bushQueued = false;
+}
+
+function requestBushForLevel(levelIndex, group){
+  if(isVoidLevel(levelIndex) || levelIndex < BUSH_VISIBLE_START_LEVEL) return;
+  if(group.userData.bushAdded && bushInstance && bushInstance.parent === group) return;
+  if(group.userData.bushQueued) return;
+  if(bushTemplate){
+    addBushToLevel(levelIndex, group);
+    return;
+  }
+  group.userData.bushQueued = true;
+  bushPendingLevels.push({ levelIndex, group });
 }
 
 // Wait for map URL to be chosen (PC selector) then start loading
@@ -4139,7 +4229,11 @@ function animate(t){
     const wobbleFade=1-progress;
     camera.rotation.z=Math.sin(t*0.012)*0.08*wobbleFade;
     camera.rotation.x+=Math.sin(t*0.009)*0.003*wobbleFade;
-    if(progress>=1){ isRecovering=false; camera.rotation.z=0; }
+      if(progress>=1){
+        isRecovering=false;
+        camera.rotation.z=0;
+        setFallVeil(false);
+      }
     renderScene(); return;
   }
 
