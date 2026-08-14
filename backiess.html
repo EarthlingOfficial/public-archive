@@ -158,11 +158,19 @@
     pointer-events: none; z-index: 6;
     display: none; opacity: 0;
     transition: opacity 0.8s, transform 0.8s;
-    text-shadow: 0 0 18px rgba(220,45,25,0.85);
+    text-shadow: 0 0 18px rgba(220,45,25,0.85), 0 0 42px rgba(180,20,10,0.28);
+    box-shadow: 0 0 0 1px rgba(90,8,4,0.22), inset 0 0 28px rgba(80,4,2,0.2);
   }
   #player-taunt.show {
     opacity: 1;
     transform: translate(-50%, -50%) scale(1);
+    animation: broadcast-pulse 4.6s ease-in-out both;
+  }
+  @keyframes broadcast-pulse {
+    0%, 100% { filter: brightness(.92); }
+    14% { filter: brightness(1.18); }
+    18% { filter: brightness(.94); }
+    64% { filter: brightness(1.04); }
   }
   #player-taunt .broadcast-tag {
     display: block;
@@ -177,6 +185,62 @@
     letter-spacing: 2px;
     line-height: 1.65;
     white-space: pre-line;
+  }
+
+  /* ── LEVEL ANIMAL-RIGHTS NOTES ──
+     These are deliberately separate from the existing research feed. The
+     feed continues its own rhythm; each level gets exactly two timed notes. */
+  #level-animal-rights {
+    position: fixed; top: 70%; left: 50%;
+    transform: translate(-50%, -50%);
+    width: min(700px, 82vw);
+    padding: 17px 23px 20px;
+    border: 1px solid rgba(226,178,86,0.68);
+    background: linear-gradient(90deg, rgba(13,7,1,0.08), rgba(40,21,3,0.88), rgba(13,7,1,0.08));
+    color: #f0c96c;
+    font-family: 'Courier New', monospace;
+    text-align: center;
+    pointer-events: none; z-index: 7;
+    display: none; opacity: 0;
+    transition: opacity 0.8s, transform 0.8s;
+    text-shadow: 0 0 16px rgba(226,158,45,0.72), 0 0 36px rgba(155,85,10,0.28);
+    box-shadow: 0 0 0 1px rgba(98,50,5,0.3), inset 0 0 28px rgba(100,48,2,0.2);
+  }
+  #level-animal-rights.show {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+    animation: rights-note-pulse 4.6s ease-in-out both;
+  }
+  @keyframes rights-note-pulse {
+    0%, 100% { filter: brightness(.94); }
+    14% { filter: brightness(1.17); }
+    18% { filter: brightness(.96); }
+    64% { filter: brightness(1.05); }
+  }
+  #level-animal-rights .rights-tag {
+    display: block;
+    margin-bottom: 10px;
+    color: rgba(255,224,155,0.72);
+    font-size: 10px;
+    letter-spacing: 4px;
+  }
+  #level-animal-rights .rights-copy {
+    font-size: clamp(14px, 1.8vw, 20px);
+    font-weight: bold;
+    letter-spacing: 1.5px;
+    line-height: 1.6;
+    white-space: pre-line;
+  }
+  @media (max-width: 700px) {
+    #level-animal-rights {
+      top: 59%; width: 82vw; padding: 11px 13px 13px;
+    }
+    #level-animal-rights .rights-tag {
+      font-size: 8px; letter-spacing: 2px; margin-bottom: 6px;
+    }
+    #level-animal-rights .rights-copy {
+      font-size: 11px !important; letter-spacing: .7px; line-height: 1.5;
+    }
   }
 
   #ag-fact-feed {
@@ -481,6 +545,10 @@
 <div id="player-taunt">
   <span class="broadcast-tag">FIELD NOTE // YOU ARE THE ANIMAL NOW</span>
   <span class="broadcast-copy" id="player-taunt-copy"></span>
+</div>
+<div id="level-animal-rights">
+  <span class="rights-tag">LEVEL NOTE // ANIMAL RIGHTS</span>
+  <span class="rights-copy" id="level-animal-rights-copy"></span>
 </div>
 <div id="ag-fact-feed">
   <div class="fact-tag">RESEARCH FEED // ANIMAL AGRICULTURE</div>
@@ -959,6 +1027,90 @@ const PLAYER_TAUNTS = [
   "I'm not asking for pity.\nI'm asking you to remember this line existed after you close the tab."
 ];
 
+// The map currently descends through levels 0–71. These are deliberately
+// level-specific so the red field-note box becomes part of the descent rather
+// than a repeating timer with interchangeable copy.
+const LEVEL_BROADCASTS = [
+  ["soft entry", "the room is almost kind.\nalmost is doing a lot of work."],
+  ["bedroom safe", "you know where the corners are.\nthe corners do not know you."],
+  ["chia-pet brave", "you are cute when you still think the exit is the point."],
+  ["naive", "a hallway can be an elbow or an a-hole.\nkeep walking and find out."],
+  ["first doubt", "the wallpaper has not changed.\nyour excuse has."],
+  ["polite unease", "something moved behind the paint.\nyou moved past the animals in the aisle."],
+  ["low-grade dread", "the lights are steady.\nthat is not the same as safe."],
+  ["curiosity tax", "you came for a joke.\nthe joke has started charging interest."],
+  ["small alarm", "the sound is farther away now.\nthat does not make it less real."],
+  ["soft denial", "you can still call it content.\nthe body behind the content cannot."],
+  ["uneasy quiet", "the silence is clean.\nthe history underneath it is not."],
+  ["first static", "the vents are whispering your username.\nstop pretending you are anonymous here."],
+  ["restless", "the floor is still beneath you.\nask how many feet never got that luxury."],
+  ["wrong corridor", "every door leads somewhere.\nnot every life was allowed a door."],
+  ["yellow warning", "the colour is warm.\nthe idea underneath it is cold."],
+  ["watchful", "you are looking for the entity.\nthe system is looking for your appetite."],
+  ["backroom nausea", "the map has a pattern.\nso does the hiding of what paid for dinner."],
+  ["tender alarm", "somewhere a mother is calling.\nthe building has trained itself not to answer."],
+  ["no clean exit", "the floor is dry.\nthat is a marketing detail, not a moral one."],
+  ["first fracture", "your confidence cracked before the concrete did."],
+  ["restless conscience", "you heard the line stop.\nnow hear the part where nobody comes back."],
+  ["static hunger", "the signal keeps asking what you call a meal.\nanswer without hiding behind taste."],
+  ["watch the walls", "the walls are not breathing.\nyou are. they were not given the chance."],
+  ["moral vertigo", "you can turn around at any moment.\nthat sentence is the privilege."],
+  ["the joke curdles", "the chat is laughing one line too late."],
+  ["pressure", "the room is narrowing.\nso was the crate."],
+  ["red signal", "the first red light was a warning.\nthis one is a witness."],
+  ["sensory attack", "cover your ears if you need to.\nthe animals had no volume control."],
+  ["noise with teeth", "the squeal is not a soundtrack.\nit is a nervous system refusing to disappear."],
+  ["bright panic", "the lights flicker and your body flinches.\nremember that reflex."],
+  ["the floor listens", "every footstep sounds like an inventory count."],
+  ["uneasy witness", "the camera is not asking for pity.\nit is asking you not to look away."],
+  ["false comfort", "the clean label is still a label.\nthe fear did not read it."],
+  ["corridor of excuses", "tradition is written on the wall.\nso is the exit. choose which one you obey."],
+  ["the note under paint", "someone wrote humane here.\nthe room did not become humane."],
+  ["backrooms ethics", "the fourth wall is thin.\nthe real one was a barn wall."],
+  ["doors that do not match", "one door says freedom.\none says efficiency. guess which one was built first."],
+  ["nocturne of fear", "the hallway has a soundtrack now.\nso did every truck that carried them."],
+  ["watching back", "the screen reflects your face.\nlook at it while you make the excuse."],
+  ["creeping dread", "the exit moved again.\nthe animals never had one to move."],
+  ["thin floor", "your footing is uncertain.\ntheir whole life was engineered beneath them."],
+  ["red hallway", "you call the colour gore.\nthe industry calls it a by-product."],
+  ["the smell arrives", "you smell the room before you see it.\nso did the ones in the queue."],
+  ["scream distance", "the sound is behind a door.\nthe door is the story."],
+  ["no audience", "there is no crowd down here.\nthere was one above the arena."],
+  ["blood-level warning", "the room is beginning to fill.\nso is the cost of pretending this is only a game."],
+  ["dread in the vents", "the building has learned your breathing pattern.\nthe animals learned the machinery."],
+  ["the conveyor thought", "the line keeps moving because it was designed to.\nso was the suffering."],
+  ["unwelcome evidence", "the footage is not a jump scare.\nit is a receipt."],
+  ["sensory overload", "sound, light, motion.\nthree ways to understand why escape matters."],
+  ["the body remembers", "your pulse is the smallest fact in this room."],
+  ["fifty floors down", "you have survived a fraction.\nthey were never offered a fraction."],
+  ["the room turns honest", "the walls have stopped pretending to be scenery."],
+  ["overload", "too many screens.\none message: the victims are not background."],
+  ["no safe frequency", "change the station if you want.\nthe animal cannot change the line."],
+  ["the quiet becomes cruel", "when the screaming stops, listen for what it means."],
+  ["moral freefall", "gravity is not the only thing pulling you down."],
+  ["the blood sea", "the surface is rising.\nso is the part of you that already knows."],
+  ["dread made visible", "you can see the consequence now.\nthat is not the same as causing less of it."],
+  ["abattoir weather", "the air tastes metallic.\nthe menu never mentioned the atmosphere."],
+  ["no clean hands", "the game stains the screen.\nthe system stains the story."],
+  ["descent", "keep the torch lit.\nthere are names beneath the numbers."],
+  ["the red archive", "the walls remember every body the invoice forgot."],
+  ["almost bottomless", "you expected a basement.\nyou found an argument with no basement."],
+  ["pre-hell", "the last soft floor is behind you.\nso is the last easy excuse."],
+  ["door already open", "the door is open because the room wants you to choose."],
+  ["caviar logic", "luxury does not make a dead body less dead."],
+  ["Charlie's room", "the debate has furniture now.\nthe answer is still trying to leave."],
+  ["residence of denial", "history is not a costume for the punchline.\nwatch what you are carrying."],
+  ["diabolical", "you checked the box.\nnow the box is checking you."],
+  ["no plausible excuse", "please do not sue the messenger.\nask who paid for the room."],
+  ["gore'geous", "you finally saw the pretty framing.\nnow see what the frame was hiding."],
+  ["just no", "the answer is not complicated.\nthe hallway is."],
+  ["run", "run if you can.\nchange if you mean it."],
+  ["bananas", "is Gwen vegan?\nmore importantly, why are you still bargaining?"],
+  ["slaughterhouse", "the sound is not metaphor.\nthe industry made it ordinary."],
+  ["vegan atp", "you have read the label, heard the line, and seen the door.\nstop checking the box."],
+  ["therapy", "awww.\nyou made it out of the room. now take the animals with you."]
+].map(([difficulty, line]) => ({ difficulty, line }));
+
 const ANIMAL_AG_FACTS = [
   "Male chicks are killed because they cannot lay eggs.\nFOR PROFIT. FOR CONVENIENCE.",
   "Piglets are cut, sorted, crowded, and sent down the line while people call bacon breakfast.\nFOR TASTE.",
@@ -991,6 +1143,434 @@ const ANIMAL_AG_FACTS = [
   "You can close the tab. They could not close the door.\nNOW MOVE.",
   "This room is fictional. The victims were not.\nFOR GREED. FOR CONVENIENCE. FOR TASTE."
 ];
+
+// Additional fact cards deepen as the player descends. These are kept
+// separate from the original archive so the supplied copy remains intact.
+const ADDITIONAL_ANIMAL_AG_FACTS = [
+  "Broiler chickens are commonly slaughtered at only a few weeks old.\nA BODY BUILT FOR PROFIT IS STILL A BODY.",
+  "Modern broiler chickens can be bred to grow so quickly that movement itself becomes painful.\nTHEY WERE MADE TOO HEAVY TO LIVE COMFORTABLY.",
+  "When a chicken's legs fail, the bird may be unable to reach food or water.\nTHE SYSTEM COUNTS THE BODY. NOT THE STRUGGLE.",
+  "In crowded sheds, thousands of birds may live on litter contaminated with waste.\nA FLOOR CAN BE DRY AND STILL BE HELL.",
+  "Chicken breeding has prioritised breast muscle over the animal's ability to walk normally.\nTHE PRODUCT SPECIFICATION BECAME THE BODY.",
+  "Egg-laying hens can be kept in rows of cages with no room to spread both wings.\nCAGE-FREE DOES NOT MEAN FREE.",
+  "Beak trimming is used to reduce damage in crowded flocks created by the industry itself.\nTHE ANSWER TO CROWDING WAS TO ALTER THE BIRD.",
+  "At the end of an egg-laying cycle, hens are sent to slaughter even when they are still young.\nPROFIT HAS A REPLACEMENT DATE.",
+  "Male chicks from egg breeds cannot lay eggs and are commonly killed soon after hatching.\nTHEIR CRIME WAS BEING THE WRONG SEX.",
+  "A hatchery can sort a living chick as waste before the chick has learned the world.\nTHE FIRST DECISION WAS ALREADY A DEATH SENTENCE.",
+  "Turkeys have been bred for large breast muscles that can make mating naturally difficult or impossible.\nTHE BODY WAS DESIGNED AROUND THE PLATE.",
+  "Some turkeys suffer heart and leg problems linked to rapid growth and extreme body size.\nBIGGER IS NOT KINDER.",
+  "Ducks raised for foie gras can be force-fed through tubes to enlarge their livers.\nA DELICACY IS NOT A DEFENCE.",
+  "Ducks and geese can be plucked or handled repeatedly for feathers and down.\nSOFT PILLOWS CAN HAVE A HARD HISTORY.",
+  "Dairy cows must give birth to produce milk.\nTHE CALF IS NOT A SIDE DETAIL.",
+  "Dairy calves may be removed from their mothers within hours or days of birth.\nTHE CALLING CONTINUES AFTER THE GATE CLOSES.",
+  "A dairy cow's calf may be fed milk replacer while her milk is diverted to humans.\nTHE BABY IS DENIED THE MILK THAT STARTED THE BUSINESS.",
+  "Male calves born into dairy systems cannot produce milk and may be sold for veal or beef.\nTHEIR FUTURE WAS ASSIGNED AT BIRTH.",
+  "Dairy cows can be repeatedly impregnated and milked through multiple lactations.\nTHEIR REPRODUCTIVE SYSTEM IS TREATED AS EQUIPMENT.",
+  "High-producing dairy cows can face lameness, mastitis, and metabolic illness.\nTHE WHITE LIQUID HIDES A BODY UNDER PRESSURE.",
+  "Mastitis is a painful inflammation of the udder that is common in dairy production.\nTHE ANIMAL PAYS FOR THE PRODUCT.",
+  "A cow may continue searching for a calf after separation.\nTHE FARM CALLS IT MANAGEMENT. THE MOTHER EXPERIENCES LOSS.",
+  "Veal crates and restrictive systems have historically limited calves' movement.\nA BABY ANIMAL WAS MADE INTO A SMALLER ROOM.",
+  "Pigs are social animals, yet breeding sows can spend pregnancy in crates that severely restrict turning.\nA CURIOUS MIND INSIDE A METAL SLOT.",
+  "Piglets can be tail-docked because crowding can trigger damaging tail biting.\nTHEY ALTER THE VICTIM TO FIT THE SYSTEM.",
+  "Piglet teeth may be clipped or ground in some systems to reduce injuries caused by competition.\nTHE FARMER'S SOLUTION IS ANOTHER PROCEDURE.",
+  "Male piglets may be castrated to alter the taste of pork.\nA BODY IS CUT SO A CUSTOMER WILL NOT NOTICE ANIMALITY.",
+  "Young pigs can be moved through stressful handling systems before they are old enough to leave their mother.\nTHE LINE STARTS BEFORE MEMORY DOES.",
+  "Pigs can recognise individuals and learn tasks, yet industry language calls them units.\nA NUMBER DOES NOT REMOVE A MIND.",
+  "Sows can be moved from farrowing crates to breeding crates and back again.\nTHEIR ENTIRE YEAR CAN BE A ROTATION OF RESTRICTIONS.",
+  "Piglets may die from crushing, illness, or injury in intensive systems.\nTHE DEAD ARE REMOVED. THE SYSTEM CONTINUES.",
+  "A pig's squeal is a distress signal, not a funny sound effect.\nTHE CHAT HEARS A JOKE. THE PIG HEARS DANGER.",
+  "Pigs can be transported in heat or cold when the schedule matters more than their comfort.\nTHE TRUCK HAS A DESTINATION. THEY HAVE FEAR.",
+  "Fish can experience injury, stress, and fear responses.\nWATER DOES NOT MAKE A NERVOUS SYSTEM IMAGINARY.",
+  "Fish caught on hooks can be pulled through water by the mouth before they are killed or released injured.\nSPORT CALLS THE PANIC A CATCH.",
+  "Longline fishing can leave hooked fish struggling for hours before the gear is hauled in.\nTHE LINE DOES NOT KNOW MERCY.",
+  "Trawling can drag nets across the seafloor and capture animals that were never targeted.\nTHE OCEAN BECOMES A NET WITH A RECEIPT.",
+  "Bycatch can include turtles, seabirds, sharks, dolphins, and non-target fish.\nTHE INDUSTRY CALLS IT INCIDENTAL. THE ANIMAL IS STILL DEAD.",
+  "Fish caught at depth can suffer pressure injuries when hauled rapidly toward the surface.\nTHE JOURNEY UP IS NOT AN ESCAPE.",
+  "Farmed fish can live in crowded pens where parasites and disease spread easily.\nTHE SEA WAS REPLACED WITH A STOCKING DENSITY.",
+  "Farmed salmon can be treated for sea lice, parasites that injure fish and damage their skin.\nTHE PRODUCT STILL GETS A GLOSSY LABEL.",
+  "Crustaceans can be boiled, steamed, or dismembered while alive in some kitchens.\nA RESTAURANT TIMER DOES NOT MAKE PAIN DISAPPEAR.",
+  "Octopuses show problem-solving ability, exploration, and complex behaviour.\nA SEAFOOD MENU IS NOT A SENTIENCE TEST.",
+  "Many marine animals are killed after days or hours on gear rather than by a quick death.\nSLOW DOES NOT BECOME HUMANE BECAUSE IT HAPPENS OFF CAMERA.",
+  "Wild animals wounded by hooks or bullets may escape and die later.\nTHE ABSENCE OF A BODY IS NOT A SURVIVAL CERTIFICATE.",
+  "Hunting can leave dependent young without a parent.\nTHE TROPHY PHOTO DOES NOT SHOW THE ONES WAITING.",
+  "Trapping can hold an animal in pain, exposure, and panic until the trapper arrives.\nA TRAP IS A CLOCK WITH TEETH.",
+  "Some snares tighten as an animal struggles.\nTHE INSTINCT TO ESCAPE BECOMES THE MECHANISM OF INJURY.",
+  "Rodeo events can use flank straps or other equipment to provoke bucking and dramatic movement.\nTHE CROWD CALLS PAIN ENTERTAINMENT.",
+  "Animals used in rodeo can be injured by falls, collisions, and rough handling.\nTRADITION DOES NOT REMOVE THE BODY FROM THE ARENA.",
+  "Greyhound racing has sent dogs onto tracks where collisions and broken limbs can occur.\nSPEED IS NOT CONSENT.",
+  "Animals used for entertainment are often valued for performance and discarded when they are no longer profitable.\nTHE APPLAUSE HAS AN EXPIRY DATE.",
+  "Sheep may undergo mulesing, a painful procedure used in some wool systems to reduce flystrike risk.\nTHE INDUSTRY ARGUES ABOUT THE METHOD. THE SHEEP FEELS THE CUT.",
+  "Tail docking can be performed on lambs to reduce flystrike risk.\nA SMALLER TAIL DOES NOT MAKE THE FARM KIND.",
+  "Shearing can cause cuts and injuries when speed is prioritised.\nA FIBRE DOES NOT MATTER MORE THAN THE SKIN PRODUCING IT.",
+  "Wool labels do not tell you whether an animal experienced fear, restraint, or injury.\nMARKETING IS NOT A WITNESS.",
+  "Leather is animal skin processed after slaughter.\nA LUXURY FINISH DOES NOT ERASE THE BODY.",
+  "Fur farming can confine minks and foxes in barren wire cages.\nTHE COAT IS SOFT. THE LIFE WAS NOT.",
+  "Animals bred for fur may pace, circle, or show repetitive behaviour in barren confinement.\nTHEIR MIND HAS NOWHERE TO GO.",
+  "Down can be collected from birds through plucking or after slaughter, depending on the supply chain.\nA DUVET CAN STILL HAVE A BODY IN ITS HISTORY.",
+  "Transport can expose animals to heat stress, cold, crowding, and dehydration.\nTHE TRUCK MOVES. THE BODY ENDURES.",
+  "Injured animals may be loaded and transported even when movement is painful.\nTHE SCHEDULE CAN OUTRANK THE WOUND.",
+  "Animals transported long distances can go without adequate food or water.\nA BORDER CROSSING DOES NOT RESET THIRST.",
+  "Some animals die during transport before reaching the slaughter facility.\nTHE DEATH HAPPENS BEFORE THE LAST ROOM.",
+  "At slaughter, stunning is intended to render an animal unconscious before killing.\nWHEN IT FAILS, THE ANIMAL CAN REMAIN CONSCIOUS.",
+  "Electrical stunning can be ineffective if equipment placement or timing is wrong.\nA MACHINE CAN FAIL. THE BODY STILL PAYS.",
+  "Gas stunning systems can expose pigs to aversive gases before unconsciousness.\nTHE METHOD IS INDUSTRIAL. THE FEAR IS PERSONAL.",
+  "Animals can show signs of consciousness when a stunning procedure has not worked properly.\nTHE LINE DOES NOT ALWAYS STOP.",
+  "Slaughterhouse workers may handle huge numbers of animals under speed and production pressure.\nTHE SYSTEM CREATES THE RUSH AND CALLS IT NECESSARY.",
+  "The word humane can appear in a label while the endpoint remains slaughter.\nA KIND ADJECTIVE CANNOT CHANGE A VIOLENT NOUN.",
+  "Animals are often killed long before a consumer sees the packaged product.\nTHE DISTANCE IS PART OF THE DESIGN.",
+  "Packaging shows a clean cut of meat, not the living animal who was confined and killed.\nTHE IMAGE IS CLEANED. THE HISTORY IS NOT.",
+  "A meal can hide breeding, separation, transport, injury, and death behind one small price tag.\nCONVENIENCE IS A CURTAIN.",
+  "Industry terms such as units, yield, cull, and throughput turn individuals into production language.\nTHE VOCABULARY IS PART OF THE ENCLOSURE.",
+  "A lower price does not mean the animal suffered less.\nIT MAY MEAN THE SYSTEM HID MORE.",
+  "An animal can be legally owned and still experience fear, pain, attachment, and a desire to live.\nPROPERTY STATUS IS NOT A NERVOUS SYSTEM.",
+  "The absence of visible blood in an advertisement does not mean the absence of violence.\nSOFT LIGHTING IS NOT A MORAL FILTER.",
+  "A free-range label may describe access requirements without guaranteeing a peaceful life or death.\nREAD THE WHOLE SYSTEM, NOT THE FRONT OF THE BOX.",
+  "Organic certification can regulate some inputs without making an animal's life free from confinement, separation, or slaughter.\nORGANIC IS NOT IMMORTAL.",
+  "Cage-free hens can still live in crowded sheds and face industrial slaughter.\nA DIFFERENT CAGE IS NOT FREEDOM.",
+  "Pasture-raised animals can still be bred, transported, and killed for food.\nA FIELD IS NOT AN EXIT.",
+  "Rescuing an individual animal does not undo the system that produced millions more.\nCOMPASSION MUST SCALE INTO CHOICE.",
+  "Sanctuaries give survivors names because individuality becomes obvious when profit is removed.\nTHE NAME WAS ALWAYS THERE.",
+  "Farmed animals can form bonds with other animals and respond differently to familiar people.\nTHEY WERE NEVER JUST STOCK.",
+  "Cows can learn routes, remember experiences, and show individual preferences.\nA BURGER IS NOT A PERSONALITY TEST.",
+  "Pigs can learn symbols, solve tasks, and explore with their snouts.\nTHE ANIMAL BEHIND THE BACON WAS NOT EMPTY.",
+  "Chickens communicate through many calls and can recognise other birds.\nA NUGGET HAS A BEFORE.",
+  "Sheep can recognise faces and form social relationships.\nWOOL DOES NOT COME FROM A BLANK SLATE.",
+  "Fish learn routes and respond to changing conditions.\nTHEY ARE NOT DECORATION WITH FINS.",
+  "Animals anticipate routines, including feeding and handling.\nTHEY CAN LEARN WHEN THE BAD THING IS COMING.",
+  "Fear is not less fear because the victim cannot explain it in English.\nLANGUAGE IS NOT THE TEST FOR SUFFERING.",
+  "A scream is not required for an animal to be in pain.\nSILENCE CAN BE PARALYSIS, NOT CONSENT.",
+  "The animal cannot pause the supply chain, close the menu, or leave a review.\nYOU CAN.",
+  "The animal cannot choose the cheaper option.\nTHE CONSUMER CAN CHOOSE A DIFFERENT ONE.",
+  "You can stop reading this card.\nTHE ANIMAL COULD NOT STOP THE NEXT PROCEDURE.",
+  "You can leave the Backrooms through a button.\nTHEIR exit was replaced by a loading dock.",
+  "The game gives you a body, a name, and a route out.\nTHE INDUSTRY GAVE THEM A barcode.",
+  "The horror is not that the building is unreal.\nTHE HORROR IS HOW MUCH OF IT WAS ALREADY NORMAL.",
+  "A dead animal is not an ingredient first.\nIT WAS A LIVING ANIMAL FIRST.",
+  "Taste lasts minutes; the animal's life was the entire cost.\nA SHORT PLEASURE CAN HAVE A LONG VICTIM.",
+  "The question is not whether you can survive this level.\nTHE QUESTION IS WHETHER THEY SHOULD HAVE HAD TO.",
+  "When the credits roll, the supply chain does not.\nTHE REAL ENDING IS YOUR NEXT CHOICE."
+];
+ANIMAL_AG_FACTS.push(...ADDITIONAL_ANIMAL_AG_FACTS);
+
+// A few cards are pinned to major thresholds so the fact feed can answer the
+// room the player is actually standing in, not just rotate as a detached
+// slideshow.
+const LEVEL_FACTS_BY_LEVEL = {
+  0: "LEVEL 1 // the room is fictional.\nThe animal behind the product was not.",
+  8: "LEVEL 9 // a calf can be taken from its mother before either has a choice.\nTHE TRUCK STILL MOVES.",
+  15: "LEVEL 16 // crowding creates the injury, then the injury is blamed on the animal.\nTHAT IS THE SYSTEM SPEAKING.",
+  22: "LEVEL 23 // fish can feel injury and stress.\nA HOOK IS NOT A JOKE BECAUSE THE VICTIM LIVES UNDERWATER.",
+  30: "LEVEL 31 // the blood room is not the worst part.\nTHE WORST PART IS THAT THE PROCESS HAS A NAME FOR IT.",
+  36: "LEVEL 37 // a clean label can hide separation, confinement, transport, and death.\nREAD PAST THE FRONT.",
+  43: "LEVEL 44 // stunning is supposed to end consciousness before killing.\nWHEN IT FAILS, THE LINE DOES NOT ALWAYS STOP.",
+  50: "LEVEL 51 // the body was bred for yield until ordinary movement became a medical problem.\nPROFIT MADE THE ANIMAL TOO HEAVY.",
+  56: "LEVEL 57 // a dependent young animal can be left behind when a hunter takes the parent.\nTHE TROPHY DOES NOT SHOW THE WAITING.",
+  60: "LEVEL 61 // the industry's quietest word is 'unit.'\nTHE ANIMAL HAD A FACE BEFORE IT HAD A NUMBER.",
+  64: "LEVEL 65 // footage is not a prop once it makes you recognise the individual.\nLOOK AT THE ONE WHO CANNOT LOOK AWAY.",
+  68: "LEVEL 69 // the exit is a choice offered to the player.\nTHE ANIMAL IN THE FEED NEVER GOT ONE.",
+  70: "LEVEL 71 // this is a broadcast inside a game inside a supply chain.\nTHE FOURTH WALL IS NOT THE ONLY WALL.",
+};
+
+// Two timed notes for every visible level. These are keyed to the number the
+// player sees, not the zero-based currentLevel index. That keeps the new notes
+// aligned even when the later void sequence skips physical fall stops.
+const LEVEL_ANIMAL_RIGHTS_CARDS = {
+  1: [
+    "An animal is not an ingredient at the beginning of the story.\nIT IS A LIVING BEING WHO WANTS TO KEEP LIVING.",
+    "The room gives you a camera, a body, and a way out.\nTHE ANIMAL GOT A NUMBER, A PRICE, AND NO EXIT."
+  ],
+  2: [
+    "Fear does not require a human voice.\nA BODY THAT RUNS FROM THE KNIFE IS TELLING YOU ENOUGH.",
+    "The industry hides the individual before it hides the violence.\nFIRST THE NAME DISAPPEARS. THEN THE BODY BECOMES A PRODUCT."
+  ],
+  3: [
+    "Chickens recognise other birds and communicate with distinct calls.\nA NUGGET HAD A BEFORE.",
+    "A chick can be sorted as waste on the day it hatches.\nTHE FIRST HUMAN DECISION ABOUT THAT LIFE CAN BE A DEATH SENTENCE."
+  ],
+  4: [
+    "Male chicks from egg-laying breeds cannot lay eggs and are commonly killed soon after hatching.\nTHEIR CRIME WAS BEING THE WRONG SEX.",
+    "The hatchery does not need a dramatic villain.\nA CONVEYOR, A SORTING TABLE, AND A PROFIT TARGET CAN DO THE WORK."
+  ],
+  5: [
+    "Broiler chickens are slaughtered at only a few weeks old.\nTHEY ARE STILL BABIES WHEN THE LINE CALLS THEM FINISHED.",
+    "Breeding for fast growth can leave chickens with legs too weak for their own bodies.\nTHE PRODUCT SPECIFICATION BECAME THE SKELETON."
+  ],
+  6: [
+    "When a chicken cannot walk, reaching food and water can become a daily struggle.\nTHE SYSTEM COUNTS THE BODY. NOT THE STRUGGLE.",
+    "Crowded sheds can leave birds living on litter contaminated with waste.\nA FLOOR CAN BE DRY AND STILL BE HELL."
+  ],
+  7: [
+    "Egg-laying hens can be kept in cages where they cannot spread both wings.\nCAGE-FREE DOES NOT MEAN FREE.",
+    "Beak trimming is used in some systems to reduce injuries caused by crowding.\nTHE ANSWER TO CROWDING WAS TO ALTER THE BIRD."
+  ],
+  8: [
+    "A mother cow searches for the calf taken from her.\nTHE GATE CLOSES. THE CALLING CONTINUES.",
+    "Dairy cows must give birth to produce milk.\nTHE CALF IS NOT A SIDE DETAIL OF THE PRODUCT."
+  ],
+  9: [
+    "Dairy calves may be removed from their mothers within hours or days of birth.\nTHE TRUCK STILL MOVES.",
+    "The calf may receive milk replacer while the mother's milk is diverted to humans.\nTHE BABY IS DENIED THE MILK THAT STARTED THE BUSINESS."
+  ],
+  10: [
+    "A dairy cow can be repeatedly impregnated and milked through multiple lactations.\nHER REPRODUCTIVE SYSTEM IS TREATED AS EQUIPMENT.",
+    "Mastitis is a painful inflammation of the udder common in dairy production.\nTHE WHITE LIQUID HIDES A BODY UNDER PRESSURE."
+  ],
+  11: [
+    "Around 400,000 artificial inseminations are performed on farmed animals globally every day.\nREPRODUCTION HAS BEEN TURNED INTO A PRODUCTION SCHEDULE.",
+    "Artificial insemination is not a neutral word when the animal cannot refuse restraint or handling.\nTHE INDUSTRY CALLS IT EFFICIENCY. THE BODY EXPERIENCES THE PROCEDURE."
+  ],
+  12: [
+    "High-producing dairy cows can face lameness, metabolic illness, and udder disease.\nMORE OUTPUT CAN MEAN MORE PAIN IN THE BODY MAKING IT.",
+    "A mother and calf do not stop caring because a supply chain calls separation management.\nTHE BOND IS REAL BEFORE THE LABEL ARRIVES."
+  ],
+  13: [
+    "Turkeys have been bred for breast muscle so large that natural mating can become difficult or impossible.\nTHE BODY WAS DESIGNED AROUND THE PLATE.",
+    "Some turkeys suffer heart and leg problems linked to rapid growth and extreme body size.\nBIGGER IS NOT KINDER."
+  ],
+  14: [
+    "Ducks raised for foie gras can be force-fed through tubes to enlarge their livers.\nA DELICACY IS NOT A DEFENCE.",
+    "A soft label can make a violent process sound ornamental.\nTHE WORD LUXURY DOES NOT MAKE THE ANIMAL LESS TERRIFIED."
+  ],
+  15: [
+    "Pigs are social animals, yet breeding sows can spend pregnancy in crates that severely restrict turning.\nA CURIOUS MIND INSIDE A METAL SLOT.",
+    "A sow can be moved from a breeding crate to a farrowing crate and back again.\nHER ENTIRE YEAR CAN BE A ROTATION OF RESTRICTIONS."
+  ],
+  16: [
+    "Piglets can be tail-docked because crowding can trigger damaging tail biting.\nTHEY ALTER THE VICTIM TO FIT THE SYSTEM.",
+    "Piglet teeth may be clipped or ground in some systems to reduce injuries caused by competition.\nTHE FARMER'S SOLUTION IS ANOTHER PROCEDURE."
+  ],
+  17: [
+    "Male piglets may be castrated to alter the taste of pork.\nA BODY IS CUT SO A CUSTOMER WILL NOT NOTICE ANIMALITY.",
+    "Piglets can die from crushing, illness, or injury in intensive systems.\nTHE DEAD ARE REMOVED. THE SYSTEM CONTINUES."
+  ],
+  18: [
+    "Pigs can recognise individuals and learn tasks, yet industry language calls them units.\nA NUMBER DOES NOT REMOVE A MIND.",
+    "A pig's squeal is a distress signal, not a funny sound effect.\nTHE CHAT HEARS A JOKE. THE PIG HEARS DANGER."
+  ],
+  19: [
+    "Young pigs can be moved through stressful handling systems before they are old enough to leave their mother.\nTHE LINE STARTS BEFORE MEMORY DOES.",
+    "Pigs can be transported in heat or cold when the schedule matters more than comfort.\nTHE TRUCK HAS A DESTINATION. THEY HAVE FEAR."
+  ],
+  20: [
+    "Fish experience injury, stress, and fear responses.\nWATER DOES NOT MAKE A NERVOUS SYSTEM IMAGINARY.",
+    "A fish caught on a hook can be pulled through the water by the mouth.\nSPORT CALLS THE PANIC A CATCH."
+  ],
+  21: [
+    "Longline fishing can leave hooked fish struggling for hours before the gear is hauled in.\nTHE LINE DOES NOT KNOW MERCY.",
+    "Trawling can drag nets across the seafloor and capture animals who were never targeted.\nTHE OCEAN BECOMES A NET WITH A RECEIPT."
+  ],
+  22: [
+    "Bycatch can include turtles, seabirds, sharks, dolphins, and non-target fish.\nTHE INDUSTRY CALLS IT INCIDENTAL. THE ANIMAL IS STILL DEAD.",
+    "Fish caught at depth can suffer pressure injuries when hauled rapidly toward the surface.\nTHE JOURNEY UP IS NOT AN ESCAPE."
+  ],
+  23: [
+    "Farmed salmon can live in crowded pens where parasites and disease spread easily.\nTHE SEA WAS REPLACED WITH A STOCKING DENSITY.",
+    "Crustaceans can be boiled, steamed, or dismembered while alive in some kitchens.\nA RESTAURANT TIMER DOES NOT MAKE PAIN DISAPPEAR."
+  ],
+  24: [
+    "Octopuses explore, solve problems, and show complex behaviour.\nA SEAFOOD MENU IS NOT A SENTIENCE TEST.",
+    "Many marine animals die after hours or days on fishing gear rather than from a quick death.\nSLOW DOES NOT BECOME HUMANE BECAUSE IT HAPPENS OFF CAMERA."
+  ],
+  25: [
+    "Wild animals wounded by hooks or bullets may escape and die later.\nTHE ABSENCE OF A BODY IS NOT A SURVIVAL CERTIFICATE.",
+    "Hunting can leave dependent young without a parent.\nTHE TROPHY PHOTO DOES NOT SHOW THE ONES WAITING."
+  ],
+  26: [
+    "Traps can hold an animal in pain, exposure, and panic until the trapper arrives.\nA TRAP IS A CLOCK WITH TEETH.",
+    "Some snares tighten as an animal struggles.\nTHE INSTINCT TO ESCAPE BECOMES THE MECHANISM OF INJURY."
+  ],
+  27: [
+    "Rodeo events can use flank straps or other equipment to provoke bucking and dramatic movement.\nTHE CROWD CALLS PAIN ENTERTAINMENT.",
+    "Animals used in rodeo can be injured by falls, collisions, and rough handling.\nTRADITION DOES NOT REMOVE THE BODY FROM THE ARENA."
+  ],
+  28: [
+    "Greyhound racing puts dogs on tracks where collisions and broken limbs can occur.\nSPEED IS NOT CONSENT.",
+    "Animals used for entertainment can be valued for performance and discarded when no longer profitable.\nTHE APPLAUSE HAS AN EXPIRY DATE."
+  ],
+  29: [
+    "Sheep may undergo mulesing, a painful procedure used in some wool systems to reduce flystrike risk.\nTHE INDUSTRY ARGUES ABOUT THE METHOD. THE SHEEP FEELS THE CUT.",
+    "Shearing can cause cuts and injuries when speed is prioritised.\nA FIBRE DOES NOT MATTER MORE THAN THE SKIN PRODUCING IT."
+  ],
+  30: [
+    "Transport exposes animals to heat stress, cold, crowding, and dehydration.\nTHE TRUCK MOVES. THE BODY ENDURES.",
+    "Injured animals may be loaded and transported even when movement is painful.\nTHE SCHEDULE CAN OUTRANK THE WOUND."
+  ],
+  31: [
+    "Bubbly Creek near Chicago's former Union Stock Yard was associated with blood, animal waste, and gases from decomposition.\nTHE RIVER WAS A RECEIPT FOR THE SLAUGHTERHOUSE.",
+    "The original Bubbly Creek was not a monster story invented for a game.\nTHE WATER BUBBLED BECAUSE A CITY BUILT INDUSTRY AROUND ANIMAL BODIES."
+  ],
+  32: [
+    "Some animals die during transport before reaching the slaughter facility.\nTHE DEATH HAPPENS BEFORE THE LAST ROOM.",
+    "Animals transported long distances can go without adequate food or water.\nA BORDER CROSSING DOES NOT RESET THIRST."
+  ],
+  33: [
+    "Stunning is intended to render an animal unconscious before killing.\nWHEN IT FAILS, THE ANIMAL CAN REMAIN CONSCIOUS.",
+    "Electrical stunning can be ineffective when equipment placement or timing is wrong.\nA MACHINE CAN FAIL. THE BODY STILL PAYS."
+  ],
+  34: [
+    "Gas stunning can expose pigs to aversive gases before unconsciousness.\nTHE METHOD IS INDUSTRIAL. THE FEAR IS PERSONAL.",
+    "The line may continue when an animal shows signs of consciousness after stunning.\nPRODUCTION SPEED CAN OUTRANK THE LAST MOMENTS OF A LIFE."
+  ],
+  35: [
+    "Slaughterhouse workers may handle huge numbers of animals under speed and production pressure.\nTHE SYSTEM CREATES THE RUSH AND CALLS IT NECESSARY.",
+    "The word humane can appear on a label while the endpoint remains slaughter.\nA KIND ADJECTIVE CANNOT CHANGE A VIOLENT NOUN."
+  ],
+  36: [
+    "Packaging shows a clean cut of meat, not the living animal who was confined and killed.\nTHE IMAGE IS CLEANED. THE HISTORY IS NOT.",
+    "A meal can hide breeding, separation, transport, injury, and death behind one small price tag.\nCONVENIENCE IS A CURTAIN."
+  ],
+  37: [
+    "High-density confinement can increase opportunities for pathogens to spread and mutate.\nTHE BUILDING IS A RISK FACTOR BEFORE THE PACKAGE EXISTS.",
+    "Antibiotics can be used in animal agriculture, and overuse contributes to antimicrobial resistance.\nA CHEAP SYSTEM CAN SEND A COST INTO EVERYONE'S FUTURE."
+  ],
+  38: [
+    "Animals can be bred, confined, transported, and killed at a scale that makes individual suffering hard to see.\nSCALE IS NOT AN EXCUSE. IT IS THE PROBLEM.",
+    "A disease outbreak does not make the animals disposable.\nTHEY WERE ALREADY LIVING BODIES BEFORE THEY BECAME A BIOSECURITY NUMBER."
+  ],
+  39: [
+    "Industry terms such as unit, yield, cull, and throughput turn individuals into production language.\nTHE VOCABULARY IS PART OF THE ENCLOSURE.",
+    "Calling a living being stock does not remove fear, attachment, or the desire to live.\nPROPERTY STATUS IS NOT A NERVOUS SYSTEM."
+  ],
+  40: [
+    "A lower price does not mean the animal suffered less.\nIT MAY MEAN THE SYSTEM HID MORE.",
+    "The distance between farm and supermarket is part of the design.\nA CLEAN DISPLAY CASE CAN STILL HAVE A BODY IN ITS HISTORY."
+  ],
+  41: [
+    "A free-range label can describe access requirements without guaranteeing a peaceful life or death.\nREAD THE WHOLE SYSTEM, NOT THE FRONT OF THE BOX.",
+    "Organic certification can regulate some inputs without ending confinement, separation, or slaughter.\nORGANIC IS NOT IMMORTAL."
+  ],
+  42: [
+    "Cage-free hens can still live in crowded sheds and face industrial slaughter.\nA DIFFERENT CAGE IS NOT FREEDOM.",
+    "Pasture-raised animals can still be bred, transported, and killed for food.\nA FIELD IS NOT AN EXIT."
+  ],
+  43: [
+    "A clean barn does not erase fear, bodily restriction, or the final journey.\nA CLEAN FLOOR DOES NOT MAKE A CLEAN CONSCIENCE.",
+    "The knife does not become gentle because a menu calls the body premium.\nA PRICE TAG CANNOT UPGRADE A DEATH."
+  ],
+  44: [
+    "A dead animal is not an ingredient first.\nIT WAS A LIVING ANIMAL FIRST.",
+    "Taste lasts minutes; the animal's life was the entire cost.\nA SHORT PLEASURE CAN HAVE A LONG VICTIM."
+  ],
+  45: [
+    "Rescuing one animal does not undo the system that produces millions more.\nCOMPASSION MUST SCALE INTO CHOICE.",
+    "Sanctuaries give survivors names because individuality becomes obvious when profit is removed.\nTHE NAME WAS ALWAYS THERE."
+  ],
+  46: [
+    "Farmed animals can form bonds with other animals and respond differently to familiar people.\nTHEY WERE NEVER JUST STOCK.",
+    "Cows can learn routes, remember experiences, and show individual preferences.\nA BURGER IS NOT A PERSONALITY TEST."
+  ],
+  47: [
+    "Pigs can learn symbols, solve tasks, and explore with their snouts.\nTHE ANIMAL BEHIND THE BACON WAS NOT EMPTY.",
+    "Chickens communicate through many calls and can recognise other birds.\nTHE NUGGET HAS A BEFORE."
+  ],
+  48: [
+    "Sheep can recognise faces and form social relationships.\nWOOL DOES NOT COME FROM A BLANK SLATE.",
+    "Fish learn routes and respond to changing conditions.\nTHEY ARE NOT DECORATION WITH FINS."
+  ],
+  49: [
+    "The Sinclair effect describes how a happy animal image can soften the viewer's reaction to the killing behind the product.\nTHE SMILING FARM IS A SCREEN.",
+    "A cartoon cow on a carton is not evidence of a cow's life.\nMARKETING CAN BORROW ANIMAL TRUST WHILE HIDING ANIMAL HARM."
+  ],
+  50: [
+    "Fear is not less fear because the victim cannot explain it in English.\nLANGUAGE IS NOT THE TEST FOR SUFFERING.",
+    "A scream is not required for an animal to be in pain.\nSILENCE CAN BE PARALYSIS, NOT CONSENT."
+  ],
+  51: [
+    "The animal cannot pause the supply chain, close the menu, or leave a review.\nYOU CAN.",
+    "The animal cannot choose the cheaper option.\nTHE CONSUMER CAN CHOOSE A DIFFERENT ONE."
+  ],
+  52: [
+    "Leather is animal skin processed after slaughter.\nA LUXURY FINISH DOES NOT ERASE THE BODY.",
+    "Fur farming can confine minks and foxes in barren wire cages.\nTHE COAT IS SOFT. THE LIFE WAS NOT."
+  ],
+  53: [
+    "Animals bred for fur may pace, circle, or show repetitive behaviour in barren confinement.\nTHEIR MIND HAS NOWHERE TO GO.",
+    "Down can be collected from birds through plucking or after slaughter, depending on the supply chain.\nA DUVET CAN STILL HAVE A BODY IN ITS HISTORY."
+  ],
+  54: [
+    "Wool labels do not tell you whether an animal experienced fear, restraint, or injury.\nMARKETING IS NOT A WITNESS.",
+    "Tail docking can be performed on lambs to reduce flystrike risk.\nA SMALLER TAIL DOES NOT MAKE THE FARM KIND."
+  ],
+  55: [
+    "The word humane can hide a system that still breeds a dependent animal for slaughter.\nTHE ADJECTIVE CANNOT RESCUE THE NOUN.",
+    "A body can be legally owned and still experience pain, attachment, and a desire to live.\nTHE LAW IS NOT A NERVOUS SYSTEM."
+  ],
+  56: [
+    "Ecofeminist analysis connects the treatment of animals, women, land, and other bodies when all are framed as resources to control.\nTHE PATTERN IS POWER, NOT BIOLOGY.",
+    "Patriarchal violence is not identical to animal agriculture, but both can rely on ownership, breeding control, and silencing.\nNAME THE STRUCTURE WITHOUT ERASING THE VICTIM."
+  ],
+  57: [
+    "When reproduction is controlled for profit, the body carrying the cost is often made invisible.\nA MOTHER IS NOT A MACHINE.",
+    "Around 400,000 artificial inseminations globally per day is an estimate of scale, not a permission slip.\nEVERY NUMBER REPRESENTS A BODY BEING HANDLED."
+  ],
+  58: [
+    "A mother animal can search for her young after separation.\nTHE FARM CALLS IT MANAGEMENT. THE MOTHER EXPERIENCES LOSS.",
+    "The calf, chick, piglet, or lamb is not a by-product of the mother's body.\nTHE BABY IS A PERSON TO THE MOTHER."
+  ],
+  59: [
+    "Animals anticipate routines, including feeding, handling, and the approach of danger.\nTHEY CAN LEARN WHEN THE BAD THING IS COMING.",
+    "A loading dock is not a neutral doorway to the animal walking through it.\nTHE EXIT HAS BEEN REPLACED BY A SCHEDULE."
+  ],
+  60: [
+    "The animal cannot close the tab when the footage becomes unbearable.\nYOU CAN LEAVE THE FEED. THEY COULD NOT LEAVE THE ROOM.",
+    "Footage is not a prop once it makes you recognise the individual.\nLOOK AT THE ONE WHO CANNOT LOOK AWAY."
+  ],
+  61: [
+    "The industry's quietest word is unit.\nTHE ANIMAL HAD A FACE BEFORE IT HAD A NUMBER.",
+    "A barcode can follow a body through a supply chain, but it cannot describe a mind.\nDATA IS NOT DIGNITY."
+  ],
+  62: [
+    "No label can show the whole chain of breeding, confinement, separation, transport, injury, and death.\nTHE FRONT OF THE BOX IS A CURTAIN.",
+    "The absence of visible blood in an advertisement does not mean the absence of violence.\nSOFT LIGHTING IS NOT A MORAL FILTER."
+  ],
+  63: [
+    "The animal was not confused about what was happening.\nTHEY WERE TERRIFIED.",
+    "You do not need to hate animals to stop eating them.\nYOU ONLY NEED TO STOP MAKING THEM PAY."
+  ],
+  64: [
+    "A sentient life became an ingredient, a price, and a punchline.\nTHE JOKE ENDS WHERE THE BODY BEGINS.",
+    "Sport, tradition, taste, and convenience are human reasons.\nTHE ANIMAL STILL PAYS."
+  ],
+  65: [
+    "Footage can show an individual looking back at the camera, refusing to become background.\nTHE WITNESS IS ALREADY HERE.",
+    "The camera gives you distance. The animal does not get distance from the procedure.\nLOOK AT THE ONE WHO CANNOT LOOK AWAY."
+  ],
+  66: [
+    "A sanctuary survivor can remember routines, form friendships, and respond to care.\nSURVIVAL DOES NOT TURN A PERSON INTO A SYMBOL.",
+    "The rescued animal's name was not created by the sanctuary.\nTHE NAME WAS ALWAYS THERE. PROFIT JUST DID NOT NEED IT."
+  ],
+  67: [
+    "You can stop reading this card.\nTHE ANIMAL COULD NOT STOP THE NEXT PROCEDURE.",
+    "You can change the order, close the menu, and choose another meal.\nTHEIR ONLY CHOICE WAS HOW TO ENDURE THE LINE."
+  ],
+  68: [
+    "The exit is a choice offered to the player.\nTHE ANIMAL IN THE SUPPLY CHAIN NEVER GOT ONE.",
+    "One person cannot end every system alone.\nONE PERSON CAN STILL BECOME ONE LESS DEMAND."
+  ],
+  69: [
+    "The horror is not that the building is unreal.\nTHE HORROR IS HOW MUCH OF IT WAS ALREADY NORMAL.",
+    "A fictional monster can chase you for minutes.\nA real animal can be trapped in the system for a whole life."
+  ],
+  70: [
+    "The supply chain can make suffering look like scenery by keeping the individual out of frame.\nTHE VICTIM IS NOT BACKGROUND.",
+    "The animal was not born to become a product.\nTHE PRODUCT WAS DESIGNED AROUND THE ANIMAL'S DEATH."
+  ],
+  71: [
+    "This is a broadcast inside a game inside a supply chain.\nTHE FOURTH WALL IS NOT THE ONLY WALL.",
+    "When the credits roll, the supply chain does not.\nTHE REAL ENDING IS YOUR NEXT CHOICE."
+  ],
+  72: [
+    "The game gives you a body, a name, and a route out.\nTHE INDUSTRY GAVE THEM A BARCODE.",
+    "The question is not whether you can survive this level.\nTHE QUESTION IS WHETHER THEY SHOULD HAVE HAD TO."
+  ]
+};
+
+function levelSpecificFact(){
+  const keys = Object.keys(LEVEL_FACTS_BY_LEVEL).map(Number).sort((a,b)=>a-b);
+  let selected = keys[0];
+  keys.forEach(key=>{ if(key <= currentLevel) selected = key; });
+  return LEVEL_FACTS_BY_LEVEL[selected];
+}
 
 const FICTIONAL_CHAT_LINES = [
   ["@dean_defender", "Dean found the exit in thirty seconds. Earthling built thirty floors because he was scared."],
@@ -1190,16 +1770,16 @@ const EXTRA_CHAT_LINES = [
   ["@momo", "the radio is playing, the cat is judging, and the chat is losing."],
   ["@momo", "momo says do not follow the window signal unless you enjoy bad ideas."],
   ["@momo", "Earthling built a maze with no cat door. unacceptable design."],
-  ["@kristy", "chat, which dog joke is appropriate for a building with no normal exits?"],
-  ["@kristy", "I saw the live feed and immediately asked where the nearest dog-friendly route was."],
-  ["@kristy", "the entity is not a dog, the radio is not a leash, and Dean is not listening."],
-  ["@kristy", "the news says one thing and the wallpaper says absolutely nothing."],
-  ["@kristy", "if this level had a kennel, the kennel would probably have better lighting."],
-  ["@kristy", "chat is barking at the news feed again."],
-  ["@kristy", "the green exit looks suspiciously like a dog door from this angle."],
-  ["@kristy", "Momo has better survival instincts than everyone in this chat."],
-  ["@kristy", "I am taking notes on the animal facts and avoiding the hallway sprint."],
-  ["@kristy", "Dean's debate team needs a map and perhaps a chew toy."],
+  ["@kristi", "chat, which dog joke is appropriate for a building with no normal exits?"],
+  ["@kristi", "I saw the live feed and immediately asked where the nearest dog-friendly route was."],
+  ["@kristi", "the entity is not a dog, the radio is not a leash, and Dean is not listening."],
+  ["@kristi", "the news says one thing and the wallpaper says absolutely nothing."],
+  ["@kristi", "if this level had a kennel, the kennel would probably have better lighting."],
+  ["@kristi", "chat is barking at the news feed again."],
+  ["@kristi", "the green exit looks suspiciously like a dog door from this angle."],
+  ["@kristi", "Momo has better survival instincts than everyone in this chat."],
+  ["@kristi", "I am taking notes on the animal facts and avoiding the hallway sprint."],
+  ["@kristi", "Dean's debate team needs a map and perhaps a chew toy."],
   ["@ari", "the reverb in this hallway is doing a lot of emotional labor."],
   ["@ari", "I opened the live feed and the Backrooms immediately became a music video."],
   ["@ari", "the news signal is damp, the wallpaper is smelly, and Gordon is somewhere nearby."],
@@ -1239,7 +1819,7 @@ const EXTRA_CHAT_LINES = [
   ["@donald", "Dean, you are maga at heart, but the animals are still waiting for an answer."],
   ["@donald", "the live feed has tremendous ratings and absolutely no comfortable seating."],
   ["@donald", "the news lady is doing a great job, people are saying it."],
-  ["@donald", "come play with me and Kristy, but first find the exit."],
+  ["@donald", "come play with me and Kristi, but first find the exit."],
   ["@donald", "the hazmat guy is fast, very fast, possibly the fastest in the building."],
   ["@donald", "Earthling made the wallpaper and I would like to speak to the manager."],
   ["@donald", "the radio is fake news unless it says where the door is."],
@@ -1362,7 +1942,7 @@ const EXTRA_CHAT_LINES = [
   ["@news_lady", "is this Hormuz? I have a report, a green door, and no confirmed route out."],
   ["@donald", "is this the door dash? I thought Earthling was on our side."],
   ["@donald", "Deanie soy beanie, the fact feed is still on and the animals are still waiting."],
-  ["@donald", "Dean, come play with me and Kristy, but bring a map and a better argument."],
+  ["@donald", "Dean, come play with me and Kristi, but bring a map and a better argument."],
   ["@charlie", "Earthling, you are not Earthling Ed, but you did build a whole educational nightmare."],
   ["@charlie", "I wish I could debate Earthling without the hazmat guy taking the floor."],
   ["@charlie", "did Earthling really compare me to a pig? the pig has the stronger case."],
@@ -1379,8 +1959,8 @@ const EXTRA_CHAT_LINES = [
   ["@justin", "the hazmat guy sprinted past and I nearly released a survival single."],
   ["@ari", "the live feed changed and suddenly the whole chat has production value."],
   ["@ari", "Dean's dramatic pause has more reverb than the radio and less evidence."],
-  ["@kristy", "the entity is not a dog, the radio is not a leash, and the dog jokes are still coming."],
-  ["@kristy", "Momo has better survival instincts than everybody who entered this hallway."],
+  ["@kristi", "the entity is not a dog, the radio is not a leash, and the dog jokes are still coming."],
+  ["@kristi", "Momo has better survival instincts than everybody who entered this hallway."],
   ["@floor_10_mod", "plain fact: male chicks are commonly killed in the egg industry because they cannot lay eggs."],
   ["@floor_10_mod", "plain fact: dairy calves are separated from their mothers so the milk can be sold."],
   ["@floor_10_mod", "plain fact: dairy cows are repeatedly impregnated and their calves are removed from them."],
@@ -1414,6 +1994,113 @@ const EXTRA_CHAT_LINES = [
   ["@earthling_watch", "the creator is in the debate, the debate is in the building, and the building has no customer service."],
 ];
 
+// New chat voices keep the feed genuinely divided: loud meat-brags, Dean
+// loyalists, MAGA-coded fictional hecklers, uneasy viewers, and people who
+// start changing their minds only after the joke stops protecting them.
+const ADDITIONAL_CHAT_LINES = [
+  ["@brisket_boy_01", "smoked brisket before the stream. still defending it from level one."],
+  ["@bacon_brigade_02", "bacon for breakfast, bacon for dinner, bacon for the moral panic."],
+  ["@ranchhand_03", "my family raises cattle and I am not taking ethics advice from a haunted hallway."],
+  ["@steakhouse_04", "ribeye tastes better than every plant in this building combined."],
+  ["@wingnight_05", "wings on the plate, Dean on the screen, Earthling losing his mind."],
+  ["@hunter_kid_06", "went hunting last weekend and came back with dinner. cope, Earthling."],
+  ["@bbqking_07", "the grill is running while I watch the blood level rise. perfect atmosphere."],
+  ["@jerkyfan_08", "beef jerky is portable, delicious, and apparently the villain of this game."],
+  ["@carnivore_09", "I eat meat and I am still faster than Dean in this hallway."],
+  ["@burgerstack_10", "double burger secured. ethical debate postponed until after fries."],
+  ["@turkeyleg_11", "my turkey leg is bigger than the exit sign."],
+  ["@chickenwing_12", "three sauces, two wings, zero regrets. Earthling is typing."],
+  ["@porkchop_13", "pork chops on the grill and the chat cannot stop me."],
+  ["@meat_meme_14", "animals are food, chat. the wallpaper is not changing my mind."],
+  ["@bacon_nachos_15", "I brought bacon nachos to a vegan game. tactical decision."],
+  ["@ribs_again_16", "ribs for the family, facts for the comments, no surrender."],
+  ["@sirloin_17", "steak is not a personality but it is a very good dinner."],
+  ["@bbq_uncle_18", "uncle says the smoke ring is more convincing than Earthling's argument."],
+  ["@meatlocker_19", "I am eating a sausage while the screen says sentience. timing is art."],
+  ["@grillcam_20", "live from my kitchen: meat is still sizzling, chat is still screaming."],
+  ["@dean_defense_21", "Dean is right that people hate being lectured. Earthling is right that the animals still suffer."],
+  ["@dean_loyalist_22", "I came for Dean and I am staying even if he concedes."],
+  ["@dean_clip_23", "someone clip Dean's face when the calf fact landed. that was not a rebuttal."],
+  ["@dean_sideeye_24", "Dean can be funny and still be wrong about what the animal owes us."],
+  ["@dean_follower_25", "I support Dean, but I am not defending the gestation crate. sorry chat."],
+  ["@dean_watch_26", "his followers are splitting into steak and sanctuary factions."],
+  ["@dean_follower_27", "Dean, I love you, but the pig has a point and it cannot type."],
+  ["@dean_lurker_28", "Earthling is unbearable. the fact feed is worse because it keeps being correct."],
+  ["@dean_follower_29", "I am not vegan yet. I am also not laughing at the hatchery fact anymore."],
+  ["@dean_chat_30", "the chat came to defend Dean and accidentally formed a reading group."],
+  ["@maga_commentary_31", "MAGA takes, haunted floors, and a vegan fact feed. this stream has everything."],
+  ["@redhat_kid_32", "my political opinions are loud, my flashlight is weak, and the calf is still missing."],
+  ["@patriot_bbq_33", "freedom means I choose my dinner. it does not mean the animal chose the truck."],
+  ["@flag_and_flame_34", "I came here to own Earthling and got owned by a pig's nervous system."],
+  ["@america_first_35", "make farms free again, maybe start by letting the animals leave."],
+  ["@maga_meathead_36", "the red hat says steak. the red box says look again."],
+  ["@election_grill_37", "I voted for the burger and now the burger is asking me questions."],
+  ["@freedomfries_38", "no one is taking my grill away. maybe I should stop pretending that is the point."],
+  ["@patriot_panic_39", "is this a tap running? because it sounds like the sink and the slaughterhouse are sharing plumbing."],
+  ["@redpill_ranch_40", "Earthling made a vegan haunted house and somehow the cows have better receipts."],
+  ["@quietly_vegan_41", "the meat jokes are loud because the animal facts are harder to answer."],
+  ["@sanctuary_scroll_42", "the calf called and chat finally stopped saying content."],
+  ["@plantbased_43", "I am here for the animals and the weirdest level design on the internet."],
+  ["@lentil_lurker_44", "the first fact made me angry. the third made me check my grocery list."],
+  ["@tofu_truth_45", "Earthling is annoying on purpose. the animals are not a debate trick."],
+  ["@cagefree_skeptic_46", "cage-free is not a synonym for free. the feed is doing the dictionary work."],
+  ["@moral_static_47", "I expected a jump scare. I got a supply chain with a face."],
+  ["@vegan_after_dark_48", "the joke is fictional, the victim is not. write that on every wall."],
+  ["@animal_angel_49", "the player has a pause button. the animal in the footage had a schedule."],
+  ["@dairy_doubt_50", "I never thought about the calf behind the milk carton until this level."],
+  ["@eggaisle_51", "male chick fact just ruined my omelette and I mean that as a compliment."],
+  ["@fish_witness_52", "the hook is not a funny little mechanic when the fish is the one wearing it."],
+  ["@sow_watch_53", "the crate is smaller than the excuses in this chat."],
+  ["@pig_prosecutor_54", "the pig cannot subpoena anyone but it has presented evidence."],
+  ["@chicken_memory_55", "someone said chicken is stupid and the bird still has more emotional range than this comment section."],
+  ["@cow_caller_56", "the mother kept calling. the truck kept moving. I am not okay."],
+  ["@goose_guilt_57", "the foie gras fact is not a joke about a fancy menu anymore."],
+  ["@sheep_signal_58", "wool is not a magic material that grows without a body attached."],
+  ["@fishschool_59", "different habitat, same question: why do we need their death for our dinner?" ],
+  ["@octopus_note_60", "octopus intelligence is not a side quest. stop treating the ocean like an inventory."],
+  ["@meat_defender_61", "I still eat meat, but I am done calling the fear imaginary."],
+  ["@meat_defender_62", "not going vegan today. also not typing 'just food' after that footage."],
+  ["@meat_defender_63", "taste is a reason people give. it is not a reason the animal had to die."],
+  ["@meat_defender_64", "this is the worst possible place to discover my argument has no flashlight."],
+  ["@meat_defender_65", "Earthling, you win the fact. Dean still wins the hair competition."],
+  ["@meat_defender_66", "I am keeping the steak and losing the smugness. progress, apparently."],
+  ["@meat_defender_67", "the slaughter sound made the punchline leave the room."],
+  ["@meat_defender_68", "I came in carnivore, I am leaving conflicted, and I blame level 30."],
+  ["@meat_defender_69", "the box says change. I said no. then I read the calf card again."],
+  ["@meat_defender_70", "I hate that this game is effective."],
+  ["@meta_viewer_71", "Earthling is reading this chat while we pretend the fourth wall is still intact."],
+  ["@meta_viewer_72", "the creator put the excuse in the mouth of the viewer and called it immersion."],
+  ["@meta_viewer_73", "we are not watching a character get trapped. we are watching a choice get repeated."],
+  ["@meta_viewer_74", "the comment feed is an unreliable narrator with a grill."],
+  ["@meta_viewer_75", "the game says fictional. the footage says do not use that word as a shield."],
+  ["@meta_viewer_76", "who wrote the red box? whoever it was knows exactly when the joke stops working."],
+  ["@meta_viewer_77", "Earthling put Dean in the maze, then put us in Dean's audience."],
+  ["@meta_viewer_78", "the chat is the chorus, the animal is the missing verse, and the menu is the censor."],
+  ["@meta_viewer_79", "this is a vegan gameumentary, not a neutral hallway with a vegan jump scare."],
+  ["@meta_viewer_80", "the safest character here is the one willing to change their mind."],
+  ["@level_30_witness_81", "level 30 is not a room, it is a five-minute answer to 'how bad could it be?'"],
+  ["@level_30_witness_82", "the blood rose and every 'it's just food' comment sank."],
+  ["@level_36_void_83", "the empty floors are the space between the animal and the product label."],
+  ["@level_50_signal_84", "fifty levels down and the chat still thinks a joke is an exit."],
+  ["@level_60_noise_85", "the scream is louder now because the facts have nowhere left to hide."],
+  ["@level_70_void_86", "a ring of screens and no walls. somehow the animals are still the most visible thing."],
+  ["@level_71_news_87", "the news feed is live and the chat has run out of ways to call it ambience."],
+  ["@tap_watcher_88", "is that a tap running? no, seriously, why is the floor making that sound?" ],
+  ["@tap_watcher_89", "is that a tap running? the answer better not be what I think it is."],
+  ["@scream_mic_90", "turn the squeal down if you need to. do not turn the truth down with it."],
+  ["@red_box_91", "the red box is not a tutorial. it is the building talking back."],
+  ["@red_box_92", "five seconds after landing and the game gives you the sentence you avoided upstairs."],
+  ["@red_box_93", "the lettering is red because the system prefers consequences in a colour you cannot ignore."],
+  ["@chat_mod_94", "meat-bragging is allowed. pretending animals cannot suffer is not a fact."],
+  ["@chat_mod_95", "mixed feelings are welcome. lazy euphemisms are being sent back up the conveyor."],
+  ["@chat_mod_96", "you can mock Earthling and still answer the animal question."],
+  ["@chat_mod_97", "Dean followers, MAGA kids, vegans, lurkers: nobody gets to mute the victim."],
+  ["@chat_mod_98", "the game is partisan about suffering. that is the point, not a bug."],
+  ["@chat_mod_99", "if the facts change your dinner, the horror worked."],
+  ["@chat_mod_100", "when the credits roll, do not leave the animals in the building."]
+];
+EXTRA_CHAT_LINES.push(...ADDITIONAL_CHAT_LINES);
+
 // A 40-user expansion for the scrolling chat. The generated entries are
 // ordinary chat lines, not a special intermission, so they follow the same
 // timing and feed selection as the original comments.
@@ -1428,7 +2115,7 @@ const CHAT_EXPANSION_USERS = [
   "@gifted_dean", "@mods_plz", "@really_ok", "@phil_again", "@w_here",
   "@win_sophistry", "@president_momo", "@haxan_hallway", "@rumble_signal",
   "@yellow_wallpaper", "@freefalling", "@antenna_unc", "@kexp_listener",
-  "@soma_signal", "@song_oracle", "@plant_floor", "@valley_watch",
+  "@soma_signal", "@radio_listener", "@plant_floor", "@valley_watch",
   "@scanner_sideeye", "@dean_paradox", "@quietly_conflicted", "@valley_signal",
 ];
 
@@ -1530,13 +2217,13 @@ const CHAT_EXPANSION_LINES = [
   ["@gordon", "raw argument, damp wallpaper, no seasoning on the facts. shut it down!"],
   ["@ari", "the spotlight hit Dean and the chat immediately forgot the entire political premise."],
   ["@justin", "I am off the radar but somehow on level 70. this is not what the itinerary said."],
-  ["@kristy", "the dog jokes are back, the cat is correcting us, and the animal facts remain undefeated."],
+  ["@kristi", "the dog jokes are back, the cat is correcting us, and the animal facts remain undefeated."],
   ["@kadie", "vegan angels are not here to make the room pretty. they are here to make the room impossible to ignore."],
   ["@floor_10_mod", "plain fact: the level gate is fiction; the choice not to fund animal exploitation is real."],
   ["@moral_patience", "the mature take is still intense: stop exploiting animals and stop pretending the hallway made the choice."],
   ["@really_ok", "really ok, but the debate is now between Donald, Dean, Charlie, a cat, and a blue door."],
   ["@yellow_wallpaper", "thats just weird, said the wall, after Donald gifted a dolphin to a TV signal."],
-  ["@win_sophistry", "W Dean, W Jade, W Momo's copy edit, W the animal angel."],
+  ["@win_sophistry", "W Dean's debate, W Jade's vegan correction, W Momo's copy edit, W the animal angel."],
   ["@no_meat_no_map", "chat stop that. also chat stop buying the thing that caused the slaughter footage."],
   ["@animal_angel", "there is no ethical plot twist where the animal suddenly wanted to be inventory."],
   ["@vegan_angel", "the blue light is a gate, not a moral excuse. walk through it or keep thinking."],
@@ -1562,7 +2249,7 @@ const CHAT_EXPANSION_LINES = [
   ["@night_terror_unit", "is that Dean in the spotlight or the entity wearing a beanie? I am not checking."],
   ["@really_ok", "really ok but why is the gate blue"],
   ["@phil_again", "not Phil again, not another vegan fact, not another fall. actually yes, all three."],
-  ["@w_here", "W Dean, W Jade, W Momo's copy edit, W the animal angel."],
+  ["@w_here", "W Dean's debate, W Jade's vegan correction, W Momo's copy edit, W the animal angel."],
   ["@mods_plz", "where are the mods"],
   ["@president_momo", "momo for president"],
   ["@win_sophistry", "win sophistry"],
@@ -1572,18 +2259,9 @@ const CHAT_EXPANSION_LINES = [
   ["@dean_watch", "is that Dean in the spotlight"],
   ["@gifted_dean", "guys check my new post!"],
   ["@yellow_wallpaper", "thats just weird"],
-  ["@freefalling", "if this next song is Free Fallin', I am taking it as a message from the level counter."],
-  ["@freefalling", "free falliiiing! please let the chorus hit when the floor drops."],
-  ["@freefalling", "great, we're falling again. somebody check whether Tom Petty is on the radio."],
   ["@antenna_unc", "what even is oldie antenna. is that a station or did the wallpaper invent a phrase."],
   ["@antenna_unc", "lol unc antenna, the radio has officially become somebody's dad's car."],
-  ["@song_oracle", "prediction: '(Everything I Do) I Do It for You' right when Dean refuses to concede."],
-  ["@song_oracle", "Jump would be funny now, except the building has already made falling the main mechanic."],
-  ["@song_oracle", "Never Ending Story is the only accurate title for this hallway."],
-  ["@song_oracle", "My Girl would make the valley reveal feel suspiciously wholesome. do it, radio."],
-  ["@song_oracle", "prediction locked: It's a Sin, followed by chat arguing about premises."],
   ["@kexp_listener", "KEXP energy detected. the scanner says emergency, the song says stay weird."],
-  ["@kexp_listener", "girls just wanna have fun; the plants just wanna come through the floor."],
   ["@soma_signal", "SomaFM mixing with the Backrooms and vegan chat is somehow the most coherent station here."],
   ["@soma_signal", "Groove Salad is playing while the hallway sinks into a forest. tasteful, terrifying, perfect."],
   ["@soma_signal", "Drone Zone is less a station and more the sound of Dean avoiding the central question."],
@@ -1602,18 +2280,10 @@ const CHAT_EXPANSION_LINES = [
   ["@quietly_conflicted", "I came in unsure about veganism and now I am watching a forest enter a hallway. not sure what to do with that."],
   ["@quietly_conflicted", "the vegan argument is loud, but the animal footage is quieter and somehow harder to ignore."],
   ["@quietly_conflicted", "I still have questions, but 'taste preference' is not feeling like a complete answer anymore."],
-  ["@song_oracle", "Give a Little Bit of My Life to You? the radio is really committing to the dramatic floor drop."],
-  ["@song_oracle", "Heaven Is a Place on Earth would be a bold choice while this forest is replacing the ceiling."],
-  ["@song_oracle", "is Belinda Carlisle vegan? no idea, but the chat is definitely going to investigate instead of watching."],
-  ["@song_oracle", "Baby Give It Up just hit in my imaginary prediction queue. Dean should give up trying to make the argument disappear."],
-  ["@song_oracle", "Rule the World would be funny here because the plants are clearly taking over the level."],
   ["@dean_chat", "the valley is entering the hallway and Dean is still trying to win on a technicality. priorities."],
   ["@plantbasedpanic", "the forest has better evidence than the debate and it is literally just growing through the room."],
   ["@floor_10_mod", "chat reminder: scanner sounds in this game are fictional atmosphere, not reports about real people."],
   ["@floor_10_mod", "do not post personal information when the chat jokes about a doxxing plot. report it and keep the mystery in-game."],
-  ["@radio_leak", "Free Fallin' prediction failed, but the hallway delivered the free falling anyway."],
-  ["@radio_leak", "the station changed before My Girl arrived. chat is calling censorship; the forest is calling it timing."],
-  ["@meat_logic", "I came here to defend steak and now I am predicting Take That. this forest has ruined my brand."],
   ["@dean_defender", "Dean should give up trying to make the whole chat vegan and start by answering one question honestly."],
   ["@dean_watch", "the plants came through before Dean conceded. statistically, that feels on brand."],
   ["@momo_counsel", "Momo has inspected the valley and confirms: cats are carnivores, plants are not a cat diet, chat is still confused."],
@@ -1724,7 +2394,7 @@ const LIVE_FEED_CHAT_LINES = {
 const CHAT_NAME_ALIASES = {
   "@gordon": "@gordon",
   "@justin": "@justin",
-  "@kristy": "@kristy",
+  "@kristi": "@kristi",
   "@ari": "@ari",
   "@kadie": "@kadie",
   "@charlie": "@charlie",
@@ -1740,6 +2410,8 @@ const VOID_LIVE_FEED_CATEGORIES = [
 
 const tauntEl = document.getElementById('player-taunt');
 const tauntCopyEl = document.getElementById('player-taunt-copy');
+const levelRightsEl = document.getElementById('level-animal-rights');
+const levelRightsCopyEl = document.getElementById('level-animal-rights-copy');
 const factFeedEl = document.getElementById('ag-fact-feed');
 const factCopyEl = document.getElementById('ag-fact-copy');
 const chatEl = document.getElementById('fake-chat');
@@ -1751,13 +2423,24 @@ let factTimer = null;
 let chatTimer = null;
 let tauntHideTimer = null;
 let factHideTimer = null;
+let landingBroadcastTimer = null;
+let levelRightsTimerA = null;
+let levelRightsTimerB = null;
+let levelRightsHideTimer = null;
+let levelRightsRun = 0;
 let broadcastsRunning = false;
 let playerIsMoving = false;
 let chatMoveTimeout = null;
 
 function showPlayerTaunt(){
   if(!broadcastsRunning || !tauntEl || !tauntCopyEl) return;
-  tauntCopyEl.textContent = PLAYER_TAUNTS[tauntIdx++ % PLAYER_TAUNTS.length];
+  const levelBroadcast = LEVEL_BROADCASTS[
+    Math.max(0, Math.min(currentLevel, LEVEL_BROADCASTS.length - 1))
+  ];
+  const copy = levelBroadcast
+    ? `LEVEL ${currentLevel + 1} // ${levelBroadcast.difficulty.toUpperCase()}\n${levelBroadcast.line}`
+    : PLAYER_TAUNTS[tauntIdx++ % PLAYER_TAUNTS.length];
+  tauntCopyEl.textContent = copy;
   tauntEl.style.display = 'block';
   tauntEl.classList.remove('show');
   requestAnimationFrame(()=>tauntEl.classList.add('show'));
@@ -1766,6 +2449,59 @@ function showPlayerTaunt(){
     tauntEl.classList.remove('show');
     setTimeout(()=>{ if(!tauntEl.classList.contains('show')) tauntEl.style.display='none'; }, 850);
   }, 9000);
+}
+
+function hideLevelAnimalRights(){
+  if(!levelRightsEl) return;
+  levelRightsEl.classList.remove('show');
+  setTimeout(()=>{
+    if(!levelRightsEl.classList.contains('show')) levelRightsEl.style.display='none';
+  }, 850);
+}
+
+function showLevelAnimalRightsCard(cardNumber, displayLevel){
+  if(!broadcastsRunning || !levelRightsEl || !levelRightsCopyEl) return;
+  const cards = LEVEL_ANIMAL_RIGHTS_CARDS[displayLevel];
+  if(!cards || !cards[cardNumber]) return;
+  levelRightsCopyEl.textContent =
+    `LEVEL ${displayLevel} // ANIMAL RIGHTS NOTE ${cardNumber + 1}/2\n${cards[cardNumber]}`;
+  levelRightsEl.style.display = 'block';
+  levelRightsEl.classList.remove('show');
+  requestAnimationFrame(()=>levelRightsEl.classList.add('show'));
+  if(levelRightsHideTimer) clearTimeout(levelRightsHideTimer);
+  levelRightsHideTimer = setTimeout(hideLevelAnimalRights, 17000);
+}
+
+function armLevelAnimalRightsCards(firstDelay, secondDelay){
+  [levelRightsTimerA, levelRightsTimerB, levelRightsHideTimer].forEach(timer=>{
+    if(timer) clearTimeout(timer);
+  });
+  levelRightsTimerA = levelRightsTimerB = levelRightsHideTimer = null;
+  hideLevelAnimalRights();
+
+  const displayLevel = currentLevel + 1;
+  if(!LEVEL_ANIMAL_RIGHTS_CARDS[displayLevel]) return;
+  const run = ++levelRightsRun;
+  const showIfCurrent = cardNumber => {
+    if(run !== levelRightsRun || !broadcastsRunning || currentLevel + 1 !== displayLevel) return;
+    showLevelAnimalRightsCard(cardNumber, displayLevel);
+  };
+  levelRightsTimerA = setTimeout(()=>showIfCurrent(0), firstDelay);
+  levelRightsTimerB = setTimeout(()=>showIfCurrent(1), secondDelay);
+}
+
+function queueLandingBroadcast(){
+  if(landingBroadcastTimer) clearTimeout(landingBroadcastTimer);
+  if(tauntTimer) clearTimeout(tauntTimer);
+  landingBroadcastTimer = setTimeout(()=>{
+    landingBroadcastTimer = null;
+    if(!broadcastsRunning) return;
+    showPlayerTaunt();
+    // The first animal-rights note follows the level popup by 20 seconds;
+    // the second follows one minute after that. They do not repeat.
+    armLevelAnimalRightsCards(20000, 80000);
+    scheduleTaunt(108000 + Math.random()*24000);
+  }, 5000);
 }
 
 function scheduleTaunt(delay){
@@ -1779,7 +2515,11 @@ function scheduleTaunt(delay){
 
 function showAnimalAgFact(){
   if(!broadcastsRunning || !factFeedEl || !factCopyEl) return;
-  factCopyEl.textContent = ANIMAL_AG_FACTS[factIdx++ % ANIMAL_AG_FACTS.length];
+  const useLevelFact = currentLevel >= 8 && factIdx % 2 === 0;
+  factCopyEl.textContent = useLevelFact
+    ? levelSpecificFact()
+    : ANIMAL_AG_FACTS[factIdx % ANIMAL_AG_FACTS.length];
+  factIdx++;
   factFeedEl.style.display = 'block';
   factFeedEl.classList.remove('show');
   requestAnimationFrame(()=>factFeedEl.classList.add('show'));
@@ -1863,18 +2603,23 @@ function startBroadcasts(){
   pushChatLine();
   scheduleFact(38000);
   scheduleChat();
-  // First taunt arrives after the player has had time to orient; later
-  // taunts repeat roughly every two minutes.
-  scheduleTaunt(70000);
+  // Give the opening level popup the same short arrival used by later
+  // landings. The new two-note sequence begins 20 seconds after it.
+  scheduleTaunt(5000);
+  armLevelAnimalRightsCards(25000, 85000);
 }
 
 function stopBroadcasts(){
   broadcastsRunning = false;
-  [tauntTimer, factTimer, chatTimer, tauntHideTimer, factHideTimer].forEach(timer=>{
+  [tauntTimer, factTimer, chatTimer, tauntHideTimer, factHideTimer, landingBroadcastTimer,
+   levelRightsTimerA, levelRightsTimerB, levelRightsHideTimer].forEach(timer=>{
     if(timer) clearTimeout(timer);
   });
-  tauntTimer = factTimer = chatTimer = tauntHideTimer = factHideTimer = null;
+  tauntTimer = factTimer = chatTimer = tauntHideTimer = factHideTimer = landingBroadcastTimer = null;
+  levelRightsTimerA = levelRightsTimerB = levelRightsHideTimer = null;
+  levelRightsRun++;
   if(tauntEl){ tauntEl.classList.remove('show'); tauntEl.style.display='none'; }
+  hideLevelAnimalRights();
   if(factFeedEl){ factFeedEl.classList.remove('show'); factFeedEl.style.display='none'; }
   if(chatEl) chatEl.style.display='none';
 }
@@ -2310,25 +3055,24 @@ const RADIO_CHAT_LINES = {
     ["@plantbasedpanic", "'Thriller' is playing in a horror game about a horror game. we've reached full recursion."],
     ["@radio_leak", "this is thriller, thriller night, and no one's gonna save Dean from the fright of hazmat guy's speed."],
     ["@dean_defender", "'Dancing Queen' just hit. young, sweet, only six months old, said no ABBA lyric but also said every hatchery record."],
-    ["@song_oracle", "Free Fallin' is my prediction. if it starts when the level drops, I am taking credit."],
-    ["@freefalling", "free falliiiing! chat, please let the song arrive before the next scream."],
-    ["@song_oracle", "'(Everything I Do) I Do It for You' would be devastatingly on theme for the Dean debate."],
-    ["@song_oracle", "'Jump' prediction: the radio wants us to jump, the game wants us to fall, and the plants want the hallway."],
-    ["@song_oracle", "'Never Ending Story' is either next on the station or the official name of this playthrough."],
-    ["@song_oracle", "'My Girl' would be a wild transition from scanner static to the forest reveal."],
-    ["@song_oracle", "'It's a Sin' just feels inevitable after that argument about taste and responsibility."],
+    ["@freefalling", "Free Fallin' is on and the hallway is falling with it. free falliiiing!"],
+    ["@radio_listener", "'(Everything I Do) I Do It for You' is playing right when Dean refuses to concede."],
+    ["@radio_listener", "'Jump' is a funny choice when the building has already made falling the main mechanic."],
+    ["@radio_listener", "'Never Ending Story' is the only accurate title for this hallway."],
+    ["@radio_listener", "'My Girl' just made the valley reveal suspiciously wholesome."],
+    ["@radio_listener", "'It's a Sin' came on after that argument about taste and responsibility. perfect timing."],
     ["@antenna_unc", "what even is oldie antenna. the station ID sounds like it was found in an attic."],
     ["@antenna_unc", "lol unc antenna, somebody's dad is controlling the Backrooms playlist."],
-    ["@kexp_listener", "KEXP prediction: something cool, something obscure, then chat immediately asks for the title."],
+    ["@kexp_listener", "KEXP is playing something cool and obscure and chat is already asking for the title."],
     ["@soma_signal", "SomaFM is mixing with the Backrooms and vegan themes so well I am suspicious of the playlist."],
     ["@soma_signal", "Groove Salad while the plants break through the floor is honestly a perfect bit."],
     ["@soma_signal", "Drone Zone sounds like the hallway before it admits the valley is underneath us."],
     ["@soma_signal", "Secret Agent station, scanner noise, Dean arguing. the building has a media strategy."],
-    ["@song_oracle", "Girls Just Want to Have Fun prediction. the plants just want to come through, apparently."],
-    ["@song_oracle", "Give a Little Bit would be funny here because the hallway is giving the valley a little bit more every level."],
-    ["@song_oracle", "Heaven Is a Place on Earth, right as the forest takes over the room. radio, I am begging."],
-    ["@song_oracle", "Baby Give It Up: Dean should give up trying to make the chat forget the animal question."],
-    ["@song_oracle", "Rule the World prediction. the plants are already winning the level."],
+    ["@radio_listener", "'Girls Just Want to Have Fun' is on while the plants just want to come through."],
+    ["@radio_listener", "'Give a Little Bit' is playing while the hallway gives the valley a little bit more every level."],
+    ["@radio_listener", "'Heaven Is a Place on Earth' came on right as the forest took over the room."],
+    ["@radio_listener", "'Baby Give It Up' is on. Dean should give up trying to make chat forget the animal question."],
+    ["@radio_listener", "'Rule the World' is playing and the plants are already winning the level."],
     ["@valley_watch", "level 90 and the forest still has more to reveal. do not stop the descent."],
     ["@valley_watch", "the HD valley is finally becoming the room instead of just peeking through it."],
     ["@plant_floor", "plants through the hallway floor is the first environmental effect that actually feels alive."],
@@ -2338,7 +3082,7 @@ const RADIO_CHAT_LINES = {
     ["@dean_paradox", "the smirk question is not the same question as whether taste justifies exploitation. chat is noticing the pivot."],
     ["@dean_paradox", "Dean says things are getting real and the forest immediately gets more real than the argument."],
     ["@quietly_conflicted", "I am still unsure, but the animals are not a philosophical abstraction just because chat is loud."],
-    ["@quietly_conflicted", "I came for the radio predictions and accidentally started thinking about dairy."],
+    ["@quietly_conflicted", "I came for the radio and accidentally started thinking about dairy."],
     ["@floor_10_mod", "scanner audio is fictional atmosphere. do not turn in-game mystery into claims about real people."],
     ["@floor_10_mod", "no personal information in chat, even as a joke. keep the doxxing bit fictional and report it."],
   ],
@@ -4313,6 +5057,9 @@ function animate(t){
         isRecovering=false;
         camera.rotation.z=0;
         setFallVeil(false);
+        // Let the landing breathe, then deliver the level-specific field
+        // note in the same red broadcast box used everywhere else.
+        queueLandingBroadcast();
       }
     renderScene(); return;
   }
