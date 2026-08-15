@@ -688,6 +688,7 @@ const VOID_LIVE_FEEDS = [
 ];
 const RUMBLE_VIDEO_EMBED = 'https://rumble.com/embed/v7bsc1u/?pub=4q8ygs&autoplay=2';
 const RUMBLE_ACCOUNT_URL = 'https://rumble.com/user/earthlingofficial';
+const T3_VIDEO_EMBED = 'https://rumble.com/embed/v7c0l5k/?pub=4q8ygs&autoplay=2';
 
 // Level 71 resumes the normal build. Only 4 signals are new: news on T5,
 // both window feeds, and one normal wall TV. Everything else in the GLB
@@ -708,6 +709,7 @@ const VOID_END_LEVEL   = 70;   // the floating signal level, live feeds live her
 const RETURN_LEVEL     = 71;   // normal build resumes
 const VOID_FALL_COUNT  = 15;   // total falls from level 35 to reach level 70
 const RUMBLE_UNLOCK_LEVEL = 11; // the post-W1a fall: T9 becomes the Rumble signal from here on
+const T3_UNLOCK_LEVEL = 5; // T3 goes live and its label flips to "T3 UNLOCKED" from here on
 // Door sits 20m clear of the TV ring so you can't click a TV and accidentally
 // trigger the exit — it used to be 1.8m past the ring, now it's a walk away.
 const VOID_DOOR_LOCAL_POS = [0, 1.65, -29];
@@ -814,7 +816,9 @@ let glbTemplate     = null;
 const BUSH_URL_4K = 'https://files.catbox.moe/6r4l2q.glb';
 const BUSH_URL_1K = 'https://files.catbox.moe/kobxhg.glb';
 let bushTemplate        = null;
-let bushInstance        = null; // one shared live valley instance; never duplicate per level
+let bushInstance        = null; // primary live valley instance
+let bushInstance2       = null; // duplicate, placed alongside the first to double the span
+let bushSizeZ           = 1; // unscaled local-Z footprint, measured on load; used to size both instances
 let bushPendingLevels   = []; // active valley level waiting for the preload
 // Rise is measured as a FRACTION of the bush's own measured height (set once
 // it loads, see loadBushFloor) instead of a guessed absolute number — so it
@@ -826,16 +830,28 @@ const BUSH_VISIBLE_START_LEVEL = 75;
 const BUSH_RISE_START_FRAC = -0.9;
 const BUSH_RISE_PER_LEVEL_FRAC = 0.018;
 let bushHeight = 1; // real value set after load; 1 is just a safe fallback
-// Pulls the bush footprint in toward center on X/Z only (Y untouched) so less
-// of it sits outside the building's walls where it's never seen. 1 = no
-// change; lower = tighter footprint. Tune to match your actual room size.
-const BUSH_XZ_SCALE     = 0.6;
+// Quick size test — scales forest HEIGHT only (X/Z is now locked to the
+// building's own length below, so it can't be arbitrarily resized). Set
+// back to 1 to undo.
+const BUSH_SCALE_TEST   = 0.5;
 // Rotate 90° so the bush's long axis runs along the building's length
-// instead of across it. Nudge shifts the whole footprint forward slightly
-// after rotating — tune both to eyeball-match your room once in-game.
+// instead of across it.
 const BUSH_ROTATION_Y   = Math.PI / 2;
-const BUSH_NUDGE_X      = -27.20;
+// How far into the room the forest sits (world Z, perpendicular to the
+// building's length) — eyeball-tune against your room.
 const BUSH_NUDGE_Z      = 4.12;
+// X placement is no longer a manual guess. buildingSpanMinX/SizeX are read
+// straight off the loaded GLB's own bounding box (see glbUrlReady below), and
+// the two instances are scaled + positioned so the pair's combined width
+// exactly equals the building's real X length, edge to edge, no gap.
+let buildingSpanMinX  = 0;
+let buildingSpanSizeX = 0;
+// Duplicate placement — the GLB sits slightly tilted, so the second copy
+// needs a small extra drop/forward nudge on top of matching the first
+// instance's position to actually line up.
+const BUSH_DUPLICATE_ENABLED = true;
+const BUSH_DUPLICATE_NUDGE_Y = -1.5;
+const BUSH_DUPLICATE_NUDGE_Z = 2.5;
 
 function bushOffsetForLevel(levelIndex){
   // Do not clamp this to an artificial "full" level. The forest should keep
@@ -2949,6 +2965,15 @@ function makeLabelTex(id){
   return new THREE.CanvasTexture(c);
 }
 
+// Swap a TV's label texture for new text, same style — used to flip "T3" to "T3 UNLOCKED".
+function setTVLabelText(tv, text){
+  const frame = tv.g.children[0];
+  if(!frame || !frame.children[2]) return;
+  const labelMesh = frame.children[2];
+  labelMesh.material.map = makeLabelTex(text);
+  labelMesh.material.needsUpdate = true;
+}
+
 // ── CLICK SOUND (play/stop) ───────────────────────────────────────────────────
 const clickSoundCtx = new (window.AudioContext || window.webkitAudioContext)();
 function playClickSound(){
@@ -4430,6 +4455,13 @@ function createLevelGroup(levelIndex){
       // T9 carries the Rumble signal from level 11 onward (post-W1a fall) —
       // reuses the existing TV rather than spawning a new one.
       if(t.id === 'T9' && levelIndex >= RUMBLE_UNLOCK_LEVEL) addLiveFeedToTV(tv, RUMBLE_VIDEO_EMBED);
+      // T3 is visible from the start but stays dark — no feed attached, so
+      // there's nothing to play — until level 5, when it goes live and its
+      // label flips from "T3" to "T3 UNLOCKED".
+      if(t.id === 'T3' && levelIndex >= T3_UNLOCK_LEVEL){
+        addLiveFeedToTV(tv, T3_VIDEO_EMBED);
+        setTVLabelText(tv, 'T3 UNLOCKED');
+      }
       levelTVs.push(tv);
     });
     WINDOW_TVS.forEach(t => {
@@ -4981,6 +5013,7 @@ function loadBushFloor(bushUrl){
       const bounds = new THREE.Box3().setFromObject(template);
       const center = bounds.getCenter(new THREE.Vector3());
       bushHeight = Math.max(bounds.getSize(new THREE.Vector3()).y, 0.01);
+      bushSizeZ = Math.max(bounds.getSize(new THREE.Vector3()).z, 0.01);
       template.position.x -= center.x;
       template.position.y -= bounds.min.y;
       template.position.z -= center.z;
@@ -5029,16 +5062,38 @@ function loadBushFloor(bushUrl){
 
 function addBushToLevel(levelIndex, group){
   if(!bushTemplate || isVoidLevel(levelIndex) || levelIndex < BUSH_VISIBLE_START_LEVEL) return;
+  // Each instance covers exactly half the building's real X length, so the
+  // pair together spans the whole building, end to end, no manual gap.
+  const perInstanceWidth = (buildingSpanSizeX || bushSizeZ * 2) / 2;
+  const scaleXZ = perInstanceWidth / bushSizeZ;
   if(!bushInstance){
     bushInstance = bushTemplate.clone(true);
-    bushInstance.scale.x = BUSH_XZ_SCALE;
-    bushInstance.scale.z = BUSH_XZ_SCALE;
     bushInstance.rotation.y = BUSH_ROTATION_Y;
   }
-  bushInstance.position.x = BUSH_NUDGE_X;
+  bushInstance.scale.x = scaleXZ;
+  bushInstance.scale.z = scaleXZ;
+  bushInstance.scale.y = BUSH_SCALE_TEST;
+  const yPos = levelFloorY + bushOffsetForLevel(levelIndex) * BUSH_SCALE_TEST;
+  // Centered in the first half of the building's span.
+  bushInstance.position.x = buildingSpanMinX + perInstanceWidth / 2;
   bushInstance.position.z = BUSH_NUDGE_Z;
-  bushInstance.position.y = levelFloorY + bushOffsetForLevel(levelIndex);
+  bushInstance.position.y = yPos;
   group.add(bushInstance);
+
+  if(BUSH_DUPLICATE_ENABLED){
+    if(!bushInstance2){
+      bushInstance2 = bushTemplate.clone(true);
+      bushInstance2.rotation.y = BUSH_ROTATION_Y;
+    }
+    bushInstance2.scale.copy(bushInstance.scale);
+    // Centered in the second half — its left edge sits exactly where the
+    // first instance's right edge ends.
+    bushInstance2.position.x = buildingSpanMinX + perInstanceWidth + perInstanceWidth / 2;
+    bushInstance2.position.z = BUSH_NUDGE_Z + BUSH_DUPLICATE_NUDGE_Z;
+    bushInstance2.position.y = yPos + BUSH_DUPLICATE_NUDGE_Y;
+    group.add(bushInstance2);
+  }
+
   group.userData.bushAdded = true;
   group.userData.bushQueued = false;
 }
@@ -5072,6 +5127,10 @@ glbUrlReady.then(chosenUrl => {
       const center = new THREE.Vector3(); box.getCenter(center);
       levelFloorY = box.min.y;
       camera.position.set(center.x, levelFloorY + EYE_HEIGHT, center.z);
+      // Real building X length, read straight off the loaded geometry — the
+      // forest pair is sized/positioned against this instead of guessed.
+      buildingSpanMinX = box.min.x;
+      buildingSpanSizeX = box.getSize(new THREE.Vector3()).x;
 
       glbTemplate.traverse(c => { if(c.isMesh) collisionMeshes.push(c); });
 
