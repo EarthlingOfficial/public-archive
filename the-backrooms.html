@@ -144,6 +144,31 @@
   }
   #fall-veil.active { display: block; opacity: 1; }
 
+  /* Water veil for the level-115 Dominion sequence — blue tint mirroring
+     #blood-veil, plus a very subtle grain overlay once the water is over
+     the player's head. */
+  #water-veil {
+    position: fixed; inset: 0; display: none; opacity: 0;
+    pointer-events: none; z-index: 4;
+    background:
+      radial-gradient(ellipse at 50% 44%, rgba(60,150,255,.045), rgba(2,10,26,.82) 72%),
+      linear-gradient(180deg, rgba(0,28,66,.86), rgba(8,58,108,.5) 48%, rgba(0,6,16,.92));
+    transition: opacity .35s ease;
+  }
+  #film-grain {
+    position: fixed; inset: 0; display: none; opacity: 0;
+    pointer-events: none; z-index: 6; mix-blend-mode: overlay;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+    background-size: 220px 220px;
+    animation: waterGrainShift 0.5s steps(2) infinite;
+    transition: opacity .5s ease;
+  }
+  @keyframes waterGrainShift {
+    0% { transform: translate(0,0); }
+    50% { transform: translate(-1.5%,1%); }
+    100% { transform: translate(1%,-1.5%); }
+  }
+
   /* ── BROADCAST SYSTEM ── */
   #player-taunt {
     position: fixed; top: 52%; left: 50%;
@@ -533,6 +558,8 @@
 <div id="hint">WASD &nbsp;·&nbsp; SHIFT &nbsp;·&nbsp; CLICK TV &nbsp;·&nbsp; ~ COORDS</div>
 <div id="ambient-text"></div>
 <div id="blood-veil"></div>
+<div id="water-veil"></div>
+<div id="film-grain"></div>
 <div id="fall-veil"></div>
 <!-- Fall landing message -->
 <div id="fall-msg"></div>
@@ -802,6 +829,44 @@ let level30FallZoneUnlocked = false;
 let level30DeathMessageShown = false;
 let level30StartTime = 0;
 
+// ── LEVEL 115 WATER / DOMINION TV SEQUENCE ──────────────────────────────────
+// Mirrors the blood mechanic above but in blue, starts at level 115, and
+// climbs across several levels (fixed fall-spot in front of the new TV each
+// time) before the exit level, which uses a normal random fall spot instead.
+const WATER_START_LEVEL   = 115;
+const WATER_TV_X          = -66.38;
+const WATER_TV_Z          = 2.46;
+const WATER_TV_MOUNT_Y    = 1.9;
+const DOMINION_VIDEO_EMBED = 'https://archive.org/embed/domcat';
+const WATER_MP3_URL = 'https://raw.githubusercontent.com/EarthlingOfficial/public-archive/main/waterrun.mp3';
+// Per-stage rise as a fraction of the room's full (blood) height, and how
+// long each stage takes to fill — slower than blood's 5-minute full fill.
+// Tune these two in-game if the pacing/number of falls feels off.
+const WATER_STEP_FRACTION  = 0.14;
+const WATER_STAGE_DURATION = 150000; // 2.5 min per stage
+function waterStep(){ return BLOOD_MAX * WATER_STEP_FRACTION; }
+function waterStagesToCeiling(){ return Math.max(2, Math.ceil(BLOOD_MAX / waterStep())); }
+function waterExitLevel(){ return WATER_START_LEVEL + waterStagesToCeiling() - 1; }
+
+let waterTVSnap        = null; // { pos:[x,y,z], ry } — computed once at startup
+let waterPlane         = null;
+let waterWaveMeshes    = [];
+let waterFleckMesh     = null;
+let waterActive        = false;
+let waterStartTime     = 0;
+let waterBaselineLocal = 0;
+let waterLevelLocal    = 0;
+let waterSubmerged     = false;
+let waterDeathShown    = false;
+let waterHint115Shown  = false;
+let waterHint116Shown  = false;
+let waterVideoPlaying  = false;
+let waterTVIframeEl     = null;
+let waterTVIframeObject = null;
+let waterAudioEl        = null;
+const waterVeilEl  = document.getElementById('water-veil');
+const filmGrainEl  = document.getElementById('film-grain');
+
 const levelGroups   = [];
 let glbTemplate     = null;
 
@@ -830,22 +895,19 @@ const BUSH_VISIBLE_START_LEVEL = 75;
 const BUSH_RISE_START_FRAC = -0.9;
 const BUSH_RISE_PER_LEVEL_FRAC = 0.018;
 let bushHeight = 1; // real value set after load; 1 is just a safe fallback
-// Quick size test — scales forest HEIGHT only (X/Z is now locked to the
-// building's own length below, so it can't be arbitrarily resized). Set
-// back to 1 to undo.
+// Pulls the bush footprint in toward center on X/Z only (Y untouched) so less
+// of it sits outside the building's walls where it's never seen. 1 = no
+// change; lower = tighter footprint. Tune to match your actual room size.
+const BUSH_XZ_SCALE     = 0.6;
+// Quick size test — scales the forest overall (X/Y/Z). Set back to 1 to undo.
 const BUSH_SCALE_TEST   = 0.5;
 // Rotate 90° so the bush's long axis runs along the building's length
-// instead of across it.
+// instead of across it. This is the known-good spot that lined up with the
+// valley — both instances are now centered symmetrically around it instead
+// of each getting their own guessed position.
 const BUSH_ROTATION_Y   = Math.PI / 2;
-// How far into the room the forest sits (world Z, perpendicular to the
-// building's length) — eyeball-tune against your room.
+const BUSH_NUDGE_X      = -27.20;
 const BUSH_NUDGE_Z      = 4.12;
-// X placement is no longer a manual guess. buildingSpanMinX/SizeX are read
-// straight off the loaded GLB's own bounding box (see glbUrlReady below), and
-// the two instances are scaled + positioned so the pair's combined width
-// exactly equals the building's real X length, edge to edge, no gap.
-let buildingSpanMinX  = 0;
-let buildingSpanSizeX = 0;
 // Duplicate placement — the GLB sits slightly tilted, so the second copy
 // needs a small extra drop/forward nudge on top of matching the first
 // instance's position to actually line up.
@@ -3561,6 +3623,13 @@ function toggleVideoEl(vid){
 function interactWithTV(tv){
   if(!tv) return;
 
+  // TW — the level 115 Dominion TV. Starts the water sequence on first
+  // press; never toggles off since the footage must keep playing.
+  if(tv.id === 'TW'){
+    startWaterSequence();
+    return;
+  }
+
   if(tv.liveEmbed){
     activateInWorldLiveTV(tv);
     return;
@@ -4270,6 +4339,151 @@ function initBloodPlane(){
   });
 }
 
+// ── WATER PLANE (blue, mirrors initBloodPlane) ─────────────────────────────
+function initWaterPlane(){
+  if(waterPlane) return;
+  const geo = new THREE.PlaneGeometry(400, 400);
+  const mat = new THREE.MeshBasicMaterial({
+    color: 0x0d3a66, side: THREE.DoubleSide,
+    transparent: true, opacity: 0.9, depthWrite: false,
+  });
+  waterPlane = new THREE.Mesh(geo, mat);
+  waterPlane.rotation.x = -Math.PI / 2;
+  waterPlane.position.set(-22, -0.5, -20);
+  waterPlane.visible = false;
+  scene.add(waterPlane);
+
+  [
+    { offset: .05, opacity: .16, color: 0x1c5f96, spin: .0010 },
+    { offset: .16, opacity: .11, color: 0x0a2f52, spin: -.0014 },
+    { offset: .30, opacity: .09, color: 0x3d86c4, spin: .0007 },
+  ].forEach(spec=>{
+    const wave = new THREE.Mesh(
+      new THREE.PlaneGeometry(400, 400),
+      new THREE.MeshBasicMaterial({
+        color: spec.color, side: THREE.DoubleSide,
+        transparent: true, opacity: spec.opacity, depthWrite: false,
+      })
+    );
+    wave.rotation.x = -Math.PI / 2;
+    wave.position.set(-22, -0.5, -20);
+    wave.userData.waveSpec = spec;
+    wave.visible = false;
+    scene.add(wave);
+    waterWaveMeshes.push(wave);
+  });
+
+  // Very subtle reflective flecks — a sparse speckle texture on an
+  // additive-blended plane, scrolled slowly so light seems to catch the
+  // surface rather than reading as a static pattern.
+  const speckCanvas = document.createElement('canvas');
+  speckCanvas.width = 256; speckCanvas.height = 256;
+  const sctx = speckCanvas.getContext('2d');
+  sctx.clearRect(0, 0, 256, 256);
+  for(let i=0;i<140;i++){
+    const x = Math.random()*256, y = Math.random()*256;
+    const r = Math.random()*1.1 + 0.2;
+    sctx.fillStyle = `rgba(200,230,255,${(Math.random()*0.35+0.1).toFixed(2)})`;
+    sctx.beginPath(); sctx.arc(x, y, r, 0, Math.PI*2); sctx.fill();
+  }
+  const speckTex = new THREE.CanvasTexture(speckCanvas);
+  speckTex.wrapS = speckTex.wrapT = THREE.RepeatWrapping;
+  speckTex.repeat.set(30, 30);
+  waterFleckMesh = new THREE.Mesh(
+    new THREE.PlaneGeometry(400, 400),
+    new THREE.MeshBasicMaterial({
+      map: speckTex, color: 0xffffff, transparent: true, opacity: 0.22,
+      blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide,
+    })
+  );
+  waterFleckMesh.rotation.x = -Math.PI / 2;
+  waterFleckMesh.position.set(-22, -0.5, -20);
+  waterFleckMesh.userData.speckTex = speckTex;
+  waterFleckMesh.visible = false;
+  scene.add(waterFleckMesh);
+}
+
+function stopWaterVisuals(){
+  waterActive = false;
+  waterSubmerged = false;
+  if(waterPlane) waterPlane.visible = false;
+  waterWaveMeshes.forEach(w=>{ w.visible = false; });
+  if(waterFleckMesh) waterFleckMesh.visible = false;
+  if(waterVeilEl){ waterVeilEl.style.opacity = '0'; waterVeilEl.style.display = 'none'; }
+  if(filmGrainEl){ filmGrainEl.style.opacity = '0'; filmGrainEl.style.display = 'none'; }
+}
+
+function ensureWaterAudio(){
+  if(waterAudioEl) return waterAudioEl;
+  waterAudioEl = new Audio(WATER_MP3_URL);
+  waterAudioEl.loop = true;
+  waterAudioEl.volume = 0.55;
+  return waterAudioEl;
+}
+
+// A single persistent CSS3D iframe for the Dominion video, reparented onto
+// whichever level's TW screen is currently visible, so playback position is
+// never reset by falling between levels (unlike the per-level live feeds).
+function attachPersistentWaterIframe(tv){
+  if(!tv || !tv.screen) return;
+  if(!waterTVIframeEl){
+    waterTVIframeEl = document.createElement('iframe');
+    waterTVIframeEl.className = 'in-world-live-feed';
+    waterTVIframeEl.title = 'TW Dominion signal';
+    waterTVIframeEl.width = '1100';
+    waterTVIframeEl.height = '700';
+    waterTVIframeEl.allow = 'autoplay; encrypted-media; picture-in-picture; fullscreen';
+    waterTVIframeEl.referrerPolicy = 'strict-origin-when-cross-origin';
+    waterTVIframeEl.allowFullscreen = true;
+    waterTVIframeEl.style.width = '1100px';
+    waterTVIframeEl.style.height = '700px';
+    waterTVIframeEl.style.border = '0';
+    waterTVIframeEl.style.display = 'block';
+    waterTVIframeEl.style.pointerEvents = 'none';
+    waterTVIframeEl.style.background = '#000';
+    waterTVIframeObject = new CSS3DObject(waterTVIframeEl);
+    waterTVIframeObject.position.set(0, 0, 0.085);
+    waterTVIframeObject.scale.set(0.002, 0.002, 0.002);
+    waterTVIframeObject.visible = false;
+  }
+  const parent = tv.screen.parent;
+  if(parent && waterTVIframeObject.parent !== parent) parent.add(waterTVIframeObject);
+  waterTVIframeObject.visible = waterVideoPlaying;
+  tv.liveIframe = waterTVIframeEl;
+  tv.liveIframeObject = waterTVIframeObject;
+  tv.liveEmbed = DOMINION_VIDEO_EMBED;
+}
+
+// Called when the player presses play on TW. Only the level-115 press
+// actually starts the sequence — later levels in the sequence continue
+// automatically on fall, per the design.
+function startWaterSequence(){
+  if(currentLevel < WATER_START_LEVEL || currentLevel > waterExitLevel()) return;
+  initWaterPlane();
+  if(!waterActive){
+    waterActive = true;
+    waterDeathShown = false;
+    waterBaselineLocal = levelFloorY + 0.02;
+    waterStartTime = performance.now();
+  }
+  waterPlane.visible = true;
+  waterWaveMeshes.forEach(w=>{ w.visible = true; });
+  if(waterFleckMesh) waterFleckMesh.visible = true;
+  if(!waterVideoPlaying){
+    waterVideoPlaying = true;
+    if(!waterTVIframeEl){
+      const tw = allTVs.find(t => t.id === 'TW');
+      if(tw) attachPersistentWaterIframe(tw);
+    }
+    if(waterTVIframeEl) waterTVIframeEl.src = DOMINION_VIDEO_EMBED;
+    if(waterTVIframeObject) waterTVIframeObject.visible = true;
+    const audio = ensureWaterAudio();
+    audio.currentTime = 0;
+    audio.play().catch(()=>{});
+  }
+  playClickSound();
+}
+
 function startBloodLevel30(){
   initBloodPlane();
   bloodLevel = levelFloorY + 0.02; // start just above the actual floor
@@ -4470,6 +4684,15 @@ function createLevelGroup(levelIndex){
       scene.add(tv.g);
       levelTVs.push(tv);
     });
+    // TW — new, standalone water/Dominion TV. Present from level 115 onward
+    // (stays on this video permanently through level 200); does not reuse
+    // or depend on any other TV.
+    if(levelIndex >= WATER_START_LEVEL && waterTVSnap){
+      const twTV = buildWallTV('TW', waterTVSnap.pos, waterTVSnap.ry, yOff);
+      twTV.g.visible = false;
+      scene.add(twTV.g);
+      levelTVs.push(twTV);
+    }
     if(levelIndex === RETURN_LEVEL){
       // Normal build resumes — only these 4 signals are new. Everything
       // else (T4/T6/T10/W1a video textures, unlocks) behaves exactly like
@@ -4537,6 +4760,18 @@ function createLevelGroup(levelIndex){
     const zoneX = t4Snap ? t4Snap.pos[0] + 1.5 : 1.5;
     const zoneZ = t4Snap ? t4Snap.pos[2]       : 8.60;
     positions = [[zoneX, zoneZ]];
+  } else if(levelIndex >= WATER_START_LEVEL && levelIndex < waterExitLevel() && waterTVSnap){
+    // Fixed zone directly in front of TW — same spot every level of the
+    // water sequence, so the player doesn't need to re-find it each fall.
+    const inward =
+      Math.abs(waterTVSnap.ry - (-Math.PI/2)) < 0.01 ? { x:-1, z: 0 } :
+      Math.abs(waterTVSnap.ry -  (Math.PI/2)) < 0.01 ? { x: 1, z: 0 } :
+      Math.abs(waterTVSnap.ry -   Math.PI   ) < 0.01 ? { x: 0, z:-1 } :
+                                                         { x: 0, z: 1 };
+    positions = [[
+      waterTVSnap.pos[0] + inward.x * 1.6,
+      waterTVSnap.pos[2] + inward.z * 1.6,
+    ]];
   } else if(levelIndex === RETURN_LEVEL){
     // Level 71 spawns the player at mapCenter (see enterReturnLevel). A
     // fall-cross landing near that spawn point used to insta-trigger a
@@ -4578,6 +4813,8 @@ function showLevel(idx){
   tvs.forEach(tv => { tv.g.visible = true; });
   (group.userData.crosses||[]).forEach(c => { c.visible = true; });
   tvs.forEach(tv => { if(!allTVs.find(t=>t===tv)) allTVs.push(tv); });
+  const twTV = tvs.find(t => t.id === 'TW');
+  if(twTV) attachPersistentWaterIframe(twTV);
   if(door) door.group.visible = true;
   if(gate){
     gate.group.visible = true;
@@ -4589,7 +4826,8 @@ function showLevel(idx){
 // keep playing off-screen after the level is left. Next activation rebuilds
 // a fresh iframe via attachLiveIframeToTV.
 function killLiveFeed(tv){
-  if(!tv || !tv.liveIframeObject) return;
+  if(!tv || tv.id === 'TW') return; // TW's iframe is shared/persistent — never torn down
+  if(!tv.liveIframeObject) return;
   if(tv.liveIframe) tv.liveIframe.src = 'about:blank';
   if(tv.liveIframeObject.parent) tv.liveIframeObject.parent.remove(tv.liveIframeObject);
   tv.liveIframe = null;
@@ -4936,6 +5174,31 @@ function triggerFall(){
     restoreNormalLighting();
   }
 
+  // ── LEVEL 115+ WATER SEQUENCE PROGRESSION ────────────────────────────────
+  if(nextIdx > WATER_START_LEVEL && nextIdx <= waterExitLevel() && waterActive){
+    // Already running (player pressed play back at 115) — carry the water
+    // baseline forward rather than resetting it, and keep climbing.
+    waterBaselineLocal += waterStep();
+    waterStartTime = performance.now();
+  } else if(nextIdx > waterExitLevel() && waterActive){
+    // Escaped — stop the rise mechanic and the rising-water audio. The TW
+    // TV itself keeps existing and playing quietly in every room through
+    // level 200; only the fall/death gameplay ends here.
+    stopWaterVisuals();
+    if(waterAudioEl) waterAudioEl.pause();
+    restoreNormalLighting();
+  }
+
+  if(nextIdx === WATER_START_LEVEL && !waterHint115Shown){
+    waterHint115Shown = true;
+    setTimeout(()=>{ showStage30Cue('watch to survive', 5200); }, 2600);
+  } else if(nextIdx === WATER_START_LEVEL + 1 && !waterHint116Shown){
+    waterHint116Shown = true;
+    setTimeout(()=>{ showStage30Cue('keep watching', 5200); }, 2600);
+  } else if(nextIdx === waterExitLevel() && waterActive){
+    setTimeout(()=>{ showStage30Cue('find the exit hurry', 4200); }, 2600);
+  }
+
   // ── LEVEL 30 INITIALIZATION ──────────────────────────────────────────────
   if(nextIdx === 30){
     startBloodLevel30();
@@ -5062,10 +5325,8 @@ function loadBushFloor(bushUrl){
 
 function addBushToLevel(levelIndex, group){
   if(!bushTemplate || isVoidLevel(levelIndex) || levelIndex < BUSH_VISIBLE_START_LEVEL) return;
-  // Each instance covers exactly half the building's real X length, so the
-  // pair together spans the whole building, end to end, no manual gap.
-  const perInstanceWidth = (buildingSpanSizeX || bushSizeZ * 2) / 2;
-  const scaleXZ = perInstanceWidth / bushSizeZ;
+  const scaleXZ = BUSH_XZ_SCALE * BUSH_SCALE_TEST;
+  const instanceWidth = bushSizeZ * scaleXZ;
   if(!bushInstance){
     bushInstance = bushTemplate.clone(true);
     bushInstance.rotation.y = BUSH_ROTATION_Y;
@@ -5074,8 +5335,8 @@ function addBushToLevel(levelIndex, group){
   bushInstance.scale.z = scaleXZ;
   bushInstance.scale.y = BUSH_SCALE_TEST;
   const yPos = levelFloorY + bushOffsetForLevel(levelIndex) * BUSH_SCALE_TEST;
-  // Centered in the first half of the building's span.
-  bushInstance.position.x = buildingSpanMinX + perInstanceWidth / 2;
+  // Sits half a width back from the known-good valley spot.
+  bushInstance.position.x = BUSH_NUDGE_X - instanceWidth / 2;
   bushInstance.position.z = BUSH_NUDGE_Z;
   bushInstance.position.y = yPos;
   group.add(bushInstance);
@@ -5086,9 +5347,9 @@ function addBushToLevel(levelIndex, group){
       bushInstance2.rotation.y = BUSH_ROTATION_Y;
     }
     bushInstance2.scale.copy(bushInstance.scale);
-    // Centered in the second half — its left edge sits exactly where the
-    // first instance's right edge ends.
-    bushInstance2.position.x = buildingSpanMinX + perInstanceWidth + perInstanceWidth / 2;
+    // Sits half a width forward from the same spot — its left edge meets
+    // the first instance's right edge right at the valley's known-good point.
+    bushInstance2.position.x = BUSH_NUDGE_X + instanceWidth / 2;
     bushInstance2.position.z = BUSH_NUDGE_Z + BUSH_DUPLICATE_NUDGE_Z;
     bushInstance2.position.y = yPos + BUSH_DUPLICATE_NUDGE_Y;
     group.add(bushInstance2);
@@ -5127,10 +5388,6 @@ glbUrlReady.then(chosenUrl => {
       const center = new THREE.Vector3(); box.getCenter(center);
       levelFloorY = box.min.y;
       camera.position.set(center.x, levelFloorY + EYE_HEIGHT, center.z);
-      // Real building X length, read straight off the loaded geometry — the
-      // forest pair is sized/positioned against this instead of guessed.
-      buildingSpanMinX = box.min.x;
-      buildingSpanSizeX = box.getSize(new THREE.Vector3()).x;
 
       glbTemplate.traverse(c => { if(c.isMesh) collisionMeshes.push(c); });
 
@@ -5147,6 +5404,12 @@ glbUrlReady.then(chosenUrl => {
       LORE_BUTTON_DEF.pos = loreSnap.pos;
       LORE_BUTTON_DEF.ry  = loreSnap.ry;
       buildWallButton(LORE_BUTTON_DEF);
+
+      // Snap the new level-115 water TV to whichever wall is nearest the
+      // supplied coords — self-corrects for either wall orientation instead
+      // of relying on a hardcoded direction.
+      const waterSnap = snapButtonToWall([WATER_TV_X, WATER_TV_MOUNT_Y, WATER_TV_Z]);
+      waterTVSnap = { pos: waterSnap.pos, ry: waterSnap.ry };
 
       buildTikTokDoor();
       buildThisWayText();
@@ -5481,6 +5744,24 @@ function animate(t){
         voidAutoFallAt = 0;
         triggerFall();
       }
+    } else if(currentLevel >= WATER_START_LEVEL && currentLevel <= waterExitLevel()){
+      // Water sequence — this whole level range is claimed here so it never
+      // falls through to the generic zone loop below (that loop would fire
+      // on the pre-placed zone immediately, before play is even pressed).
+      // The zone only actually triggers once waterActive AND this stage's
+      // water has reached the trigger height. The final (exit) level uses
+      // the normal random zone instead, spawned above.
+      if(waterActive){
+        const zone = noclipZones.find(z => z.levelIndex === currentLevel);
+        if(zone && !isFalling){
+          const isExitStage = currentLevel === waterExitLevel();
+          const reached = isExitStage || waterLevelLocal >= (waterBaselineLocal + waterStep() - 0.01);
+          if(reached){
+            const dx = px - zone.x, dz = pz - zone.z;
+            if(Math.sqrt(dx*dx + dz*dz) < NOCLIP_RADIUS) triggerFall();
+          }
+        }
+      }
     } else {
       // Normal levels — standard zone checking
       for(const zone of noclipZones){
@@ -5551,6 +5832,71 @@ function animate(t){
         showDeathScreen();
         
         // Give the death screen time to land before redirecting.
+        setTimeout(()=>{
+          window.location.href = 'https://earthlingofficial.com/veganbros.html';
+        }, 5000);
+      }
+    }
+  }
+
+  // ── UPDATE WATER LEVEL (levels 115+ Dominion sequence) ──────────────────
+  if(currentLevel >= WATER_START_LEVEL && currentLevel <= waterExitLevel() && waterActive){
+    const waterFloor = levelFloorY + 0.02;
+    const stageElapsed = performance.now() - waterStartTime;
+    const fillProgress = Math.min(1, stageElapsed / WATER_STAGE_DURATION);
+    waterLevelLocal = Math.max(waterFloor, waterBaselineLocal) + waterStep() * fillProgress;
+    const yOffW = -currentLevel * LEVEL_DEPTH;
+    if(waterPlane) waterPlane.position.y = waterLevelLocal + yOffW;
+    const nowW = performance.now();
+    const surfaceYW = waterLevelLocal + yOffW;
+    waterSubmerged = surfaceYW + 0.12 >= camera.position.y;
+    const waveTimeW = nowW * 0.001;
+    waterWaveMeshes.forEach((wave, index)=>{
+      const spec = wave.userData.waveSpec;
+      wave.position.y = surfaceYW + spec.offset +
+        Math.sin(waveTimeW * (0.6 + index * .15) + index * 2.0) * .06;
+      wave.rotation.z = Math.sin(waveTimeW * (0.42 + index * .1) + index) * .01;
+      wave.rotation.x = -Math.PI / 2 +
+        Math.cos(waveTimeW * (0.32 + index * .07) + index) * .005;
+    });
+    if(waterFleckMesh){
+      waterFleckMesh.position.y = surfaceYW + 0.02;
+      const speckTex = waterFleckMesh.userData.speckTex;
+      if(speckTex){
+        speckTex.offset.x = (waveTimeW * 0.006) % 1;
+        speckTex.offset.y = (waveTimeW * 0.004) % 1;
+      }
+    }
+    if(waterVeilEl){
+      const submersionW = Math.max(0, Math.min(1, (surfaceYW - camera.position.y + .25) / 2.4));
+      if(submersionW > 0){
+        waterVeilEl.style.display = 'block';
+        waterVeilEl.style.opacity = String(waterSubmerged ? 0.94 : .10 + submersionW * .68);
+      } else {
+        waterVeilEl.style.opacity = '0';
+        setTimeout(()=>{ if(waterVeilEl.style.opacity === '0') waterVeilEl.style.display = 'none'; }, 400);
+      }
+    }
+    if(filmGrainEl){
+      if(waterSubmerged){
+        filmGrainEl.style.display = 'block';
+        filmGrainEl.style.opacity = '0.06';
+      } else {
+        filmGrainEl.style.opacity = '0';
+        setTimeout(()=>{ if(filmGrainEl.style.opacity === '0') filmGrainEl.style.display = 'none'; }, 500);
+      }
+    }
+
+    // Death check — only on the exit stage (water hits the ceiling before
+    // the exit spot is found). Earlier stages never kill you — the rising
+    // water there is just pressure to keep moving, it caps and waits.
+    if(fillProgress >= 1 && !isFalling && currentLevel === waterExitLevel()){
+      if(!waterDeathShown){
+        waterDeathShown = true;
+        stopBroadcasts();
+        if(waterAudioEl) waterAudioEl.pause();
+        stopWaterVisuals();
+        showDeathScreen();
         setTimeout(()=>{
           window.location.href = 'https://earthlingofficial.com/veganbros.html';
         }, 5000);
