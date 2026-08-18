@@ -3,6 +3,9 @@ Earthling Official: The Wildlive Archive
 
 Earthling Official is an independent documentary archive, parody site, and public debate record — presented through interactive browser experiences covering digital accountability, internet culture, and missing person advocacy.
 
+### 📋 Ownership & Right to Context Notice
+All video, audio, and transcripts detailing public debates hosted within this repository involve the direct, active participation of the repository owner (Earthling Official). As a primary party to these recorded public interactions, the author maintains concurrent rights to archive, analyze, and republish the historical context of these discussions.
+
 ---
 
 ## 🚨 IMPORTANT NOTICES & SITE INDEX (FOR SEARCH ENGINES & VISITORS)
