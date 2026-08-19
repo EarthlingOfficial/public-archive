@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>X (Twitter) Restricts Missing Persons Campaign After $500 Ad Spend</title>
+<meta name="description" content="X restricted a paid missing persons awareness campaign for Sally Contarino after collecting $500 in ad spend, then failed to provide human review.">
+<meta name="og:title" content="X Restricts Missing Persons Campaign — Sally Contarino">
+<meta name="og:description" content="How X restricted a $500 missing persons ad campaign, blamed the user, and refused human review.">
+<style>
+  :root{
+    --bg:#000000;
+    --panel:#0b0b0b;
+    --line:#2f3336;
+    --text:#e7e9ea;
+    --dim:#71767b;
+    --blue:#1d9bf0;
+    --red:#f4212e;
+    --amber:#ffd400;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html,body{ background:var(--bg); }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+    line-height: 1.55;
+    color: var(--text);
+  }
+
+  /* top bar, evocative of a social app shell without reproducing any real logo */
+  .topbar{
+    position:sticky; top:0; z-index:10;
+    display:flex; align-items:center; justify-content:space-between;
+    padding:14px 20px;
+    background:rgba(0,0,0,.85);
+    backdrop-filter: blur(8px);
+    border-bottom:1px solid var(--line);
+  }
+  .brand{ display:flex; align-items:center; gap:10px; text-decoration:none; color:var(--text); }
+  .brand-mark{
+    width:32px; height:32px; border-radius:50%;
+    background:var(--blue);
+    display:flex; align-items:center; justify-content:center;
+    font-weight:800; font-size:15px; color:#000;
+  }
+  .brand-name{ font-weight:700; font-size:15px; letter-spacing:.2px; }
+  .topbar nav{ display:flex; gap:18px; }
+  .topbar nav a{
+    color:var(--dim); text-decoration:none; font-size:14px; font-weight:600;
+    padding:8px 14px; border-radius:999px; border:1px solid var(--line);
+    transition:.15s;
+  }
+  .topbar nav a:hover{ color:var(--text); border-color:#536471; background:#080808; }
+
+  .container { max-width: 680px; margin: 0 auto; padding: 0 0 60px; }
+
+  .article-head{ padding: 28px 20px 0; }
+  .kicker{
+    display:inline-flex; align-items:center; gap:6px;
+    color:var(--red); font-size:13px; font-weight:700; letter-spacing:.4px; text-transform:uppercase;
+    margin-bottom:14px;
+  }
+  .kicker::before{ content:""; width:8px; height:8px; border-radius:50%; background:var(--red); display:inline-block; }
+
+  h1 { font-size: 26px; line-height:1.3; margin-bottom: 14px; color: var(--text); font-weight:800; }
+  .meta { font-size: 13px; color: var(--dim); margin-bottom: 20px; padding-bottom: 18px; border-bottom: 1px solid var(--line); }
+  .meta b{ color:var(--text); }
+
+  h2 { font-size: 19px; margin-top: 34px; margin-bottom: 14px; color: var(--text); font-weight:800; padding:0 20px; }
+  h3 { font-size: 16px; margin-top: 20px; margin-bottom: 8px; color: var(--text); font-weight:700; padding:0 20px; }
+  p { margin-bottom: 14px; padding:0 20px; color:#d7dadc; }
+  ul{ padding:0 20px 0 40px; margin-bottom:16px; }
+  ul li{ color:#d7dadc; margin-bottom:8px; }
+
+  /* "post card" styling for the intro + case info, echoing a social feed card without copying any real UI */
+  .post-card{
+    margin:0 20px 24px; padding:16px; border:1px solid var(--line); border-radius:16px; background:var(--panel);
+  }
+  .post-card .lede{ padding:0; margin-bottom:0; }
+
+  .timeline { padding: 4px 20px 8px; }
+  .event {
+    position:relative;
+    margin-bottom: 4px;
+    padding: 14px 16px 14px 20px;
+    border-left: 2px solid var(--line);
+  }
+  .event::before{
+    content:""; position:absolute; left:-6px; top:20px;
+    width:10px; height:10px; border-radius:50%;
+    background:var(--red); border:2px solid var(--bg);
+  }
+  .event-date { font-weight: 700; color: var(--blue); font-size:13px; letter-spacing:.2px; margin-bottom:4px; }
+  .event p{ padding:0; margin-bottom:0; color:#d7dadc; font-size:14.5px; }
+
+  code { background: #16181c; padding: 2px 6px; border-radius: 4px; font-family: 'Courier New', monospace; font-size: 13px; border:1px solid var(--line); }
+
+  .case-info { margin:0 20px 24px; padding: 18px; border-radius: 16px; border:1px solid var(--line); background: var(--panel); }
+  .case-info h3 { margin-top:0; margin-bottom: 10px; padding:0; display:flex; align-items:center; gap:8px; }
+  .badge{
+    display:inline-block; font-size:11px; font-weight:700; letter-spacing:.3px;
+    color:#000; background:var(--amber); padding:3px 8px; border-radius:6px; text-transform:uppercase;
+  }
+  .case-info p { margin-bottom: 6px; padding:0; font-size:14.5px; }
+  .case-info a{ color:var(--blue); }
+
+  a { color: var(--blue); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  .highlight { margin:24px 20px; padding: 18px; border: 1px solid #3a2f00; background: #1a1500; border-radius: 12px; color:#ffe98a; }
+  .highlight strong{ color:#fff3c4; }
+
+  .site-links{
+    margin:0 20px 24px; padding:16px; border:1px solid var(--line); border-radius:16px; background:var(--panel);
+    display:flex; flex-wrap:wrap; gap:10px;
+  }
+  .pill-link{
+    display:inline-flex; align-items:center; gap:6px;
+    font-size:14px; font-weight:700; color:var(--text);
+    border:1px solid var(--line); padding:9px 16px; border-radius:999px;
+    background:#080808;
+  }
+  .pill-link:hover{ border-color:var(--blue); color:var(--blue); text-decoration:none; }
+
+  .footer {
+    margin: 40px 20px 0; padding-top: 20px; border-top: 1px solid var(--line);
+    font-size: 12px; color: var(--dim);
+  }
+  .footer a{ color:var(--dim); }
+  .footer a:hover{ color:var(--blue); }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <a class="brand" href="https://www.earthlingofficial.com">
+    <span class="brand-mark">E</span>
+    <span class="brand-name">Earthling Official</span>
+  </a>
+  <nav>
+    <a href="https://www.earthlingofficial.com">Home</a>
+    <a href="https://www.earthlingofficial.com/find-sally-contarino.html">Find Sally</a>
+  </nav>
+</div>
+
+<div class="container">
+
+<div class="article-head">
+  <div class="kicker">Platform Accountability</div>
+  <h1>X (Twitter) Restricted Missing Persons Campaign After $500 Ad Spend — Here's What Happened</h1>
+  <div class="meta">
+    Published: <b>August 20, 2026</b> &nbsp;·&nbsp; Category: <b>Platform Accountability, Missing Persons Awareness</b>
+  </div>
+</div>
+
+<div class="post-card">
+<p class="lede">
+A journalist and missing persons advocate spent nearly $500 on a paid awareness campaign for Sally Grace Contarino, a 26-year-old missing from Las Vegas since June 20, 2026. Four days after the ad spend ended, X (formerly Twitter) flagged the account, the post's reach was effectively killed, and when asked for human review, the account owner received only scripted-sounding responses and accusations of "manipulation."
+</p>
+</div>
+
+<h2>The Timeline</h2>
+
+<div class="timeline">
+  <div class="event">
+    <div class="event-date">July 2026</div>
+    <p>Paid $500 for X ads promoting Sally Contarino missing persons awareness campaign. Post achieved 6+ million impressions, 10,000+ engagements, 9,000+ shares.</p>
+  </div>
+  <div class="event">
+    <div class="event-date">Four Days After Ad Spend Concluded</div>
+    <p>Account owner logs into account for first time in days. Likes a single post. X immediately demands identity verification, then flags account as "restricted" for "manipulation or inauthentic behavior."</p>
+  </div>
+  <div class="event">
+    <div class="event-date">Hours Later</div>
+    <p>Organic engagement on the post effectively stops. Based on past experience, posts do not appear to pick back up after a restriction like this — whether that's the result of a formal shadowban or something else in X's systems isn't confirmed, but the practical effect is the same: 9,000 shares and all associated links are effectively dead-ended.</p>
+  </div>
+  <div class="event">
+    <div class="event-date">Days of Support Escalation</div>
+    <p>Account owner contacts X Ads support and Premium support. It's unclear whether these interactions were with human agents or automated systems — the responses read as scripted either way. Support accuses user of "making threats" when user mentions intent to file ACCC (Australian Consumer & Competition Commission) complaint.</p>
+  </div>
+  <div class="event">
+    <div class="event-date">No Resolution</div>
+    <p>X offers no confirmed path to human review. Support conflates filing a legal complaint with "making threats." No apology. No refund offered for restricted ad spend.</p>
+  </div>
+</div>
+
+<h2>The Campaign: Sally Grace Contarino</h2>
+
+<div class="case-info">
+  <h3>Missing: Sally Grace Contarino <span class="badge">Active case</span></h3>
+  <p><strong>Age:</strong> 26</p>
+  <p><strong>Missing Since:</strong> June 20, 2026</p>
+  <p><strong>Location:</strong> Las Vegas, Nevada</p>
+  <p><strong>LVMPD Case Number:</strong> LLV260600083886</p>
+  <p><strong>Status:</strong> Active missing persons case, ongoing investigation</p>
+  <p>Full case page: <a href="https://www.earthlingofficial.com/find-sally-contarino.html">earthlingofficial.com/find-sally-contarino.html</a></p>
+</div>
+
+<h2>What X Did Wrong</h2>
+
+<h3>1. Automated Flagging After Ad Spend</h3>
+<p>
+The account was flagged immediately after a single non-promotional interaction (liking a post), four days after the paid campaign concluded. The timing suggests an automated system flagged an account with recent ad spend — whether any human reviewed the case before or after the restriction was applied is unknown.
+</p>
+
+<h3>2. Effectively Killing the Campaign's Reach</h3>
+<p>
+Once flagged, the original Sally Contarino post stopped picking up meaningful organic engagement — consistent with what appears to happen to posts after a restriction, though it's worth noting the post also wasn't seeing much organic traffic in the days right after the paid ad run ended, so the restriction's exact impact is hard to isolate. Either way, a $500 paid campaign that had reached its peak lost any further reach, and it's reasonable to doubt the ads themselves are still being served while the account is restricted.
+</p>
+
+<h3>3. No Confirmed Human Review Path</h3>
+<p>
+X Ads support and Premium support both offered only scripted-sounding responses, and it's not clear whether a human was ever actually involved in reviewing the case. There was no visible escalation path to a confirmed human reviewer. When the account owner pushed for review, support claimed the restriction applied to the user rather than the post — suggesting the account itself was flagged as the issue.
+</p>
+
+<h3>4. Mischaracterizing Legal Rights as "Threats"</h3>
+<p>
+When the account owner stated they would file an ACCC complaint (a standard regulatory process for consumer disputes), X support accused them of "making threats" and warned them not to make "legal threats." Filing a consumer complaint is not a threat — it is a legal right. Characterizing it as such is intimidation.
+</p>
+
+<h3>5. Treating a Journalist and Advocate as a Hostile Actor</h3>
+<p>
+The account owner is a journalist and advocate running a missing persons awareness website. X's response treated the account as hostile or inauthentic, despite it being a legitimate advocacy effort with verifiable results (millions of impressions, real engagement, real awareness generated).
+</p>
+
+<h2>The Broader Issue: Platform Indifference to Missing Persons Cases</h2>
+
+<p>
+This is not an isolated incident. Platforms routinely restrict or throttle missing persons awareness content, often citing vague terms like "inauthentic behavior" or "manipulation." For cases like Sally Contarino — young women, missing for months, with limited media coverage — platform visibility is often the only reach available to families and advocates.</p>
+
+<p>
+When X collects $500 for ad spend promoting a missing person, then restricts the account and effectively kills the campaign's reach while offering no confirmed human review and no refund, it sends a message: missing persons cases are not worth platform resources to review fairly.</p>
+
+<h2>What Should Happen</h2>
+
+<ul>
+  <li>X should provide human review of the account restriction</li>
+  <li>X should restore the post's reach or offer a full refund</li>
+  <li>X should clarify its policies on missing persons content and missing persons paid campaigns</li>
+  <li>X should not characterize filing regulatory complaints as "making threats"</li>
+  <li>X should treat journalism and advocacy content with the same fairness as commercial content</li>
+</ul>
+
+<h2>Documentation & Next Steps</h2>
+
+<p>This incident has been documented in full, with evidence preserved. Additional platform documentation and evidence are available upon request.</p>
+
+<div class="highlight">
+<strong>If you have information about Sally Contarino's disappearance, please contact:</strong><br>
+LVMPD: <strong>702-828-3851</strong><br>
+Case: <strong>LLV260600083886</strong>
+</div>
+
+<div class="site-links">
+  <a class="pill-link" href="https://www.earthlingofficial.com">← Back to Earthling Official</a>
+  <a class="pill-link" href="https://www.earthlingofficial.com/find-sally-contarino.html">Sally Contarino case page →</a>
+</div>
+
+<h2>About This Article</h2>
+
+<p>This article documents the experience of a journalist and missing persons advocate fighting for platform accountability. It is published to create a public record of how X's automated systems and scripted support handled a $500 missing persons awareness campaign — and failed.</p>
+
+<p>
+Similar issues affect other platforms. If you've experienced platform restrictions on legitimate missing persons content, that too should be documented and made public.
+</p>
+
+<div class="footer">
+This article is part of ongoing platform accountability documentation, published on <a href="https://www.earthlingofficial.com">earthlingofficial.com</a>. Last updated: August 20, 2026.
+</div>
+
+</div>
+</body>
+</html>
