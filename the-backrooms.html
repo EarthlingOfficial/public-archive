@@ -1026,6 +1026,13 @@ let chickenDeathTriggered = false;
 let chickenAngle      = 0;
 let chickenRadius     = 5.0;
 let chickenAnimAction = null;
+let chickenAnimClips  = [];    // all 30 clips
+let chickenAnimIdx    = 0;     // which clip is playing
+let chickenAnimTimer  = 0;     // seconds until next clip switch
+let chickenYOffset    = 0;     // auto-computed foot lift so model isn't in the ground
+let chickenAnchorX    = 0;     // orbit center — drifts toward player at capped speed, not locked to it
+let chickenAnchorZ    = 0;
+const CHICKEN_ANCHOR_SPEED = 2.4; // units/sec the anchor is allowed to chase the player
 
 // ── SHARK STATE ───────────────────────────────────────────────────────────────
 let sharkActor      = null;
@@ -1041,6 +1048,9 @@ let sharkNextPhaseAt = 0;
 let sharkAttackYaw  = 0;
 let sharkMouthBone  = null;
 let sharkMouthOpen  = 0;
+let sharkAnchorX    = 0;     // orbit center — snapshot of player pos, not locked to it live
+let sharkAnchorZ    = 0;
+const SHARK_ANCHOR_SPEED = 1.1; // units/sec the anchor is allowed to drift during cruise
 const BONE3_URL = 'https://raw.githubusercontent.com/EarthlingOfficial/public-archive/main/bone3.mp3';
 let bone3Audio  = null;
 let entityAction    = null;
@@ -5843,6 +5853,39 @@ function loadShark(){
   );
 }
 
+// ── CHICKEN ANIMATION HELPERS ─────────────────────────────────────────────────
+function chickenPlayClip(idx){
+  if(!chickenMixer || !chickenAnimClips.length) return;
+  // Fade out old action
+  if(chickenAnimAction){
+    chickenAnimAction.fadeOut(0.35);
+  }
+  chickenAnimIdx  = ((idx % chickenAnimClips.length) + chickenAnimClips.length) % chickenAnimClips.length;
+  const clip      = chickenAnimClips[chickenAnimIdx];
+  chickenAnimAction = chickenMixer.clipAction(clip);
+  chickenAnimAction.reset();
+  chickenAnimAction.setLoop(THREE.LoopRepeat, Infinity);
+  chickenAnimAction.timeScale = 1.0;
+  chickenAnimAction.fadeIn(0.35).play();
+}
+
+function chickenAdvanceAnim(dt){
+  if(!chickenAnimClips.length) return;
+  chickenAnimTimer -= dt;
+  if(chickenAnimTimer <= 0){
+    // Play a random different clip
+    let next;
+    if(chickenAnimClips.length > 1){
+      do { next = Math.floor(Math.random() * chickenAnimClips.length); }
+      while(next === chickenAnimIdx);
+    } else {
+      next = 0;
+    }
+    chickenPlayClip(next);
+    chickenAnimTimer = 2.5 + Math.random() * 5; // next switch in 2.5–7.5 s
+  }
+}
+
 // ── CHICKEN BOSS LOADER ───────────────────────────────────────────────────────
 function loadChicken(){
   const url = isMobile ? CHICKEN_URL_1K : CHICKEN_URL_4K;
@@ -5864,17 +5907,23 @@ function loadChicken(){
       chickenActor = actor;
       chickenActor.visible = false;
       scene.add(chickenActor);
+      // Compute foot offset: raise model so its bounding box bottom sits on the floor
+      {
+        const tmpBox = new THREE.Box3().setFromObject(chickenActor);
+        chickenYOffset = -tmpBox.min.y;  // positive = lift up by this many units
+      }
       chickenMixer = new THREE.AnimationMixer(chickenActor);
       if(gltf.animations && gltf.animations.length > 0){
-        // Try to find an idle/walk animation first, fall back to index 0
-        const clip = THREE.AnimationClip.findByName(gltf.animations, 'walk')
-          || THREE.AnimationClip.findByName(gltf.animations, 'idle')
-          || THREE.AnimationClip.findByName(gltf.animations, 'run')
-          || gltf.animations[0];
-        chickenAnimAction = chickenMixer.clipAction(clip);
-        chickenAnimAction.setLoop(THREE.LoopRepeat, Infinity);
-        chickenAnimAction.timeScale = 1.0;
-        chickenAnimAction.play();
+        // Store ALL clips so we can cycle through all 30
+        chickenAnimClips = gltf.animations.slice();
+        console.log('[Chicken] loaded', chickenAnimClips.length, 'animations:', chickenAnimClips.map(c=>c.name));
+        // Start with whichever clip looks like walking, fall back to index 0
+        const walkIdx = chickenAnimClips.findIndex(c => /walk/i.test(c.name));
+        const idleIdx = chickenAnimClips.findIndex(c => /idle/i.test(c.name));
+        chickenAnimIdx = walkIdx >= 0 ? walkIdx : (idleIdx >= 0 ? idleIdx : 0);
+        chickenPlayClip(chickenAnimIdx);
+        // Randomise how long each clip plays before switching (3–7 s)
+        chickenAnimTimer = 3 + Math.random() * 4;
       }
       chickenLoaded = true;
     },
@@ -5890,6 +5939,8 @@ function showChicken(){
   // Start circling the player
   chickenAngle = Math.random() * Math.PI * 2;
   chickenRadius = 5.0 + Math.random() * 2;
+  chickenAnchorX = camera.position.x;
+  chickenAnchorZ = camera.position.z;
 }
 
 function hideChicken(){
@@ -6011,37 +6062,61 @@ function updateChicken(dt, t){
   if(!chickenActive || !chickenLoaded || !chickenActor || !chickenVisible) return;
   chickenMixer.update(dt);
 
-  // Circle the player menacingly
-  chickenAngle += dt * 0.35;
+  // Cycle through all 30 animations automatically
+  chickenAdvanceAnim(dt);
+
+  // ── Movement: orbit a slow-drifting anchor, drift INWARD over time so it can attack ──
+  // The anchor chases the player at a capped speed instead of being the
+  // player's live position, so walking toward the chicken actually closes
+  // the distance instead of the orbit re-centering on you every frame.
+  chickenAngle += dt * 0.38;
   const playerPos = camera.position;
-  const cx = playerPos.x;
-  const cz = playerPos.z;
-  const wobble = Math.sin(t * 0.0008) * 0.3;
-  const wobbleR = Math.sin(t * 0.0005) * 0.8;
-  chickenActor.position.x = cx + Math.sin(chickenAngle + wobble) * (chickenRadius + wobbleR);
-  chickenActor.position.z = cz + Math.cos(chickenAngle + wobble) * (chickenRadius + wobbleR);
-  // Keep at floor level of current level
+  const wobble  = Math.sin(t * 0.0008) * 0.28;
+  const wobbleR = Math.sin(t * 0.0005) * 0.6;
+
+  const toPlayerX = playerPos.x - chickenAnchorX;
+  const toPlayerZ = playerPos.z - chickenAnchorZ;
+  const anchorDist = Math.sqrt(toPlayerX * toPlayerX + toPlayerZ * toPlayerZ);
+  const anchorStep = CHICKEN_ANCHOR_SPEED * dt;
+  if(anchorDist > anchorStep){
+    chickenAnchorX += (toPlayerX / anchorDist) * anchorStep;
+    chickenAnchorZ += (toPlayerZ / anchorDist) * anchorStep;
+  } else {
+    chickenAnchorX = playerPos.x;
+    chickenAnchorZ = playerPos.z;
+  }
+
+  const orbitR = chickenRadius + wobbleR;
+  chickenActor.position.x = chickenAnchorX + Math.sin(chickenAngle + wobble) * orbitR;
+  chickenActor.position.z = chickenAnchorZ + Math.cos(chickenAngle + wobble) * orbitR;
+
+  // Keep at floor level + raise model so feet sit ON the floor, not in it
   const yOff = -CHICKEN_LEVEL * LEVEL_DEPTH;
-  chickenActor.position.y = levelFloorY + yOff;
+  chickenActor.position.y = levelFloorY + yOff + chickenYOffset;
+
   // Face the player
   chickenActor.rotation.y = Math.atan2(
     playerPos.x - chickenActor.position.x,
     playerPos.z - chickenActor.position.z
   );
 
-  // Attack: when close enough and timer elapsed, hit the player
-  const now = performance.now();
-  const dx = playerPos.x - chickenActor.position.x;
-  const dz = playerPos.z - chickenActor.position.z;
-  const dist = Math.sqrt(dx*dx + dz*dz);
+  // ── Attack logic ──
+  const now  = performance.now();
+  const dx   = playerPos.x - chickenActor.position.x;
+  const dz   = playerPos.z - chickenActor.position.z;
+  const dist = Math.sqrt(dx * dx + dz * dz);
+
   if(dist < CHICKEN_ATTACK_RANGE && now - chickenLastHit > CHICKEN_ATTACK_RATE){
     chickenLastHit = now;
     chickenHitPlayer();
     // Lunge in closer briefly for drama
-    chickenRadius = Math.max(2.5, chickenRadius - 0.8);
+    chickenRadius = Math.max(2.0, chickenRadius - 1.2);
   } else {
-    // Drift back out to orbit range
-    if(chickenRadius < 5.0) chickenRadius = Math.min(5.0, chickenRadius + dt * 0.6);
+    // Slowly drift INWARD toward attack range (was drifting back OUT — that's why it never attacked)
+    const targetRadius = CHICKEN_ATTACK_RANGE - 0.5; // settle just inside attack range
+    if(chickenRadius > targetRadius){
+      chickenRadius = Math.max(targetRadius, chickenRadius - dt * 0.25);
+    }
   }
 }
 
@@ -6051,6 +6126,8 @@ function showShark(){
   sharkActor.visible = true;
   sharkAngle = Math.random() * Math.PI * 2;
   sharkRadius = 4.5 + Math.random() * 2;
+  sharkAnchorX = camera.position.x;
+  sharkAnchorZ = camera.position.z;
   sharkPhase = 'cruise';
   sharkNextPhaseAt = performance.now() + 6000 + Math.random() * 8000;
   sharkMouthOpen = 0;
@@ -6092,6 +6169,11 @@ function updateShark(dt, t){
       sharkPhase = 'cruise';
       sharkNextPhaseAt = t + 6000 + Math.random() * 8000;
       sharkMouthOpen = 0;
+      // Re-anchor the patrol orbit to wherever the shark actually is right
+      // now (e.g. after an attack lunge), so it resumes circling smoothly
+      // instead of snapping back to an old, far-away orbit center.
+      sharkAnchorX = sharkActor.position.x;
+      sharkAnchorZ = sharkActor.position.z;
     }
   }
 
@@ -6120,13 +6202,26 @@ function updateShark(dt, t){
     sharkActor.position.y += (swimY - sharkActor.position.y) * dt * 2;
     sharkActor.rotation.y = sharkAttackYaw + Math.PI;
   } else {
-    // Circular patrol with tailwhip wobble
+    // Circular patrol with tailwhip wobble — orbits a slow-drifting anchor,
+    // NOT the player's live position, so it doesn't stay glued at a fixed
+    // distance when you swim toward it.
     sharkAngle += dt * sharkSwimSpeed * 0.28;
     const wobble = sharkPhase === 'tailwhip' ? Math.sin(t * 0.008) * 0.6 : 0;
-    const cx = camera.position.x;
-    const cz = camera.position.z;
-    sharkActor.position.x = cx + Math.sin(sharkAngle + wobble) * sharkRadius;
-    sharkActor.position.z = cz + Math.cos(sharkAngle + wobble) * sharkRadius;
+
+    const toPlayerX = camera.position.x - sharkAnchorX;
+    const toPlayerZ = camera.position.z - sharkAnchorZ;
+    const anchorDist = Math.sqrt(toPlayerX * toPlayerX + toPlayerZ * toPlayerZ);
+    const anchorStep = SHARK_ANCHOR_SPEED * dt;
+    if(anchorDist > anchorStep){
+      sharkAnchorX += (toPlayerX / anchorDist) * anchorStep;
+      sharkAnchorZ += (toPlayerZ / anchorDist) * anchorStep;
+    } else {
+      sharkAnchorX = camera.position.x;
+      sharkAnchorZ = camera.position.z;
+    }
+
+    sharkActor.position.x = sharkAnchorX + Math.sin(sharkAngle + wobble) * sharkRadius;
+    sharkActor.position.z = sharkAnchorZ + Math.cos(sharkAngle + wobble) * sharkRadius;
     sharkActor.position.y = swimY;
     sharkActor.rotation.y = sharkAngle + wobble + Math.PI / 2;
   }
