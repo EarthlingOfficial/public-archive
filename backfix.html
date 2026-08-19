@@ -467,6 +467,32 @@
   #css3d { position:fixed; inset:0; z-index:2; pointer-events:none; }
   #css3d iframe { border:0; pointer-events:auto; background:#000; }
 
+  /* ── LEVEL 150 CHICKEN BOSS: HEALTH BAR ── */
+  #chicken-health-wrap {
+    position: fixed; bottom: 32px; left: 50%; transform: translateX(-50%);
+    display: none; flex-direction: column; align-items: center; gap: 6px;
+    pointer-events: none; z-index: 8;
+  }
+  #chicken-health-label {
+    color: rgba(255,80,60,0.82); font-family: 'Courier New', monospace;
+    font-size: 11px; letter-spacing: 3px; text-shadow: 0 0 10px rgba(255,40,20,0.6);
+  }
+  #chicken-health-bar-outer {
+    width: 220px; height: 6px; background: rgba(60,0,0,0.7);
+    border: 1px solid rgba(255,60,40,0.35); border-radius: 3px; overflow: hidden;
+  }
+  #chicken-health-bar-inner {
+    height: 100%; width: 100%; background: rgba(220,50,30,0.9);
+    transition: width 0.25s, background 0.4s;
+    border-radius: 3px;
+  }
+  /* Hit flash veil */
+  #chicken-hit-veil {
+    position: fixed; inset: 0; pointer-events: none; z-index: 7;
+    background: rgba(255,30,0,0.28); display: none; opacity: 0;
+    transition: opacity 0.08s;
+  }
+
   /* ── MAP SIZE SELECTOR (PC only) ── */
   #map-selector {
     position:fixed; inset:0; z-index:30;
@@ -575,6 +601,12 @@
 <div id="ambient-text"></div>
 <div id="blood-veil"></div>
 <div id="water-veil"></div>
+<!-- Level 150 chicken boss UI -->
+<div id="chicken-health-wrap">
+  <div id="chicken-health-label">YOUR HEALTH</div>
+  <div id="chicken-health-bar-outer"><div id="chicken-health-bar-inner"></div></div>
+</div>
+<div id="chicken-hit-veil"></div>
 <div id="film-grain"></div>
 <div id="fall-veil"></div>
 <!-- Fall landing message -->
@@ -748,6 +780,19 @@ const EYE_HEIGHT    = 2.36;
 const LEVEL_DEPTH   = 30;
 const NOCLIP_RADIUS = 0.6;
 const CROSS_SIZE    = 0.5;
+
+// ── LEVEL 150 CHICKEN BOSS ───────────────────────────────────────────────────
+const CHICKEN_LEVEL        = 150;
+const CHICKEN_URL_4K       = 'https://files.catbox.moe/kkhfs4.glb';
+const CHICKEN_URL_1K       = 'https://files.catbox.moe/oaqe8y.glb';
+const CHICKEN_DEATH_URL    = 'https://earthlingofficial.com/veganbrosstage9.html';
+const CHICKEN_MAX_HEALTH   = 100;
+const CHICKEN_HIT_DAMAGE   = 5;   // hp lost per axe swing hit
+const CHICKEN_ATTACK_RANGE = 4.2; // metres — close enough to get axed
+const CHICKEN_ATTACK_RATE  = 3200;// ms between axe swings
+const CHICKEN_ESCAPE_HP    = 10;  // noclip/fall spawns at this HP
+const CHICKEN_MSG_GUN_DELAY   = 0;       // on-drop message
+const CHICKEN_MSG_CHOOK_DELAY = 120000;  // 2 minutes later
 
 const VOID_START_LEVEL = 36;   // first level with no GLB geometry
 const VOID_END_LEVEL   = 70;   // the floating signal level, live feeds live here
@@ -968,6 +1013,27 @@ function bushOffsetForLevel(levelIndex){
 let entityActor     = null;
 let entityMixer     = null;
 
+// ── LEVEL 150 CHICKEN BOSS STATE ─────────────────────────────────────────────
+let chickenActor      = null;
+let chickenMixer      = null;
+let chickenLoaded     = false;
+let chickenVisible    = false;
+let chickenHP         = CHICKEN_MAX_HEALTH;
+let chickenActive     = false;          // true once player lands on level 150
+let chickenLastHit    = 0;              // timestamp of last axe hit
+let chickenEscapeSpawned = false;       // fall zone revealed flag
+let chickenDeathTriggered = false;
+let chickenAngle      = 0;
+let chickenRadius     = 5.0;
+let chickenAnimAction = null;
+let chickenAnimClips  = [];    // all 30 clips
+let chickenAnimIdx    = 0;     // which clip is playing
+let chickenAnimTimer  = 0;     // seconds until next clip switch
+let chickenYOffset    = 0;     // auto-computed foot lift so model isn't in the ground
+let chickenAnchorX    = 0;     // orbit center — drifts toward player at capped speed, not locked to it
+let chickenAnchorZ    = 0;
+const CHICKEN_ANCHOR_SPEED = 2.4; // units/sec the anchor is allowed to chase the player
+
 // ── SHARK STATE ───────────────────────────────────────────────────────────────
 let sharkActor      = null;
 let sharkMixer      = null;
@@ -982,6 +1048,9 @@ let sharkNextPhaseAt = 0;
 let sharkAttackYaw  = 0;
 let sharkMouthBone  = null;
 let sharkMouthOpen  = 0;
+let sharkAnchorX    = 0;     // orbit center — snapshot of player pos, not locked to it live
+let sharkAnchorZ    = 0;
+const SHARK_ANCHOR_SPEED = 1.1; // units/sec the anchor is allowed to drift during cruise
 const BONE3_URL = 'https://raw.githubusercontent.com/EarthlingOfficial/public-archive/main/bone3.mp3';
 let bone3Audio  = null;
 let entityAction    = null;
@@ -5612,6 +5681,18 @@ function triggerFall(){
   if(nextIdx === 30){
     startBloodLevel30();
   }
+
+  // ── LEVEL 150 CHICKEN BOSS ───────────────────────────────────────────────
+  if(nextIdx === CHICKEN_LEVEL){
+    startChickenLevel();
+  } else if(chickenActive){
+    stopChickenLevel();
+  }
+
+  // ── LEVEL 151: ESCAPED THE CHICKEN ───────────────────────────────────────
+  if(nextIdx === CHICKEN_LEVEL + 1){
+    showChickenMsg('you found the fall.\nthe chickens never do.', 7000);
+  }
 }
 
 // ── GLB LOAD ─────────────────────────────────────────────────────────────────
@@ -5772,12 +5853,281 @@ function loadShark(){
   );
 }
 
+// ── CHICKEN ANIMATION HELPERS ─────────────────────────────────────────────────
+function chickenPlayClip(idx){
+  if(!chickenMixer || !chickenAnimClips.length) return;
+  // Fade out old action
+  if(chickenAnimAction){
+    chickenAnimAction.fadeOut(0.35);
+  }
+  chickenAnimIdx  = ((idx % chickenAnimClips.length) + chickenAnimClips.length) % chickenAnimClips.length;
+  const clip      = chickenAnimClips[chickenAnimIdx];
+  chickenAnimAction = chickenMixer.clipAction(clip);
+  chickenAnimAction.reset();
+  chickenAnimAction.setLoop(THREE.LoopRepeat, Infinity);
+  chickenAnimAction.timeScale = 1.0;
+  chickenAnimAction.fadeIn(0.35).play();
+}
+
+function chickenAdvanceAnim(dt){
+  if(!chickenAnimClips.length) return;
+  chickenAnimTimer -= dt;
+  if(chickenAnimTimer <= 0){
+    // Play a random different clip
+    let next;
+    if(chickenAnimClips.length > 1){
+      do { next = Math.floor(Math.random() * chickenAnimClips.length); }
+      while(next === chickenAnimIdx);
+    } else {
+      next = 0;
+    }
+    chickenPlayClip(next);
+    chickenAnimTimer = 2.5 + Math.random() * 5; // next switch in 2.5–7.5 s
+  }
+}
+
+// ── CHICKEN BOSS LOADER ───────────────────────────────────────────────────────
+function loadChicken(){
+  const url = isMobile ? CHICKEN_URL_1K : CHICKEN_URL_4K;
+  loader.load(
+    url,
+    gltf => {
+      const actor = gltf.scene;
+      // Scale to roughly 3.5m tall — imposing boss height
+      const bounds = new THREE.Box3().setFromObject(actor);
+      const size = bounds.getSize(new THREE.Vector3());
+      const tallest = Math.max(size.x, size.y, size.z);
+      actor.scale.multiplyScalar(3.5 / Math.max(tallest, 0.01));
+      actor.updateMatrixWorld(true);
+      actor.traverse(c => {
+        if(!c.isMesh){ return; }
+        c.castShadow = false;
+        c.receiveShadow = false;
+      });
+      chickenActor = actor;
+      chickenActor.visible = false;
+      scene.add(chickenActor);
+      // Compute foot offset: raise model so its bounding box bottom sits on the floor
+      {
+        const tmpBox = new THREE.Box3().setFromObject(chickenActor);
+        chickenYOffset = -tmpBox.min.y;  // positive = lift up by this many units
+      }
+      chickenMixer = new THREE.AnimationMixer(chickenActor);
+      if(gltf.animations && gltf.animations.length > 0){
+        // Store ALL clips so we can cycle through all 30
+        chickenAnimClips = gltf.animations.slice();
+        console.log('[Chicken] loaded', chickenAnimClips.length, 'animations:', chickenAnimClips.map(c=>c.name));
+        // Start with whichever clip looks like walking, fall back to index 0
+        const walkIdx = chickenAnimClips.findIndex(c => /walk/i.test(c.name));
+        const idleIdx = chickenAnimClips.findIndex(c => /idle/i.test(c.name));
+        chickenAnimIdx = walkIdx >= 0 ? walkIdx : (idleIdx >= 0 ? idleIdx : 0);
+        chickenPlayClip(chickenAnimIdx);
+        // Randomise how long each clip plays before switching (3–7 s)
+        chickenAnimTimer = 3 + Math.random() * 4;
+      }
+      chickenLoaded = true;
+    },
+    undefined,
+    (err) => { console.warn('Chicken boss load failed:', err); chickenLoaded = false; }
+  );
+}
+
+function showChicken(){
+  if(!chickenLoaded || !chickenActor) return;
+  chickenVisible = true;
+  chickenActor.visible = true;
+  // Start circling the player
+  chickenAngle = Math.random() * Math.PI * 2;
+  chickenRadius = 5.0 + Math.random() * 2;
+  chickenAnchorX = camera.position.x;
+  chickenAnchorZ = camera.position.z;
+}
+
+function hideChicken(){
+  if(chickenActor) chickenActor.visible = false;
+  chickenVisible = false;
+}
+
+function updateChickenHealth(){
+  const wrap = document.getElementById('chicken-health-wrap');
+  const bar  = document.getElementById('chicken-health-bar-inner');
+  if(!wrap || !bar) return;
+  const pct = Math.max(0, chickenHP / CHICKEN_MAX_HEALTH) * 100;
+  bar.style.width = pct + '%';
+  // Colour shifts red→orange→yellow as health drops (for drama)
+  if(pct > 60) bar.style.background = 'rgba(220,50,30,0.9)';
+  else if(pct > 30) bar.style.background = 'rgba(255,120,20,0.9)';
+  else bar.style.background = 'rgba(255,220,20,0.9)';
+}
+
+function chickenHitPlayer(){
+  if(chickenDeathTriggered) return;
+  chickenHP = Math.max(0, chickenHP - CHICKEN_HIT_DAMAGE);
+  updateChickenHealth();
+
+  // Red flash veil
+  const veil = document.getElementById('chicken-hit-veil');
+  if(veil){
+    veil.style.display = 'block';
+    veil.style.opacity = '1';
+    setTimeout(()=>{ veil.style.opacity = '0'; setTimeout(()=>{ veil.style.display='none'; }, 300); }, 140);
+  }
+
+  // Escape zone appears at 10hp
+  if(chickenHP <= CHICKEN_ESCAPE_HP && !chickenEscapeSpawned){
+    chickenEscapeSpawned = true;
+    spawnChickenEscape();
+    showChickenMsg('okay speciesist, you can go now', 6000);
+  }
+
+  // Two more hits after escape spawned = death
+  if(chickenHP <= 0 && !chickenDeathTriggered){
+    chickenDeathTriggered = true;
+    hideChicken();
+    stopBroadcasts();
+    showDeathScreen();
+    setTimeout(()=>{
+      window.location.href = CHICKEN_DEATH_URL;
+    }, 5000);
+  }
+}
+
+function spawnChickenEscape(){
+  // Place a noclip zone in the level if not already there
+  const existing = noclipZones.find(z => z.levelIndex === CHICKEN_LEVEL);
+  if(existing) return;
+  const candidates = [
+    [ 3, -6], [-4,-10], [ 6,-18], [-5,-22],
+    [ 2,-30], [-6,-35], [ 8, -4], [-8, -8],
+    [ 4,-14], [-3,-26],
+  ];
+  const pick = candidates[Math.floor(Math.random() * candidates.length)];
+  const [nx, nz] = clampToBounds(pick[0], pick[1]);
+  const yOff = -CHICKEN_LEVEL * LEVEL_DEPTH;
+  const floorY = levelFloorY + yOff;
+  const CS = 0.28;
+  const mat = new THREE.MeshStandardMaterial({color:0x000000,emissive:new THREE.Color(0x000000),emissiveIntensity:0,roughness:0.9,metalness:0});
+  const g = new THREE.Group();
+  g.add(new THREE.Mesh(new THREE.BoxGeometry(CS*2,0.025,0.07), mat));
+  g.add(new THREE.Mesh(new THREE.BoxGeometry(0.07,0.025,CS*2), mat));
+  g.position.set(nx, floorY, nz);
+  g.visible = true;
+  scene.add(g);
+  noclipZones.push({ x: nx, z: nz, levelIndex: CHICKEN_LEVEL, mesh: g });
+}
+
+function showChickenMsg(text, duration){
+  const el = document.getElementById('fall-msg');
+  if(!el) return;
+  el.textContent = text;
+  el.style.display = 'block';
+  el.style.opacity = '0';
+  setTimeout(()=>{ el.style.opacity = '1'; }, 60);
+  setTimeout(()=>{ el.style.opacity = '0'; setTimeout(()=>{ el.style.display = 'none'; }, 1200); }, duration);
+}
+
+function startChickenLevel(){
+  chickenHP = CHICKEN_MAX_HEALTH;
+  chickenActive = true;
+  chickenEscapeSpawned = false;
+  chickenDeathTriggered = false;
+  chickenLastHit = performance.now() + 3000; // 3s grace before first hit
+
+  // Show health bar
+  const wrap = document.getElementById('chicken-health-wrap');
+  if(wrap){ wrap.style.display = 'flex'; updateChickenHealth(); }
+
+  // Spawn the chicken if loaded, otherwise it spawns when load completes
+  if(chickenLoaded) showChicken();
+
+  // Entry message
+  showChickenMsg('find the gun and survive', 7000);
+
+  // 2-minute follow-up message
+  setTimeout(()=>{
+    if(currentLevel === CHICKEN_LEVEL && !chickenDeathTriggered){
+      showChickenMsg('no gun but keep running around like a headless chook', 7000);
+    }
+  }, CHICKEN_MSG_CHOOK_DELAY);
+}
+
+function stopChickenLevel(){
+  chickenActive = false;
+  hideChicken();
+  const wrap = document.getElementById('chicken-health-wrap');
+  if(wrap) wrap.style.display = 'none';
+}
+
+function updateChicken(dt, t){
+  if(!chickenActive || !chickenLoaded || !chickenActor || !chickenVisible) return;
+  chickenMixer.update(dt);
+
+  // Cycle through all 30 animations automatically
+  chickenAdvanceAnim(dt);
+
+  // ── Movement: orbit a slow-drifting anchor, drift INWARD over time so it can attack ──
+  // The anchor chases the player at a capped speed instead of being the
+  // player's live position, so walking toward the chicken actually closes
+  // the distance instead of the orbit re-centering on you every frame.
+  chickenAngle += dt * 0.38;
+  const playerPos = camera.position;
+  const wobble  = Math.sin(t * 0.0008) * 0.28;
+  const wobbleR = Math.sin(t * 0.0005) * 0.6;
+
+  const toPlayerX = playerPos.x - chickenAnchorX;
+  const toPlayerZ = playerPos.z - chickenAnchorZ;
+  const anchorDist = Math.sqrt(toPlayerX * toPlayerX + toPlayerZ * toPlayerZ);
+  const anchorStep = CHICKEN_ANCHOR_SPEED * dt;
+  if(anchorDist > anchorStep){
+    chickenAnchorX += (toPlayerX / anchorDist) * anchorStep;
+    chickenAnchorZ += (toPlayerZ / anchorDist) * anchorStep;
+  } else {
+    chickenAnchorX = playerPos.x;
+    chickenAnchorZ = playerPos.z;
+  }
+
+  const orbitR = chickenRadius + wobbleR;
+  chickenActor.position.x = chickenAnchorX + Math.sin(chickenAngle + wobble) * orbitR;
+  chickenActor.position.z = chickenAnchorZ + Math.cos(chickenAngle + wobble) * orbitR;
+
+  // Keep at floor level + raise model so feet sit ON the floor, not in it
+  const yOff = -CHICKEN_LEVEL * LEVEL_DEPTH;
+  chickenActor.position.y = levelFloorY + yOff + chickenYOffset;
+
+  // Face the player
+  chickenActor.rotation.y = Math.atan2(
+    playerPos.x - chickenActor.position.x,
+    playerPos.z - chickenActor.position.z
+  );
+
+  // ── Attack logic ──
+  const now  = performance.now();
+  const dx   = playerPos.x - chickenActor.position.x;
+  const dz   = playerPos.z - chickenActor.position.z;
+  const dist = Math.sqrt(dx * dx + dz * dz);
+
+  if(dist < CHICKEN_ATTACK_RANGE && now - chickenLastHit > CHICKEN_ATTACK_RATE){
+    chickenLastHit = now;
+    chickenHitPlayer();
+    // Lunge in closer briefly for drama
+    chickenRadius = Math.max(2.0, chickenRadius - 1.2);
+  } else {
+    // Slowly drift INWARD toward attack range (was drifting back OUT — that's why it never attacked)
+    const targetRadius = CHICKEN_ATTACK_RANGE - 0.5; // settle just inside attack range
+    if(chickenRadius > targetRadius){
+      chickenRadius = Math.max(targetRadius, chickenRadius - dt * 0.25);
+    }
+  }
+}
+
 function showShark(){
   if(!sharkLoaded || !sharkActor) return;
   sharkVisible = true;
   sharkActor.visible = true;
   sharkAngle = Math.random() * Math.PI * 2;
   sharkRadius = 4.5 + Math.random() * 2;
+  sharkAnchorX = camera.position.x;
+  sharkAnchorZ = camera.position.z;
   sharkPhase = 'cruise';
   sharkNextPhaseAt = performance.now() + 6000 + Math.random() * 8000;
   sharkMouthOpen = 0;
@@ -5819,6 +6169,11 @@ function updateShark(dt, t){
       sharkPhase = 'cruise';
       sharkNextPhaseAt = t + 6000 + Math.random() * 8000;
       sharkMouthOpen = 0;
+      // Re-anchor the patrol orbit to wherever the shark actually is right
+      // now (e.g. after an attack lunge), so it resumes circling smoothly
+      // instead of snapping back to an old, far-away orbit center.
+      sharkAnchorX = sharkActor.position.x;
+      sharkAnchorZ = sharkActor.position.z;
     }
   }
 
@@ -5847,13 +6202,26 @@ function updateShark(dt, t){
     sharkActor.position.y += (swimY - sharkActor.position.y) * dt * 2;
     sharkActor.rotation.y = sharkAttackYaw + Math.PI;
   } else {
-    // Circular patrol with tailwhip wobble
+    // Circular patrol with tailwhip wobble — orbits a slow-drifting anchor,
+    // NOT the player's live position, so it doesn't stay glued at a fixed
+    // distance when you swim toward it.
     sharkAngle += dt * sharkSwimSpeed * 0.28;
     const wobble = sharkPhase === 'tailwhip' ? Math.sin(t * 0.008) * 0.6 : 0;
-    const cx = camera.position.x;
-    const cz = camera.position.z;
-    sharkActor.position.x = cx + Math.sin(sharkAngle + wobble) * sharkRadius;
-    sharkActor.position.z = cz + Math.cos(sharkAngle + wobble) * sharkRadius;
+
+    const toPlayerX = camera.position.x - sharkAnchorX;
+    const toPlayerZ = camera.position.z - sharkAnchorZ;
+    const anchorDist = Math.sqrt(toPlayerX * toPlayerX + toPlayerZ * toPlayerZ);
+    const anchorStep = SHARK_ANCHOR_SPEED * dt;
+    if(anchorDist > anchorStep){
+      sharkAnchorX += (toPlayerX / anchorDist) * anchorStep;
+      sharkAnchorZ += (toPlayerZ / anchorDist) * anchorStep;
+    } else {
+      sharkAnchorX = camera.position.x;
+      sharkAnchorZ = camera.position.z;
+    }
+
+    sharkActor.position.x = sharkAnchorX + Math.sin(sharkAngle + wobble) * sharkRadius;
+    sharkActor.position.z = sharkAnchorZ + Math.cos(sharkAngle + wobble) * sharkRadius;
     sharkActor.position.y = swimY;
     sharkActor.rotation.y = sharkAngle + wobble + Math.PI / 2;
   }
@@ -5932,6 +6300,7 @@ glbUrlReady.then(chosenUrl => {
   GLB_URL = chosenUrl;
   loadEntity();
   loadShark();
+  loadChicken();
   initBone3Audio();
   // Bush quality now follows the same FAST/HIRES pick as the map itself
   // (chosenUrl === GLB_1K on mobile automatically, since mobile always
@@ -6343,6 +6712,15 @@ function animate(t){
           }
         }
       }
+    } else if(currentLevel === CHICKEN_LEVEL){
+      // Level 150 — fall zone only active after escape is spawned (at 10hp)
+      if(chickenEscapeSpawned && !chickenDeathTriggered){
+        const zone = noclipZones.find(z => z.levelIndex === CHICKEN_LEVEL);
+        if(zone && !isFalling){
+          const dx = px - zone.x, dz = pz - zone.z;
+          if(Math.sqrt(dx*dx + dz*dz) < NOCLIP_RADIUS) triggerFall();
+        }
+      }
     } else {
       // Normal levels — standard zone checking
       for(const zone of noclipZones){
@@ -6356,6 +6734,7 @@ function animate(t){
 
   updateEntity(t, dt);
   updateShark(dt, t);
+  if(currentLevel === CHICKEN_LEVEL) updateChicken(dt, t);
 
   // ── UPDATE BLOOD LEVEL (Level 30) ────────────────────────────────────────
   if(currentLevel === 30 && bloodActive){
