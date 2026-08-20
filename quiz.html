@@ -1,198 +1,625 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>The College of Deanus Politicus</title>
-    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
-    <style>
-        body {
-            background-color: #1a1a1a;
-            color: #ffffff;
-            font-family: 'Courier New', Courier, monospace;
-            display: flex;
-            flex-direction: column; /* Changed to column to allow footer at bottom */
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            margin: 0;
-            text-align: center;
-        }
-        #quiz-container {
-            max-width: 600px;
-            padding: 20px;
-            border: 2px solid #333;
-            background: #000;
-            box-shadow: 0 0 20px rgba(0,255,0,0.1);
-            margin-bottom: 40px; /* Space for the footer button */
-        }
-        .intro-instruction {
-            color: #888;
-            margin-bottom: 20px;
-            font-style: italic;
-            border-bottom: 1px solid #333;
-            padding-bottom: 10px;
-        }
-        .question { display: none; }
-        .active { display: block; }
-        h2 { color: #00ff00; margin-bottom: 30px; }
-        button {
-            display: block;
-            width: 100%;
-            padding: 15px;
-            margin: 10px 0;
-            background: #222;
-            color: #eee;
-            border: 1px solid #444;
-            cursor: pointer;
-            text-align: left;
-            font-size: 16px;
-        }
-        button:hover { background: #333; border-color: #00ff00; }
-        .fail-overlay {
-            display: none;
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(255, 0, 0, 0.9);
-            color: white;
-            z-index: 100;
-            justify-content: center;
-            align-items: center;
-            flex-direction: column;
-        }
-        #victory-screen { display: none; }
-        .congrats-text { color: #00ff00; font-size: 24px; font-weight: bold; }
-        
-        /* Progress text styling */
-        .progress-note {
-            font-size: 12px;
-            color: #666;
-            margin-top: 5px;
-            display: block;
-        }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>What's Your Food Type? | Earthling Official</title>
+<meta name="description" content="8 questions. 4 letters. Find out where you really stand on food, animals, and exploitation. Are you an EASV or a CIPO?">
+<style>
+  :root {
+    --bg: #0a0a08;
+    --surface: #111110;
+    --border: #2a2a26;
+    --gold: #c8b97a;
+    --gold-dim: rgba(200,185,122,0.35);
+    --gold-faint: rgba(200,185,122,0.10);
+    --white: #f0ede4;
+    --muted: #6b6860;
+    --red: #c93726;
+    --green: #4a7c59;
+    --type-size: clamp(52px, 10vw, 88px);
+  }
 
-        /* Footer button styling */
-        .return-home {
-            background: none;
-            border: none;
-            color: #555;
-            text-decoration: underline;
-            font-size: 14px;
-            cursor: pointer;
-            width: auto;
-            margin-top: 20px;
-        }
-        .return-home:hover {
-            color: #888;
-            background: none;
-            border: none;
-        }
-    </style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--white);
+    font-family: 'Courier New', monospace;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 40px 20px 80px;
+  }
+
+  /* ── HEADER ── */
+  .site-tag {
+    font-size: 10px;
+    letter-spacing: 4px;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-bottom: 48px;
+    text-decoration: none;
+    display: block;
+    transition: color 0.2s;
+  }
+  .site-tag:hover { color: var(--gold); }
+
+  /* ── INTRO ── */
+  #intro {
+    max-width: 560px;
+    text-align: center;
+    margin-bottom: 56px;
+  }
+  #intro .eyebrow {
+    font-size: 10px;
+    letter-spacing: 5px;
+    color: var(--gold);
+    text-transform: uppercase;
+    margin-bottom: 20px;
+    display: block;
+  }
+  #intro h1 {
+    font-size: clamp(26px, 5vw, 42px);
+    letter-spacing: 3px;
+    line-height: 1.2;
+    color: var(--white);
+    margin-bottom: 20px;
+    font-weight: normal;
+  }
+  #intro p {
+    font-size: 13px;
+    line-height: 2;
+    color: var(--muted);
+    letter-spacing: 1px;
+    margin-bottom: 32px;
+  }
+  #intro .type-preview {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-bottom: 36px;
+  }
+  #intro .type-preview span {
+    font-size: 11px;
+    letter-spacing: 3px;
+    color: var(--gold-dim);
+    border: 1px solid var(--border);
+    padding: 5px 10px;
+  }
+  .btn-start {
+    display: inline-block;
+    padding: 14px 36px;
+    border: 1px solid var(--gold);
+    background: transparent;
+    color: var(--gold);
+    font-family: 'Courier New', monospace;
+    font-size: 12px;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s;
+  }
+  .btn-start:hover {
+    background: var(--gold-faint);
+  }
+
+  /* ── QUIZ ── */
+  #quiz { display: none; max-width: 600px; width: 100%; }
+
+  .progress-wrap {
+    margin-bottom: 36px;
+  }
+  .progress-label {
+    font-size: 10px;
+    letter-spacing: 3px;
+    color: var(--muted);
+    margin-bottom: 8px;
+    display: flex;
+    justify-content: space-between;
+  }
+  .progress-bar-outer {
+    height: 2px;
+    background: var(--border);
+    width: 100%;
+  }
+  .progress-bar-inner {
+    height: 100%;
+    background: var(--gold);
+    transition: width 0.4s ease;
+  }
+
+  .axis-tag {
+    font-size: 9px;
+    letter-spacing: 4px;
+    color: var(--gold-dim);
+    text-transform: uppercase;
+    margin-bottom: 14px;
+    display: block;
+  }
+
+  .question-text {
+    font-size: clamp(15px, 2.5vw, 19px);
+    line-height: 1.7;
+    letter-spacing: 1px;
+    color: var(--white);
+    margin-bottom: 32px;
+  }
+
+  .options { display: flex; flex-direction: column; gap: 12px; }
+
+  .opt-btn {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--white);
+    font-family: 'Courier New', monospace;
+    font-size: 13px;
+    line-height: 1.6;
+    letter-spacing: 0.5px;
+    padding: 16px 20px;
+    text-align: left;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+    position: relative;
+  }
+  .opt-btn:hover {
+    border-color: var(--gold);
+    background: var(--gold-faint);
+  }
+  .opt-btn .opt-letter {
+    color: var(--gold);
+    margin-right: 10px;
+    font-size: 11px;
+    letter-spacing: 2px;
+  }
+
+  /* ── RESULT ── */
+  #result { display: none; max-width: 620px; width: 100%; text-align: center; }
+
+  .result-eyebrow {
+    font-size: 10px;
+    letter-spacing: 5px;
+    color: var(--gold);
+    text-transform: uppercase;
+    margin-bottom: 24px;
+    display: block;
+  }
+
+  .type-code {
+    font-size: var(--type-size);
+    letter-spacing: 0.15em;
+    color: var(--gold);
+    text-shadow: 0 0 40px rgba(200,185,122,0.3);
+    margin-bottom: 8px;
+    line-height: 1;
+  }
+
+  .type-name {
+    font-size: clamp(16px, 3vw, 24px);
+    letter-spacing: 6px;
+    color: var(--white);
+    text-transform: uppercase;
+    margin-bottom: 36px;
+  }
+
+  .result-divider {
+    width: 40px;
+    height: 1px;
+    background: var(--gold-dim);
+    margin: 0 auto 32px;
+  }
+
+  .result-desc {
+    font-size: 14px;
+    line-height: 2;
+    color: var(--muted);
+    letter-spacing: 1px;
+    margin-bottom: 24px;
+    text-align: left;
+  }
+
+  .result-sting {
+    font-size: 13px;
+    line-height: 1.8;
+    color: rgba(200,185,122,0.6);
+    letter-spacing: 1px;
+    font-style: italic;
+    border-left: 2px solid var(--gold-dim);
+    padding-left: 16px;
+    text-align: left;
+    margin-bottom: 40px;
+  }
+
+  .axes-breakdown {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 40px;
+    text-align: left;
+  }
+  .axis-pill {
+    border: 1px solid var(--border);
+    padding: 12px 14px;
+    background: var(--surface);
+  }
+  .axis-pill .pill-letter {
+    font-size: 18px;
+    letter-spacing: 2px;
+    color: var(--gold);
+    display: block;
+    margin-bottom: 4px;
+  }
+  .axis-pill .pill-label {
+    font-size: 10px;
+    letter-spacing: 2px;
+    color: var(--muted);
+    text-transform: uppercase;
+  }
+
+  .sapiencism-link {
+    display: block;
+    border: 1px solid var(--border);
+    padding: 20px 24px;
+    margin-bottom: 28px;
+    text-decoration: none;
+    transition: border-color 0.2s, background 0.2s;
+    background: var(--surface);
+  }
+  .sapiencism-link:hover {
+    border-color: var(--gold-dim);
+    background: var(--gold-faint);
+  }
+  .sapiencism-link .sl-tag {
+    font-size: 9px;
+    letter-spacing: 4px;
+    color: var(--gold-dim);
+    text-transform: uppercase;
+    display: block;
+    margin-bottom: 6px;
+  }
+  .sapiencism-link .sl-text {
+    font-size: 13px;
+    letter-spacing: 1px;
+    color: var(--muted);
+    line-height: 1.6;
+  }
+  .sapiencism-link .sl-arrow {
+    color: var(--gold);
+    margin-left: 6px;
+  }
+
+  .btn-retry {
+    background: none;
+    border: none;
+    color: var(--muted);
+    font-family: 'Courier New', monospace;
+    font-size: 11px;
+    letter-spacing: 3px;
+    text-decoration: underline;
+    cursor: pointer;
+    margin-top: 8px;
+  }
+  .btn-retry:hover { color: var(--white); }
+
+  @media (max-width: 480px) {
+    .axes-breakdown { grid-template-columns: 1fr 1fr; }
+    body { padding: 28px 16px 60px; }
+  }
+</style>
 </head>
 <body>
 
-    <div id="quiz-container">
-        <!-- New Intro Text -->
-        <div class="intro-instruction">
-            To unlock access to the pen, you must first learn the art of withers-ing.
-        </div>
+<a class="site-tag" href="https://earthlingofficial.com">Earthling Official</a>
 
-        <div id="q1" class="question active">
-            <h2>Question 1</h2>
-            <p>Opponent: "Is it wrong to exploit animals for profit?"</p>
-            <button onclick="fail('Too logical.')">A) Yes, because they are sentient beings.</button>
-            <button onclick="fail('Too direct.')">B) No, because humans are superior.</button>
-            <button onclick="next(1, 2)">C) My cat is really cute, look at his little paws.</button>
-        </div>
+<!-- ── INTRO ── -->
+<section id="intro">
+  <span class="eyebrow">Food Personality Quiz</span>
+  <h1>What's your<br>food type?</h1>
+  <p>8 questions. 4 letters.<br>Find out where you actually stand on food, animals, and the systems behind both.</p>
+  <div class="type-preview">
+    <span>EASV</span><span>CIPO</span><span>CASV</span><span>ECIO</span>
+    <span>CISV</span><span>ECSV</span><span>CAIV</span><span>CISO</span>
+  </div>
+  <button class="btn-start" onclick="startQuiz()">Find your type →</button>
+</section>
 
-        <div id="q2" class="question">
-            <h2>Question 2</h2>
-            <p>You're told you're very cherubic looking on LIVE, what do you do?</p>
-            <button onclick="fail('Just no')">A) Humbly say thank you and move conversation back to important politics</button>
-            <button onclick="fail('You haven\'t met Momo!')">B) Tell them were here to discuss politics not aesthetics but thanks</button>
-            <button onclick="next(2, 3)">C) Do a Trump impersonation and tell the chat to type W's for Dean</button>
-        </div>
-
-        <div id="q3" class="question">
-            <h2>Question 3</h2>
-            <p>Dean Withers stares at you through a mirror, what do you do?</p>
-            <button onclick="fail('No, too straight forward')">A) Ask what he is staring for?</button>
-            <button onclick="fail('You haven\'t seen Dean Withers!')">B) Don't even acknowledge him</button>
-            <button onclick="win()">C) Tap the screen awkwardly, criticise the footage and then self-soothe?</button>
-        </div>
-
-        <div id="victory-screen">
-            <h1 class="congrats-text">WELL DONE!</h1>
-            <p>Yes! That is some high level withers-ing. You have passed the college of Deanus Politicus Carnivorus Paradoxus.</p>
-            <hr>
-            <p><i>"You didn't just win the debate... you withered it."</i></p>
-            <p><i>"Logic Level: 0% | Charisma Level: Cherubic | Trump Impersonations: Flawless."</i></p>
-            
-            <!-- Modified Success Button -->
-            <div style="margin-top: 20px;">
-                <button style="text-align: center;" onclick="window.location.href='Rhyme.html'">Access the Pen 🔓</button>
-                <span class="progress-note">(Site in progress)</span>
-            </div>
-        </div>
+<!-- ── QUIZ ── -->
+<section id="quiz">
+  <div class="progress-wrap">
+    <div class="progress-label">
+      <span id="prog-text">Question 1 of 8</span>
+      <span id="prog-axis"></span>
     </div>
-
-    <!-- Plain Text Return Button -->
-    <button class="return-home" onclick="window.location.href='index.html'">
-        Return to main website
-    </button>
-
-    <div id="fail-overlay" class="fail-overlay">
-        <h1 id="fail-reason">FAILED</h1>
-        <p>You failed to wither. Back to Question 1.</p>
-        <button onclick="reset()" style="text-align: center;">Restart Training</button>
+    <div class="progress-bar-outer">
+      <div class="progress-bar-inner" id="prog-bar" style="width:0%"></div>
     </div>
+  </div>
+  <span class="axis-tag" id="axis-tag"></span>
+  <p class="question-text" id="q-text"></p>
+  <div class="options" id="options"></div>
+</section>
 
-    <script>
-        function next(current, next) {
-            document.getElementById('q' + current).classList.remove('active');
-            document.getElementById('q' + next).classList.add('active');
-        }
+<!-- ── RESULT ── -->
+<section id="result">
+  <span class="result-eyebrow">Your Food Type</span>
+  <div class="type-code" id="res-code"></div>
+  <div class="type-name" id="res-name"></div>
+  <div class="result-divider"></div>
+  <p class="result-desc" id="res-desc"></p>
+  <p class="result-sting" id="res-sting"></p>
+  <div class="axes-breakdown" id="res-axes"></div>
+  <a class="sapiencism-link" href="https://earthlingofficial.com/sapiencism.html">
+    <span class="sl-tag">Go deeper</span>
+    <span class="sl-text">Read about Sapiencism — the ideology quietly running your plate<span class="sl-arrow">→</span></span>
+  </a>
+  <a class="sapiencism-link" href="https://earthlingofficial.com/the-backrooms.html" style="margin-top:-16px;">
+    <span class="sl-tag">Play</span>
+    <span class="sl-text">Enter The Backrooms — Go Dean! Stage 10<span class="sl-arrow">→</span></span>
+  </a>
+  <br>
+  <button class="btn-retry" onclick="retry()">Retake the quiz</button>
+  <br><br>
+  <a class="site-tag" href="https://earthlingofficial.com" style="margin-bottom:0;">← Back to Earthling Official</a>
+</section>
 
-        function fail(reason) {
-            document.getElementById('fail-reason').innerText = "FAILED: " + reason;
-            document.getElementById('fail-overlay').style.display = 'flex';
-        }
+<script>
+// ── QUESTIONS ──────────────────────────────────────────────────────────────────
+const questions = [
+  // E vs C
+  {
+    axis: 'E / C',
+    axisLabel: 'Empathy vs Convenience',
+    text: 'You find out your favourite meal caused significant suffering to produce. You:',
+    options: [
+      { text: 'Feel genuinely unsettled and start researching alternatives', score: 'E' },
+      { text: 'Feel a bit bad, but honestly it\'s just too good to give up', score: 'C' },
+    ]
+  },
+  {
+    axis: 'E / C',
+    axisLabel: 'Empathy vs Convenience',
+    text: 'Someone asks you to try oat milk. You:',
+    options: [
+      { text: 'Already on it — once you thought about dairy it felt strange', score: 'E' },
+      { text: 'Only if it tastes exactly the same and costs the same', score: 'C' },
+    ]
+  },
+  // A vs I
+  {
+    axis: 'A / I',
+    axisLabel: 'Aware vs Unaware',
+    text: 'Where does your meat come from?',
+    options: [
+      { text: 'You know more than you\'d like to, honestly', score: 'A' },
+      { text: 'A shop, presumably', score: 'I' },
+    ]
+  },
+  {
+    axis: 'A / I',
+    axisLabel: 'Aware vs Unaware',
+    text: '"Bycatch" means:',
+    options: [
+      { text: 'Unintended marine animals killed during fishing operations', score: 'A' },
+      { text: 'Something to do with cricket? A type of net maybe?', score: 'I' },
+    ]
+  },
+  // S vs P
+  {
+    axis: 'S / P',
+    axisLabel: 'System-questioner vs System-accepter',
+    text: '"It\'s just the way things are." You think:',
+    options: [
+      { text: 'That\'s what they said about every injustice in history', score: 'S' },
+      { text: 'Pretty much, yeah — systems exist for a reason', score: 'P' },
+    ]
+  },
+  {
+    axis: 'S / P',
+    axisLabel: 'System-questioner vs System-accepter',
+    text: 'The food industry spends billions lobbying governments. Your reaction:',
+    options: [
+      { text: 'Of course they do — follow the money, always', score: 'S' },
+      { text: 'Every industry does that, it\'s just how it works', score: 'P' },
+    ]
+  },
+  // V vs O
+  {
+    axis: 'V / O',
+    axisLabel: 'Values-driven vs Omni-default',
+    text: 'Your food choices are mostly guided by:',
+    options: [
+      { text: 'What actually aligns with how I feel about animals and the world', score: 'V' },
+      { text: 'What I grew up eating and what\'s on the menu', score: 'O' },
+    ]
+  },
+  {
+    axis: 'V / O',
+    axisLabel: 'Values-driven vs Omni-default',
+    text: 'A chicken is arguably as emotionally complex as a dog. You:',
+    options: [
+      { text: 'That genuinely changes how I think about what\'s on my plate', score: 'V' },
+      { text: 'Interesting fact. Anyway, what\'s for dinner', score: 'O' },
+    ]
+  },
+];
 
-        function reset() {
-            document.getElementById('fail-overlay').style.display = 'none';
-            document.querySelectorAll('.question').forEach(q => q.classList.remove('active'));
-            document.getElementById('q1').classList.add('active');
-        }
+// ── TYPE DEFINITIONS ───────────────────────────────────────────────────────────
+const types = {
+  EASV: {
+    name: 'The Sanctuarian',
+    desc: 'You feel it, you know it, you question it, and you live by it. You\'re the full picture — empathy that led to awareness, awareness that broke the system down, and values that actually changed your behaviour. You probably already know about factory farming, bycatch, and the lobbying that keeps it all running. You\'ve done the work most people quietly avoid.',
+    sting: '"The Sanctuarian knows earth is home for everyone. They protect the vulnerable."',
+    axes: { E: 'Empathy-led', A: 'Fully aware', S: 'Questions the system', V: 'Values-driven' }
+  },
+  EASO: {
+    name: 'The Almost',
+    desc: 'You care deeply and you know the facts — but your day-to-day choices haven\'t quite caught up with your conscience yet. You\'re not ignorant and you\'re not indifferent. You\'re in the gap. The Almost is probably the most common type among people who are genuinely thinking about this stuff.',
+    sting: '"Almost there. The knowledge is in. The values are forming. The habits are the last wall."',
+    axes: { E: 'Empathy-led', A: 'Fully aware', S: 'Questions the system', O: 'Omni-default' }
+  },
+  EAIV: {
+    name: 'The Tender',
+    desc: 'You feel everything and your values are solid — but the full picture of what\'s happening at scale hasn\'t landed yet. You love animals. You care. You just haven\'t gone all the way down the rabbit hole. Yet.',
+    sting: '"The Tender has a big heart. The facts, when they arrive, will land hard."',
+    axes: { E: 'Empathy-led', A: 'Fully aware', I: 'Still learning', V: 'Values-driven' }
+  },
+  EAIO: {
+    name: 'The Softie',
+    desc: 'You\'re a genuinely kind person who hasn\'t fully connected the dots yet. You\'d be horrified by what happens — but you haven\'t looked. And your habits run on default. That\'s not a character flaw, it\'s just where you are.',
+    sting: '"The Softie is one documentary away from a life change."',
+    axes: { E: 'Empathy-led', A: 'Some awareness', I: 'Still learning', O: 'Omni-default' }
+  },
+  ECSV: {
+    name: 'The Awakening',
+    desc: 'Something cracked open. You know things now. Your values are shifting. But convenience still wins more often than not — and you\'re not quite done dismantling the old systems in your head. This is one of the most important types. You\'re mid-process.',
+    sting: '"The Awakening is not a moment. It\'s a direction."',
+    axes: { E: 'Empathy-led', C: 'Convenience-pull', S: 'Questions the system', V: 'Values-forming' }
+  },
+  ECSO: {
+    name: 'The Fence-Sitter',
+    desc: 'You can see both sides clearly — which is genuinely useful — but right now that clarity is being used to stay comfortable rather than choose. You\'re not unintelligent. If anything, you might be overthinking your way into inaction.',
+    sting: '"The Fence-Sitter understands the argument perfectly. That\'s almost the whole problem."',
+    axes: { E: 'Empathy-led', C: 'Convenience-pull', S: 'Questions the system', O: 'Omni-default' }
+  },
+  ECIV: {
+    name: 'The Conflicted',
+    desc: 'You feel the tension. You care but convenience keeps winning. You haven\'t read too deeply into the systems — you sense they\'re broken but haven\'t fully looked. Your values are there though, quietly building a case.',
+    sting: '"The Conflicted knows something is wrong. They\'re just not ready to act on it yet."',
+    axes: { E: 'Empathy-led', C: 'Convenience-pull', I: 'Still learning', V: 'Values-forming' }
+  },
+  ECIO: {
+    name: 'The Kind Carnivore',
+    desc: 'You\'re a decent person who hasn\'t yet connected empathy to diet. You\'d never hurt an animal — and yet the system does, with your money, every week. Not because you\'re cruel. Because the connection hasn\'t been made yet.',
+    sting: '"The Kind Carnivore is not the villain of this story. But they\'re funding it."',
+    axes: { E: 'Empathy-led', C: 'Convenience-pull', I: 'Still learning', O: 'Omni-default' }
+  },
+  CASV: {
+    name: 'The Researcher',
+    desc: 'Logic first, always. You\'ve done the reading, you can dismantle the system on paper, and your values are genuinely aligned with that knowledge. You might not lead with emotion but your conclusions are sound and your choices reflect them.',
+    sting: '"The Researcher doesn\'t need to feel it to know it\'s wrong."',
+    axes: { C: 'Logic-led', A: 'Fully aware', S: 'Questions the system', V: 'Values-driven' }
+  },
+  CASO: {
+    name: 'The Logical',
+    desc: 'You know the facts, you can see the system clearly, you even question it — but your habits haven\'t shifted yet. You might be waiting for a tipping point or the perfect alternative. The knowledge is there. The behaviour is pending.',
+    sting: '"The Logical has all the information. The next move is a decision, not a discovery."',
+    axes: { C: 'Convenience-pull', A: 'Fully aware', S: 'Questions the system', O: 'Omni-default' }
+  },
+  CAIV: {
+    name: 'The Principled',
+    desc: 'Your values are strong and your approach is methodical. You haven\'t gone deep on the data yet, but when you do it\'ll stick — because you have the scaffolding to hold it. A lot of long-term vegans started here.',
+    sting: '"The Principled doesn\'t need peer pressure. They need information, and then they act."',
+    axes: { C: 'Logic-led', A: 'Some awareness', I: 'Still building knowledge', V: 'Values-driven' }
+  },
+  CAIO: {
+    name: 'The Curious',
+    desc: 'Something brought you here and that\'s not nothing. You\'re not fully across the facts yet and the habits are default — but there\'s a genuine question forming. Curiosity is how it usually starts.',
+    sting: '"The Curious is the most open type. That\'s a real strength."',
+    axes: { C: 'Convenience-pull', A: 'Some awareness', I: 'Still learning', O: 'Omni-default' }
+  },
+  CISV: {
+    name: 'The Sleeper',
+    desc: 'Your values are solid but the knowledge and the habit of questioning haven\'t arrived yet. You\'re not apathetic — you\'re just running on the defaults the system installed. Once the awareness catches up to the values, things tend to move fast.',
+    sting: '"The Sleeper already believes the right things. They just don\'t know it yet."',
+    axes: { C: 'Convenience-pull', I: 'Still learning', S: 'Starting to question', V: 'Values-present' }
+  },
+  CISO: {
+    name: 'The Broiler',
+    desc: 'You\'re the system\'s ideal participant — convenient, unaware, unchallenging, and consistent. Not because you\'re a bad person. Because the system was designed for you to be exactly this. The food industry spends billions making sure this type stays comfortable.',
+    sting: '"The Broiler isn\'t the problem. The system that produces The Broiler is."',
+    axes: { C: 'Convenience-pull', I: 'Unaware', S: 'System-accepter', O: 'Omni-default' }
+  },
+  CIPV: {
+    name: 'The Paradox',
+    desc: 'You live it, you question it, you see the cracks — but convenience keeps pulling you back. You might be the most interesting type. You\'re not in denial. You\'re in negotiation. With yourself, mostly.',
+    sting: '"The Paradox knows exactly what they\'re doing. That\'s the hardest place to be."',
+    axes: { C: 'Convenience-pull', I: 'Still building', P: 'Questions quietly', V: 'Values-present' }
+  },
+  CIPO: {
+    name: 'The Default',
+    desc: 'Full system mode. Convenience wins, awareness hasn\'t landed, the system runs unopposed, and the plate looks the same it always has. This isn\'t a moral failing — it\'s the most statistically normal result on the planet. The whole machine is built to produce The Default.',
+    sting: '"The Default is not destiny. It\'s just where most people start."',
+    axes: { C: 'Convenience-pull', I: 'Unaware', P: 'System-accepter', O: 'Omni-default' }
+  },
+};
 
-        function win() {
-            document.getElementById('q3').classList.remove('active');
-            document.getElementById('victory-screen').style.display = 'block';
-            
-            // Confetti Blast
-            var duration = 3 * 1000;
-            var end = Date.now() + duration;
+// ── STATE ──────────────────────────────────────────────────────────────────────
+let current = 0;
+let scores = { E: 0, C: 0, A: 0, I: 0, S: 0, P: 0, V: 0, O: 0 };
 
-            (function frame() {
-                confetti({
-                    particleCount: 3,
-                    angle: 60,
-                    spread: 55,
-                    origin: { x: 0 },
-                    colors: ['#00ff00', '#ffffff']
-                });
-                confetti({
-                    particleCount: 3,
-                    angle: 120,
-                    spread: 55,
-                    origin: { x: 1 },
-                    colors: ['#00ff00', '#ffffff']
-                });
+function startQuiz(){
+  document.getElementById('intro').style.display = 'none';
+  document.getElementById('quiz').style.display = 'block';
+  renderQuestion();
+}
 
-                if (Date.now() < end) {
-                    requestAnimationFrame(frame);
-                }
-            }());
-        }
-    </script>
+function renderQuestion(){
+  const q = questions[current];
+  document.getElementById('prog-text').textContent = `Question ${current + 1} of ${questions.length}`;
+  document.getElementById('prog-axis').textContent = q.axisLabel;
+  document.getElementById('axis-tag').textContent = q.axis;
+  document.getElementById('q-text').textContent = q.text;
+  document.getElementById('prog-bar').style.width = ((current / questions.length) * 100) + '%';
+
+  const opts = document.getElementById('options');
+  opts.innerHTML = '';
+  const letters = ['A', 'B', 'C', 'D'];
+  q.options.forEach((o, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'opt-btn';
+    btn.innerHTML = `<span class="opt-letter">${letters[i]}</span>${o.text}`;
+    btn.onclick = () => answer(o.score);
+    opts.appendChild(btn);
+  });
+}
+
+function answer(score){
+  scores[score]++;
+  current++;
+  if(current < questions.length){
+    renderQuestion();
+  } else {
+    showResult();
+  }
+}
+
+function showResult(){
+  document.getElementById('quiz').style.display = 'none';
+  const result = document.getElementById('result');
+  result.style.display = 'block';
+
+  const E = scores.E >= scores.C ? 'E' : 'C';
+  const A = scores.A >= scores.I ? 'A' : 'I';
+  const S = scores.S >= scores.P ? 'S' : 'P';
+  const V = scores.V >= scores.O ? 'V' : 'O';
+  const code = E + A + S + V;
+
+  const t = types[code] || types['CIPO'];
+
+  document.getElementById('res-code').textContent = code;
+  document.getElementById('res-name').textContent = t.name;
+  document.getElementById('res-desc').textContent = t.desc;
+  document.getElementById('res-sting').textContent = t.sting;
+
+  const axesEl = document.getElementById('res-axes');
+  axesEl.innerHTML = '';
+  Object.entries(t.axes).forEach(([letter, label]) => {
+    const pill = document.createElement('div');
+    pill.className = 'axis-pill';
+    pill.innerHTML = `<span class="pill-letter">${letter}</span><span class="pill-label">${label}</span>`;
+    axesEl.appendChild(pill);
+  });
+}
+
+function retry(){
+  current = 0;
+  scores = { E: 0, C: 0, A: 0, I: 0, S: 0, P: 0, V: 0, O: 0 };
+  document.getElementById('result').style.display = 'none';
+  document.getElementById('quiz').style.display = 'block';
+  renderQuestion();
+}
+</script>
 </body>
 </html>
