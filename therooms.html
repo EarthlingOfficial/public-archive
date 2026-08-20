@@ -37,21 +37,26 @@
   #coords { position: fixed; top: 12px; right: 12px; color: rgba(200,185,122,.5); font-size: 10px; letter-spacing: 1px; z-index: 50; pointer-events: none; display: none; }
   #loading { position: fixed; inset: 0; background: #000; overflow: hidden; z-index: 20; }
 
-  /* Mobile joysticks */
+  /* Mobile joysticks — sized/positioned off viewport min-dimension so they
+     stay proportionally consistent in portrait and landscape instead of a
+     fixed px box that reads mini on a tall screen and oversized/too-high
+     on a short one. */
   #joystick-left, #joystick-right {
     display: none;
-    position: fixed; bottom: 40px; z-index: 30;
-    width: 110px; height: 110px;
+    position: fixed; z-index: 30;
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 6vh);
+    width: clamp(84px, 15vmin, 120px);
+    height: clamp(84px, 15vmin, 120px);
     border: 2px solid rgba(200,185,122,0.25);
     border-radius: 50%;
     background: rgba(0,0,0,0.35);
     touch-action: none;
   }
-  #joystick-left { left: 30px; }
-  #joystick-right { right: 30px; }
+  #joystick-left { left: max(20px, 4vw); }
+  #joystick-right { right: max(20px, 4vw); }
   .joy-knob {
     position: absolute; top: 50%; left: 50%;
-    width: 44px; height: 44px; border-radius: 50%;
+    width: 40%; height: 40%; border-radius: 50%;
     background: rgba(200,185,122,0.55);
     transform: translate(-50%,-50%);
     pointer-events: none;
@@ -59,6 +64,16 @@
   @media (pointer: coarse) {
     #joystick-left, #joystick-right { display: block; }
     #overlay p .kb { display: none; }
+  }
+  /* Landscape phones: short viewport height means 6vh + a portrait-sized
+     stick sits too high and reads oversized — pull it tighter to the
+     bottom edge and cap the size down. */
+  @media (pointer: coarse) and (orientation: landscape) {
+    #joystick-left, #joystick-right {
+      bottom: calc(env(safe-area-inset-bottom, 0px) + 3vh);
+      width: clamp(72px, 12vmin, 96px);
+      height: clamp(72px, 12vmin, 96px);
+    }
   }
 
   /* ── AMBIENT HUD TEXT ── */
@@ -143,6 +158,31 @@
     transition: opacity .16s ease;
   }
   #fall-veil.active { display: block; opacity: 1; }
+
+  /* Water veil for the level-115 Dominion sequence — blue tint mirroring
+     #blood-veil, plus a very subtle grain overlay once the water is over
+     the player's head. */
+  #water-veil {
+    position: fixed; inset: 0; display: none; opacity: 0;
+    pointer-events: none; z-index: 4;
+    background:
+      radial-gradient(ellipse at 50% 44%, rgba(60,150,255,.045), rgba(2,10,26,.82) 72%),
+      linear-gradient(180deg, rgba(0,28,66,.86), rgba(8,58,108,.5) 48%, rgba(0,6,16,.92));
+    transition: opacity .35s ease;
+  }
+  #film-grain {
+    position: fixed; inset: 0; display: none; opacity: 0;
+    pointer-events: none; z-index: 6; mix-blend-mode: overlay;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+    background-size: 220px 220px;
+    animation: waterGrainShift 0.5s steps(2) infinite;
+    transition: opacity .5s ease;
+  }
+  @keyframes waterGrainShift {
+    0% { transform: translate(0,0); }
+    50% { transform: translate(-1.5%,1%); }
+    100% { transform: translate(1%,-1.5%); }
+  }
 
   /* ── BROADCAST SYSTEM ── */
   #player-taunt {
@@ -421,10 +461,37 @@
 { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js", "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/" } }
 </script>
 <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.13/dist/hls.min.js"></script>
+<script src="https://assets.mediadelivery.net/playerjs/player-0.1.0.min.js"></script>
 <style>
   /* ── CSS3D LAYER ── */
   #css3d { position:fixed; inset:0; z-index:2; pointer-events:none; }
   #css3d iframe { border:0; pointer-events:auto; background:#000; }
+
+  /* ── LEVEL 150 CHICKEN BOSS: HEALTH BAR ── */
+  #chicken-health-wrap {
+    position: fixed; bottom: 32px; left: 50%; transform: translateX(-50%);
+    display: none; flex-direction: column; align-items: center; gap: 6px;
+    pointer-events: none; z-index: 8;
+  }
+  #chicken-health-label {
+    color: rgba(255,80,60,0.82); font-family: 'Courier New', monospace;
+    font-size: 11px; letter-spacing: 3px; text-shadow: 0 0 10px rgba(255,40,20,0.6);
+  }
+  #chicken-health-bar-outer {
+    width: 220px; height: 6px; background: rgba(60,0,0,0.7);
+    border: 1px solid rgba(255,60,40,0.35); border-radius: 3px; overflow: hidden;
+  }
+  #chicken-health-bar-inner {
+    height: 100%; width: 100%; background: rgba(220,50,30,0.9);
+    transition: width 0.25s, background 0.4s;
+    border-radius: 3px;
+  }
+  /* Hit flash veil */
+  #chicken-hit-veil {
+    position: fixed; inset: 0; pointer-events: none; z-index: 7;
+    background: rgba(255,30,0,0.28); display: none; opacity: 0;
+    transition: opacity 0.08s;
+  }
 
   /* ── MAP SIZE SELECTOR (PC only) ── */
   #map-selector {
@@ -533,6 +600,14 @@
 <div id="hint">WASD &nbsp;·&nbsp; SHIFT &nbsp;·&nbsp; CLICK TV &nbsp;·&nbsp; ~ COORDS</div>
 <div id="ambient-text"></div>
 <div id="blood-veil"></div>
+<div id="water-veil"></div>
+<!-- Level 150 chicken boss UI -->
+<div id="chicken-health-wrap">
+  <div id="chicken-health-label">YOUR HEALTH</div>
+  <div id="chicken-health-bar-outer"><div id="chicken-health-bar-inner"></div></div>
+</div>
+<div id="chicken-hit-veil"></div>
+<div id="film-grain"></div>
 <div id="fall-veil"></div>
 <!-- Fall landing message -->
 <div id="fall-msg"></div>
@@ -614,6 +689,7 @@ const GLB_4K = 'https://cors.archive.org/cors/backrooms_vr/backrooms_vr.glb';
 const ENTITY_1K_URL = 'https://raw.githubusercontent.com/EarthlingOfficial/public-archive/main/br1k.glb';
 const ENTITY_4K_URL = 'https://raw.githubusercontent.com/EarthlingOfficial/public-archive/main/br4k.glb';
 const ENTITY_URL = isMobile ? ENTITY_1K_URL : ENTITY_4K_URL;
+const SHARK_URL = 'https://raw.githubusercontent.com/EarthlingOfficial/public-archive/main/bullshark.glb';
 
 // Resolved after map selector (PC) or immediately (mobile)
 let GLB_URL = isMobile ? GLB_1K : null; // null = waiting for PC choice
@@ -686,8 +762,10 @@ const VOID_LIVE_FEEDS = [
   'https://www.youtube.com/embed/ydYDqZQpim8?autoplay=1',
   'https://www.youtube.com/embed/qpukdDslCjk?autoplay=1',
 ];
-const RUMBLE_VIDEO_EMBED = 'https://rumble.com/embed/v7bsc1u/?pub=4q8ygs&autoplay=2';
+const RUMBLE_VIDEO_EMBED = 'https://www.youtube.com/embed/ReasWedj2rA?si=1VmwbOh4Y4GV-0L3&autoplay=1&enablejsapi=1';
 const RUMBLE_ACCOUNT_URL = 'https://rumble.com/user/earthlingofficial';
+const T3_VIDEO_EMBED = 'https://www.youtube.com/embed/uYJAuw52Zek?si=OuoEq51-1cC3O92G&autoplay=1&enablejsapi=1';
+const RUMBLE_PUB_CODE = '4q8ygs'; // used by the Rumble JS Player API loader
 
 // Level 71 resumes the normal build. Only 4 signals are new: news on T5,
 // both window feeds, and one normal wall TV. Everything else in the GLB
@@ -703,11 +781,26 @@ const LEVEL_DEPTH   = 30;
 const NOCLIP_RADIUS = 0.6;
 const CROSS_SIZE    = 0.5;
 
+// ── LEVEL 150 CHICKEN BOSS ───────────────────────────────────────────────────
+const CHICKEN_LEVEL        = 150;
+const CHICKEN_URL_4K       = 'https://files.catbox.moe/kkhfs4.glb';
+const CHICKEN_URL_1K       = 'https://files.catbox.moe/oaqe8y.glb';
+const CHICKEN_DEATH_URL    = 'https://earthlingofficial.com/veganbrosstage9.html';
+const CHICKEN_MAX_HEALTH   = 100;
+const CHICKEN_HIT_DAMAGE   = 5;   // hp lost per axe swing hit
+const CHICKEN_ATTACK_RANGE = 4.2; // metres — close enough to get axed
+const CHICKEN_ATTACK_RATE  = 3200;// ms between axe swings
+const CHICKEN_ESCAPE_HP    = 10;  // noclip/fall spawns at this HP
+const CHICKEN_MSG_GUN_DELAY   = 0;       // on-drop message
+const CHICKEN_MSG_CHOOK_DELAY = 120000;  // 2 minutes later
+
 const VOID_START_LEVEL = 36;   // first level with no GLB geometry
 const VOID_END_LEVEL   = 70;   // the floating signal level, live feeds live here
 const RETURN_LEVEL     = 71;   // normal build resumes
+const FOOTAGE_STRIP_LEVEL = 139; // every wall TV goes blank here except T1/T5/W1a/W1b
 const VOID_FALL_COUNT  = 15;   // total falls from level 35 to reach level 70
 const RUMBLE_UNLOCK_LEVEL = 11; // the post-W1a fall: T9 becomes the Rumble signal from here on
+const T3_UNLOCK_LEVEL = 5; // T3 goes live and its label flips to "T3 UNLOCKED" from here on
 // Door sits 20m clear of the TV ring so you can't click a TV and accidentally
 // trigger the exit — it used to be 1.8m past the ring, now it's a walk away.
 const VOID_DOOR_LOCAL_POS = [0, 1.65, -29];
@@ -732,6 +825,26 @@ const VOID_RING_CENTER = { x: 0, z: 0.4 };
 function isVoidLevel(levelIndex){
   return levelIndex >= VOID_START_LEVEL && levelIndex <= VOID_END_LEVEL;
 }
+
+// ── LEVEL 138 — THE CROSS VOID ────────────────────────────────────────────
+// A single standalone level: no GLB, no bush floor, just blackness. Four
+// TVs (N/S/E/W) sit in a perfect cross, far apart. Each has a colour-coded
+// glow door pushed even further out behind it, right at the edge of what
+// the fog lets you see. A fifth, white "down" door sits dead centre and
+// returns the player to the normal build at FOOTAGE_STRIP_LEVEL (139).
+const CROSS_VOID_LEVEL = 138;
+function isCrossVoidLevel(levelIndex){ return levelIndex === CROSS_VOID_LEVEL; }
+const CROSS_TV_DIST   = 44;  // TVs, far apart from the centre
+const CROSS_DOOR_DIST = 74;  // doors, further out still — just barely visible
+const CROSS_MOUNT_Y   = 2.0;
+const CROSS_DOOR_Y    = 1.65;
+const CROSS_ARMS = [
+  { id:'N', dx: 0, dz:-1, ry: 0,          color:0x9fd8ff }, // light blue
+  { id:'S', dx: 0, dz: 1, ry: Math.PI,    color:0xff8a3d }, // orange
+  { id:'E', dx: 1, dz: 0, ry:-Math.PI/2,  color:0xff8fd0 }, // pink
+  { id:'W', dx:-1, dz: 0, ry: Math.PI/2,  color:0xff3b3b }, // red
+];
+const CROSS_VOID_CENTER = { x: 0, z: 0 };
 
 // Precompute the 15 fall stops between level 35 and level 70. Intermediate
 // void levels are otherwise identical (blank ring of TVs), so we don't need
@@ -786,6 +899,8 @@ let recoverStart    = 0;
 let recoverFrom     = 0;
 let voidExitDoor    = null;
 let rumbleAccountGate = null;
+let crossVoidDoors  = [];   // the 4 colour-coded N/S/E/W doors on level 138
+let crossVoidDownDoor = null; // the white "down" door back to the build
 let voidAutoFallAt  = 0;
 let mapCenter       = new THREE.Vector3(0, 0, 0);
 
@@ -799,6 +914,44 @@ let t4WatchComplete = false;
 let level30FallZoneUnlocked = false;
 let level30DeathMessageShown = false;
 let level30StartTime = 0;
+
+// ── LEVEL 115 WATER / DOMINION TV SEQUENCE ──────────────────────────────────
+// Mirrors the blood mechanic above but in blue, starts at level 115, and
+// climbs across several levels (fixed fall-spot in front of the new TV each
+// time) before the exit level, which uses a normal random fall spot instead.
+const WATER_START_LEVEL   = 115;
+const WATER_TV_X          = -66.38;
+const WATER_TV_Z          = 2.50; // nudged right along the wall — was clipping top-adjacent geometry
+const WATER_TV_MOUNT_Y    = 1.86; // nudged down a few cm — was clipping the ceiling/trim above it
+const DOMINION_VIDEO_EMBED = 'https://player.mediadelivery.net/embed/135301/89232d42-e290-40fc-917d-5669478ee73b?autoplay=true&loop=false&muted=false&preload=false';
+const WATER_MP3_URL = 'https://raw.githubusercontent.com/EarthlingOfficial/public-archive/main/waterrun.mp3';
+// Per-stage rise as a fraction of the room's full (blood) height, and how
+// long each stage takes to fill — slower than blood's 5-minute full fill.
+// Tune these two in-game if the pacing/number of falls feels off.
+const WATER_STEP_FRACTION  = 0.14;
+const WATER_STAGE_DURATION = 150000; // 2.5 min per stage
+function waterStep(){ return BLOOD_MAX * WATER_STEP_FRACTION; }
+function waterStagesToCeiling(){ return Math.max(2, Math.ceil(BLOOD_MAX / waterStep())); }
+function waterExitLevel(){ return WATER_START_LEVEL + waterStagesToCeiling() - 1; }
+
+let waterTVSnap        = null; // { pos:[x,y,z], ry } — computed once at startup
+let waterPlane         = null;
+let waterWaveMeshes    = [];
+let waterFleckMesh     = null;
+let waterActive        = false;
+let waterStartTime     = 0;
+let waterBaselineLocal = 0;
+let waterLevelLocal    = 0;
+let waterSubmerged     = false;
+let waterDeathShown    = false;
+let waterHint115Shown  = false;
+let waterHint116Shown  = false;
+let waterVideoPlaying  = false;
+let waterTVIframeEl     = null;
+let waterTVIframeObject = null;
+let waterAudioEl        = null;
+const waterVeilEl  = document.getElementById('water-veil');
+const filmGrainEl  = document.getElementById('film-grain');
 
 const levelGroups   = [];
 let glbTemplate     = null;
@@ -814,7 +967,9 @@ let glbTemplate     = null;
 const BUSH_URL_4K = 'https://files.catbox.moe/6r4l2q.glb';
 const BUSH_URL_1K = 'https://files.catbox.moe/kobxhg.glb';
 let bushTemplate        = null;
-let bushInstance        = null; // one shared live valley instance; never duplicate per level
+let bushInstance        = null; // primary live valley instance
+let bushInstance2       = null; // duplicate, placed alongside the first to double the span
+let bushSizeZ           = 1; // unscaled local-Z footprint, measured on load; used to size both instances
 let bushPendingLevels   = []; // active valley level waiting for the preload
 // Rise is measured as a FRACTION of the bush's own measured height (set once
 // it loads, see loadBushFloor) instead of a guessed absolute number — so it
@@ -830,12 +985,21 @@ let bushHeight = 1; // real value set after load; 1 is just a safe fallback
 // of it sits outside the building's walls where it's never seen. 1 = no
 // change; lower = tighter footprint. Tune to match your actual room size.
 const BUSH_XZ_SCALE     = 0.6;
+// Quick size test — scales the forest overall (X/Y/Z). Set back to 1 to undo.
+const BUSH_SCALE_TEST   = 0.5;
 // Rotate 90° so the bush's long axis runs along the building's length
-// instead of across it. Nudge shifts the whole footprint forward slightly
-// after rotating — tune both to eyeball-match your room once in-game.
+// instead of across it. This is the known-good spot that lined up with the
+// valley — both instances are now centered symmetrically around it instead
+// of each getting their own guessed position.
 const BUSH_ROTATION_Y   = Math.PI / 2;
 const BUSH_NUDGE_X      = -27.20;
 const BUSH_NUDGE_Z      = 4.12;
+// Duplicate placement — the GLB sits slightly tilted, so the second copy
+// needs a small extra drop/forward nudge on top of matching the first
+// instance's position to actually line up.
+const BUSH_DUPLICATE_ENABLED = true;
+const BUSH_DUPLICATE_NUDGE_Y = -1.5;
+const BUSH_DUPLICATE_NUDGE_Z = 2.5;
 
 function bushOffsetForLevel(levelIndex){
   // Do not clamp this to an artificial "full" level. The forest should keep
@@ -848,6 +1012,50 @@ function bushOffsetForLevel(levelIndex){
 
 let entityActor     = null;
 let entityMixer     = null;
+
+// ── LEVEL 150 CHICKEN BOSS STATE ─────────────────────────────────────────────
+let chickenActor      = null;
+let chickenMixer      = null;
+let chickenLoaded     = false;
+let chickenVisible    = false;
+let chickenHP         = CHICKEN_MAX_HEALTH;
+let chickenActive     = false;          // true once player lands on level 150
+let chickenLastHit    = 0;              // timestamp of last axe hit
+let chickenEscapeSpawned = false;       // fall zone revealed flag
+let chickenDeathTriggered = false;
+let chickenAngle      = 0;
+let chickenRadius     = 5.0;
+let chickenAnimAction = null;
+let chickenAnimClips  = [];    // all 30 clips
+let chickenAnimIdx    = 0;     // which clip is playing
+let chickenAnimTimer  = 0;     // seconds until next clip switch
+let chickenYOffset    = 0;     // auto-computed foot lift so model isn't in the ground
+let chickenAnchorX    = 0;     // orbit center — drifts toward player at capped speed, not locked to it
+let chickenAnchorZ    = 0;
+const CHICKEN_ANCHOR_SPEED = 2.4; // units/sec the anchor is allowed to chase the player
+
+// ── SHARK STATE ───────────────────────────────────────────────────────────────
+let sharkActor      = null;
+let sharkMixer      = null;
+let sharkLoaded     = false;
+let sharkVisible    = false;
+let sharkSwimSpeed  = 1.0;
+let sharkAngle      = 0;
+let sharkRadius     = 5.5;
+let sharkPhase      = 'cruise';   // cruise | fast | circle | attack | tailwhip
+let sharkPhaseTimer = 0;
+let sharkNextPhaseAt = 0;
+let sharkAttackYaw  = 0;
+let sharkMouthBone  = null;
+let sharkMouthOpen  = 0;
+let sharkAnchorX    = 0;     // orbit center — snapshot of player pos, not locked to it live
+let sharkAnchorZ    = 0;
+let sharkCircleAnchorX = 0; // frozen anchor for the fast-circle phase (player pos at circle start)
+let sharkCircleAnchorZ = 0;
+let sharkCircleRadius  = 3.8; // tighter circle for dramatic effect
+const SHARK_ANCHOR_SPEED = 1.1; // units/sec the anchor is allowed to drift during cruise
+const BONE3_URL = 'https://raw.githubusercontent.com/EarthlingOfficial/public-archive/main/bone3.mp3';
+let bone3Audio  = null;
 let entityAction    = null;
 let entityMaterials = [];
 let entityLoaded    = false;
@@ -2911,8 +3119,7 @@ controls.addEventListener('unlock', ()=>{
   setLiveFeedsInteractive(true);
 });
 overlayEl.addEventListener('click', ()=>controls.lock());
-// Clicking back into the game canvas (not into a cross-origin iframe —
-// those clicks never bubble here) re-locks the pointer.
+// Clicking back into the game canvas re-locks the pointer.
 document.getElementById('c').addEventListener('click', ()=>{
   if(hasLockedOnce && !controls.isLocked) controls.lock();
 });
@@ -2947,6 +3154,15 @@ function makeLabelTex(id){
   ctx.textAlign='center'; ctx.textBaseline='middle';
   ctx.fillText(id,128,24);
   return new THREE.CanvasTexture(c);
+}
+
+// Swap a TV's label texture for new text, same style — used to flip "T3" to "T3 UNLOCKED".
+function setTVLabelText(tv, text){
+  const frame = tv.g.children[0];
+  if(!frame || !frame.children[2]) return;
+  const labelMesh = frame.children[2];
+  labelMesh.material.map = makeLabelTex(text);
+  labelMesh.material.needsUpdate = true;
 }
 
 // ── CLICK SOUND (play/stop) ───────────────────────────────────────────────────
@@ -3536,6 +3752,18 @@ function toggleVideoEl(vid){
 function interactWithTV(tv){
   if(!tv) return;
 
+  // TW — the level 115 Dominion TV. Starts the water sequence on first
+  // press; never toggles off since the footage must keep playing.
+  if(tv.id === 'TW'){
+    startWaterSequence();
+    return;
+  }
+
+  if(tv.liveEmbed && isRumbleEmbed(tv.liveEmbed)){
+    toggleRumbleTV(tv);
+    return;
+  }
+
   if(tv.liveEmbed){
     activateInWorldLiveTV(tv);
     return;
@@ -3603,7 +3831,7 @@ function showWindowTVLockedMsg(msg){
 }
 
 // ── BUILD A WALL TV ───────────────────────────────────────────────────────────
-function buildWallTV(id, pos, ry, levelYOffset=0){
+function buildWallTV(id, pos, ry, levelYOffset=0, stripped=false){
   const g = new THREE.Group();
   const frame = new THREE.Mesh(
     new THREE.BoxGeometry(2.5, 1.7, 0.14),
@@ -3632,21 +3860,21 @@ function buildWallTV(id, pos, ry, levelYOffset=0){
     drawTVStandby(nctx, id, 'HAXAN 1922');
     ntex.needsUpdate = true;
     screenMat = new THREE.MeshBasicMaterial({map: ntex, side: THREE.DoubleSide});
-  } else if(id === 'T10'){
+  } else if(id === 'T10' && !stripped){
     const vtex = createT10VideoTex();
     videoEl = t10VideoEl;
     videoTex = vtex;
     nctx.fillStyle = '#000'; nctx.fillRect(0,0,128,72);
     ntex.needsUpdate = true;
     screenMat = new THREE.MeshBasicMaterial({map: vtex, side: THREE.DoubleSide});
-  } else if(id === 'T4'){
+  } else if(id === 'T4' && !stripped){
     const vtex = createT4VideoTex();
     videoEl = t4VideoEl;
     videoTex = vtex;
     drawTVStandby(nctx, id, 'SMIRK');
     ntex.needsUpdate = true;
     screenMat = new THREE.MeshBasicMaterial({map: ntex, side: THREE.DoubleSide});
-  } else if(id === 'T6'){
+  } else if(id === 'T6' && !stripped){
     // If already unlocked, use video texture immediately; otherwise black canvas until fall 20
     if(backroomsVideoUnlocked && t6VideoTex){
       videoEl = t6VideoEl;
@@ -3843,6 +4071,55 @@ function buildRumbleAccountGate(levelYOffset){
   return { group: gate, glow, hitbox, labelTex };
 }
 
+// ── REUSABLE GLOW DOOR (level 138 cross void) ────────────────────────────
+// Same construction as buildVoidExitDoor/buildRumbleAccountGate — emissive
+// frame, no fill plane, PointLight glow — generalised to take any colour,
+// and an optional canvas label above the frame (used for "down").
+function buildGlowDoor(pos, color, levelYOffset, labelText=null){
+  const door = new THREE.Group();
+  const frameMat = new THREE.MeshStandardMaterial({
+    color: 0x050505, emissive: color, emissiveIntensity: 4.2,
+    metalness: 0.35, roughness: 0.3,
+  });
+  const left = new THREE.Mesh(new THREE.BoxGeometry(.15, 2.6, .15), frameMat);
+  const right = left.clone();
+  const top = new THREE.Mesh(new THREE.BoxGeometry(1.9, .15, .15), frameMat);
+  left.position.set(-0.8, 1.3, 0);
+  right.position.set(0.8, 1.3, 0);
+  top.position.set(0, 2.6, 0);
+  door.add(left, right, top);
+  const glow = new THREE.PointLight(color, 2.6, 16);
+  glow.position.set(0, 1.5, 0.8);
+  door.add(glow);
+
+  if(labelText){
+    const labelCanvas = document.createElement('canvas');
+    labelCanvas.width = 512; labelCanvas.height = 128;
+    const labelCtx = labelCanvas.getContext('2d');
+    labelCtx.textAlign = 'center'; labelCtx.textBaseline = 'middle';
+    labelCtx.font = 'bold 54px Courier New';
+    labelCtx.fillStyle = '#ffffff';
+    labelCtx.shadowColor = 'rgba(255,255,255,0.95)';
+    labelCtx.shadowBlur = 22;
+    labelCtx.fillText(labelText, 256, 64);
+    const labelTex = new THREE.CanvasTexture(labelCanvas);
+    const label = new THREE.Mesh(
+      new THREE.PlaneGeometry(2.0, 0.5),
+      new THREE.MeshBasicMaterial({
+        map: labelTex,
+        transparent: true, side: THREE.DoubleSide, depthWrite: false,
+      }),
+    );
+    label.position.set(0, 3.05, 0.03);
+    door.add(label);
+  }
+
+  door.position.set(pos[0], pos[1] + levelYOffset, pos[2]);
+  door.visible = false;
+  scene.add(door);
+  return { group: door, glow };
+}
+
 function getVoidDoorDistance(){
   if(currentLevel !== VOID_END_LEVEL || !voidExitDoor) return Infinity;
   return camera.position.distanceTo(voidExitDoor.group.position);
@@ -3882,9 +4159,41 @@ function enterReturnLevel(){
   showStage30Cue('THE SIGNAL LET YOU THROUGH.\nWELCOME BACK TO THE BUILD.', 5200);
 }
 
+function getDownDoorDistance(){
+  if(currentLevel !== CROSS_VOID_LEVEL || !crossVoidDownDoor) return Infinity;
+  return camera.position.distanceTo(crossVoidDownDoor.group.position);
+}
+
+function enterLevel139(){
+  if(currentLevel !== CROSS_VOID_LEVEL || isFalling || isRecovering) return;
+  const previousLevel = currentLevel;
+  hideLevel(previousLevel);
+  disposeLevelGroup(previousLevel);
+  if(!levelGroups[FOOTAGE_STRIP_LEVEL]) createLevelGroup(FOOTAGE_STRIP_LEVEL);
+  showLevel(FOOTAGE_STRIP_LEVEL);
+  currentLevel = FOOTAGE_STRIP_LEVEL;
+  applyVoidAtmosphere(FOOTAGE_STRIP_LEVEL);
+  camera.position.set(mapCenter.x, levelTargetY(FOOTAGE_STRIP_LEVEL), mapCenter.z);
+  camera.rotation.set(0, 0, 0);
+  if(crossVoidDownDoor) crossVoidDownDoor.group.visible = false;
+  isRecovering = true;
+  recoverStart = performance.now();
+  recoverFrom = camera.position.y;
+  showStage30Cue('DOWN.\nBACK TO THE BUILD.', 4200);
+}
+
 function applyVoidAtmosphere(levelIndex){
   const readout = document.getElementById('void-level-readout');
-  if(isVoidLevel(levelIndex)){
+  if(isCrossVoidLevel(levelIndex)){
+    // Pure blackness — no ambient light at all. Only the TV screens and
+    // the glow doors are readable. Lighter fog than the void ring so the
+    // far doors still show as a faint smear at CROSS_DOOR_DIST.
+    ambientLight.color.set(0x000000);
+    ambientLight.intensity = 0.0015;
+    scene.background = new THREE.Color(0x000000);
+    scene.fog = new THREE.FogExp2(0x000000, 0.022);
+    if(readout) readout.style.display = 'none';
+  } else if(isVoidLevel(levelIndex)){
     ambientLight.color.set(0x07150c);
     ambientLight.intensity = levelIndex === VOID_END_LEVEL ? 0.018 : 0.008;
     scene.background = new THREE.Color(0x000000);
@@ -3908,10 +4217,82 @@ function setTVBlank(tv){
   tv.ntex.needsUpdate = true;
 }
 
+function isRumbleEmbed(url){
+  return !!url && /rumble\.com/.test(url);
+}
+
+function getRumbleVideoId(url){
+  const m = /rumble\.com\/embed\/([^/?]+)/.exec(url || '');
+  return m ? m[1] : null;
+}
+
+// Bootstrap loader for Rumble's own JS Player API (official snippet from
+// player.rumble.com/developers). Defines a queueing window.Rumble() stub
+// synchronously, then loads the real library async — safe to call this
+// more than once, and safe to call Rumble(...) immediately after.
+let rumbleJSLoaded = false;
+function ensureRumbleJS(){
+  if(rumbleJSLoaded) return;
+  rumbleJSLoaded = true;
+  (function(r,u,m,b,l,e){
+    r._Rumble=b; r[b]=r[b]||function(){
+      (r[b]._=r[b]._||[]).push(arguments);
+      if(r[b]._.length===1){
+        l=u.createElement(m); e=u.getElementsByTagName(m)[0];
+        l.async=1;
+        l.src='https://rumble.com/embedJS/'+RUMBLE_PUB_CODE+
+          (arguments[1] && arguments[1].video ? '.'+arguments[1].video : '')+
+          '/?url='+encodeURIComponent(location.href)+
+          '&args='+encodeURIComponent(JSON.stringify([].slice.apply(arguments)));
+        e.parentNode.insertBefore(l,e);
+      }
+    };
+  })(window,document,'script','Rumble');
+}
+
+// Rumble TVs (T9/T3) get a plain div instead of an iframe — the Rumble JS
+// Player API creates and controls its own player inside it, which is what
+// lets a press call a real API.play()/pause() instead of hoping a URL
+// autoplay param survives browser autoplay policy.
+let rumbleDivCounter = 0;
+function attachRumblePlayerToTV(tv, videoId){
+  if(!tv || !tv.screen) return;
+  const parent = tv.screen.parent;
+  if(!parent) return;
+  ensureRumbleJS();
+  const div = document.createElement('div');
+  div.className = 'in-world-rumble-player';
+  div.id = 'rumble-player-' + tv.id + '-' + (rumbleDivCounter++);
+  div.style.width = '1100px';
+  div.style.height = '700px';
+  div.style.background = '#000';
+  div.style.pointerEvents = 'none';
+  const object = new CSS3DObject(div);
+  object.position.set(0, 0, 0.085);
+  object.scale.set(0.002, 0.002, 0.002);
+  object.visible = false;
+  parent.add(object);
+  tv.liveIframe = null; // Rumble TVs don't use the generic iframe path
+  tv.liveIframeObject = object;
+  tv.rumbleDiv = div;
+  tv.rumbleVideoId = videoId;
+  tv.rumbleApi = null;
+  tv.rumbleLoaded = false;
+}
+
 function addLiveFeedToTV(tv, embedUrl){
   if(!tv) return tv;
   tv.liveEmbed = embedUrl;
   tv.g.userData.liveEmbed = embedUrl;
+  if(isRumbleEmbed(embedUrl)){
+    // Rumble TVs (T9/T3): set up the JS-API player div now so the screen is
+    // ready the moment the feed is unlocked. Nothing plays until the first
+    // press — see toggleRumbleTV. Non-Rumble live feeds are untouched and
+    // keep the existing iframe/activate-on-first-press path.
+    attachRumblePlayerToTV(tv, getRumbleVideoId(embedUrl));
+    tv.liveActive = false;
+    return tv;
+  }
   attachLiveIframeToTV(tv);
   return tv;
 }
@@ -3946,20 +4327,86 @@ function attachLiveIframeToTV(tv){
   tv.liveIframeObject = object;
 }
 
+// Soft-stop a YouTube/iframe live TV: blank the src (stops audio/video) and
+// hide the CSS3D object, but leave the tv structure intact so it can be
+// restarted. This is used for mutual exclusion and manual toggle-off.
+function deactivateLiveFeedSoft(tv){
+  if(!tv || !tv.liveIframe || !tv.liveIframeObject) return;
+  tv.liveIframe.src = 'about:blank';
+  tv.liveIframeObject.visible = false;
+  tv.liveActive = false;
+}
+
 function activateInWorldLiveTV(tv){
   if(!tv || !tv.liveEmbed) return;
-  if(!tv.liveIframeObject) attachLiveIframeToTV(tv);
-  if(!tv.liveIframe || !tv.liveIframeObject) return;
+
+  // Toggle off if already active
   if(tv.liveActive){
-    tv.liveIframe.src = 'about:blank';
-    tv.liveIframeObject.visible = false;
-    tv.liveActive = false;
+    deactivateLiveFeedSoft(tv);
     playClickSound();
     return;
   }
-  tv.liveIframe.src = tv.liveEmbed;
+
+  // Mutual exclusion — stop every other live-feed TV before starting this one.
+  // This prevents audio bleeding through walls when two TVs are both active.
+  allTVs.forEach(other => {
+    if(other !== tv && other.liveActive && other.liveIframe){
+      deactivateLiveFeedSoft(other);
+    }
+  });
+
+  if(!tv.liveIframeObject) attachLiveIframeToTV(tv);
+  if(!tv.liveIframe || !tv.liveIframeObject) return;
+
+  // Build embed URL with autoplay. Don't double-add if already present.
+  let embedUrl = tv.liveEmbed;
+  if(!/autoplay/.test(embedUrl)){
+    embedUrl += (embedUrl.indexOf('?') === -1 ? '?' : '&') + 'autoplay=1';
+  }
+
+  tv.liveIframe.src = embedUrl;
   tv.liveIframeObject.visible = true;
   tv.liveActive = true;
+
+  // Give the iframe pointer-events so the embedded player can receive interaction.
+  // Do NOT unlock pointer lock — that breaks movement. The autoplay param
+  // in the URL handles playback; pointer lock stays as-is.
+  tv.liveIframe.style.pointerEvents = 'auto';
+  playClickSound();
+}
+
+// Rumble TVs (T9/T3) only — uses the official Rumble Player JS API (see
+// attachRumblePlayerToTV/ensureRumbleJS) instead of reloading an iframe src
+// and hoping a URL autoplay param survives the browser's autoplay policy.
+// First press loads and plays the video via Rumble('play', {...}), which is
+// itself the play command; later presses toggle play/pause through the real
+// API object handed back in the api callback.
+function toggleRumbleTV(tv){
+  if(!tv || !tv.rumbleDiv || !tv.rumbleVideoId || !tv.liveIframeObject) return;
+  tv.liveIframeObject.visible = true;
+
+  if(!tv.rumbleLoaded){
+    tv.rumbleLoaded = true;
+    Rumble('play', {
+      video: tv.rumbleVideoId,
+      div: tv.rumbleDiv.id,
+      api: function(api){
+        tv.rumbleApi = api;
+        tv.liveActive = true;
+      },
+    });
+    playClickSound();
+    return;
+  }
+
+  if(!tv.rumbleApi){ playClickSound(); return; } // still loading — next press works
+  if(tv.rumbleApi.getPaused()){
+    tv.rumbleApi.play(true);
+    tv.liveActive = true;
+  } else {
+    tv.rumbleApi.pause();
+    tv.liveActive = false;
+  }
   playClickSound();
 }
 
@@ -4245,6 +4692,180 @@ function initBloodPlane(){
   });
 }
 
+// ── WATER PLANE (blue, mirrors initBloodPlane) ─────────────────────────────
+function initWaterPlane(){
+  if(waterPlane) return;
+  const geo = new THREE.PlaneGeometry(400, 400);
+  const mat = new THREE.MeshBasicMaterial({
+    color: 0x0d3a66, side: THREE.DoubleSide,
+    transparent: true, opacity: 0.9, depthWrite: false,
+  });
+  waterPlane = new THREE.Mesh(geo, mat);
+  waterPlane.rotation.x = -Math.PI / 2;
+  waterPlane.position.set(-22, -0.5, -20);
+  waterPlane.visible = false;
+  scene.add(waterPlane);
+
+  [
+    { offset: .05, opacity: .16, color: 0x1c5f96, spin: .0010 },
+    { offset: .16, opacity: .11, color: 0x0a2f52, spin: -.0014 },
+    { offset: .30, opacity: .09, color: 0x3d86c4, spin: .0007 },
+  ].forEach(spec=>{
+    const wave = new THREE.Mesh(
+      new THREE.PlaneGeometry(400, 400),
+      new THREE.MeshBasicMaterial({
+        color: spec.color, side: THREE.DoubleSide,
+        transparent: true, opacity: spec.opacity, depthWrite: false,
+      })
+    );
+    wave.rotation.x = -Math.PI / 2;
+    wave.position.set(-22, -0.5, -20);
+    wave.userData.waveSpec = spec;
+    wave.visible = false;
+    scene.add(wave);
+    waterWaveMeshes.push(wave);
+  });
+
+  // Very subtle reflective flecks — a sparse speckle texture on an
+  // additive-blended plane, scrolled slowly so light seems to catch the
+  // surface rather than reading as a static pattern.
+  const speckCanvas = document.createElement('canvas');
+  speckCanvas.width = 256; speckCanvas.height = 256;
+  const sctx = speckCanvas.getContext('2d');
+  sctx.clearRect(0, 0, 256, 256);
+  for(let i=0;i<140;i++){
+    const x = Math.random()*256, y = Math.random()*256;
+    const r = Math.random()*1.1 + 0.2;
+    sctx.fillStyle = `rgba(200,230,255,${(Math.random()*0.35+0.1).toFixed(2)})`;
+    sctx.beginPath(); sctx.arc(x, y, r, 0, Math.PI*2); sctx.fill();
+  }
+  const speckTex = new THREE.CanvasTexture(speckCanvas);
+  speckTex.wrapS = speckTex.wrapT = THREE.RepeatWrapping;
+  speckTex.repeat.set(30, 30);
+  waterFleckMesh = new THREE.Mesh(
+    new THREE.PlaneGeometry(400, 400),
+    new THREE.MeshBasicMaterial({
+      map: speckTex, color: 0xffffff, transparent: true, opacity: 0.22,
+      blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide,
+    })
+  );
+  waterFleckMesh.rotation.x = -Math.PI / 2;
+  waterFleckMesh.position.set(-22, -0.5, -20);
+  waterFleckMesh.userData.speckTex = speckTex;
+  waterFleckMesh.visible = false;
+  scene.add(waterFleckMesh);
+}
+
+function stopWaterVisuals(){
+  waterActive = false;
+  waterSubmerged = false;
+  if(waterPlane) waterPlane.visible = false;
+  waterWaveMeshes.forEach(w=>{ w.visible = false; });
+  if(waterFleckMesh) waterFleckMesh.visible = false;
+  if(waterVeilEl){ waterVeilEl.style.opacity = '0'; waterVeilEl.style.display = 'none'; }
+  if(filmGrainEl){ filmGrainEl.style.opacity = '0'; filmGrainEl.style.display = 'none'; }
+}
+
+function ensureWaterAudio(){
+  if(waterAudioEl) return waterAudioEl;
+  waterAudioEl = new Audio(WATER_MP3_URL);
+  waterAudioEl.loop = true;
+  waterAudioEl.volume = 0.55;
+  return waterAudioEl;
+}
+
+// The Dominion embed is a cross-origin iframe, so a URL autoplay param is
+// the *only* thing making it start — no guarantee, especially on first
+// press. Bunny Stream ships a Player.js-compatible control API; wiring it
+// up lets us issue a real, explicit play() command from the same user
+// gesture instead of just hoping the iframe autoplays on its own.
+let waterPlayerJs = null;
+let waterPlayerJsReady = false;
+function ensureWaterPlayerJs(){
+  if(waterPlayerJs || !waterTVIframeEl || typeof playerjs === 'undefined') return;
+  waterPlayerJs = new playerjs.Player(waterTVIframeEl);
+  waterPlayerJs.on('ready', () => {
+    waterPlayerJsReady = true;
+    waterPlayerJs.play();
+  });
+}
+
+// A single persistent CSS3D iframe for the Dominion video, reparented onto
+// whichever level's TW screen is currently visible, so playback position is
+// never reset by falling between levels (unlike the per-level live feeds).
+function attachPersistentWaterIframe(tv){
+  if(!tv || !tv.screen) return;
+  if(!waterTVIframeEl){
+    waterTVIframeEl = document.createElement('iframe');
+    waterTVIframeEl.className = 'in-world-live-feed';
+    waterTVIframeEl.title = 'TW Dominion signal';
+    waterTVIframeEl.width = '1100';
+    waterTVIframeEl.height = '700';
+    waterTVIframeEl.allow = 'autoplay; encrypted-media; picture-in-picture; fullscreen';
+    waterTVIframeEl.referrerPolicy = 'strict-origin-when-cross-origin';
+    waterTVIframeEl.allowFullscreen = true;
+    waterTVIframeEl.style.width = '1100px';
+    waterTVIframeEl.style.height = '700px';
+    waterTVIframeEl.style.border = '0';
+    waterTVIframeEl.style.display = 'block';
+    waterTVIframeEl.style.pointerEvents = 'none';
+    waterTVIframeEl.style.background = '#000';
+    waterTVIframeObject = new CSS3DObject(waterTVIframeEl);
+    waterTVIframeObject.position.set(0, 0, 0.085);
+    waterTVIframeObject.scale.set(0.002, 0.002, 0.002);
+    waterTVIframeObject.visible = false;
+  }
+  const parent = tv.screen.parent;
+  if(parent && waterTVIframeObject.parent !== parent) parent.add(waterTVIframeObject);
+  waterTVIframeObject.visible = waterVideoPlaying;
+  tv.liveIframe = waterTVIframeEl;
+  tv.liveIframeObject = waterTVIframeObject;
+  tv.liveEmbed = DOMINION_VIDEO_EMBED;
+}
+
+// Called when the player presses play on TW. Only the level-115 press
+// actually starts the sequence — later levels in the sequence continue
+// automatically on fall, per the design.
+function startWaterSequence(){
+  if(currentLevel < WATER_START_LEVEL) return;
+  // Past the rise window the TV still exists and keeps playing — a press
+  // here is just a playback nudge (never a no-op), not a restart of the
+  // rise mechanic.
+  if(currentLevel > waterExitLevel()){
+    if(waterVideoPlaying && waterPlayerJsReady && waterPlayerJs) waterPlayerJs.play();
+    playClickSound();
+    return;
+  }
+  initWaterPlane();
+  if(!waterActive){
+    waterActive = true;
+    waterDeathShown = false;
+    waterBaselineLocal = levelFloorY + 0.02;
+    waterStartTime = performance.now();
+  }
+  waterPlane.visible = true;
+  waterWaveMeshes.forEach(w=>{ w.visible = true; });
+  if(waterFleckMesh) waterFleckMesh.visible = true;
+  if(!waterVideoPlaying){
+    waterVideoPlaying = true;
+    if(!waterTVIframeEl){
+      const tw = allTVs.find(t => t.id === 'TW');
+      if(tw) attachPersistentWaterIframe(tw);
+    }
+    if(waterTVIframeEl) waterTVIframeEl.src = DOMINION_VIDEO_EMBED;
+    if(waterTVIframeObject) waterTVIframeObject.visible = true;
+    ensureWaterPlayerJs();
+    const audio = ensureWaterAudio();
+    audio.currentTime = 0;
+    audio.play().catch(()=>{});
+  } else if(waterPlayerJsReady && waterPlayerJs){
+    // Already running — a repeat E/tap is a manual nudge in case autoplay
+    // stalled or the browser paused it; harmless if it's already playing.
+    waterPlayerJs.play();
+  }
+  playClickSound();
+}
+
 function startBloodLevel30(){
   initBloodPlane();
   bloodLevel = levelFloorY + 0.02; // start just above the actual floor
@@ -4337,20 +4958,41 @@ function createLevelGroup(levelIndex){
   group.visible = false;
   const colliders = [];
 
-  if(glbTemplate && !isVoidLevel(levelIndex)){
+  if(glbTemplate && !isVoidLevel(levelIndex) && !isCrossVoidLevel(levelIndex)){
     const clone = glbTemplate.clone(true);
     // The template owns the shared geometries/material textures. Level
     // instances are disposable scene graphs, so never dispose their shared
     // GPU resources when an old level is recycled.
     clone.userData.sharedTemplate = true;
+    const embeddedLights = [];
     clone.traverse(c => {
       if(c.isMesh){
         c.castShadow=true; c.receiveShadow=true;
         colliders.push(c);
+      } else if(c.isLight){
+        embeddedLights.push(c);
       }
     });
     collisionMeshes.push(...colliders);
     group.add(clone);
+    // ~60 ceiling lights are baked into the model itself (placed in Blender,
+    // not created here) — fine on desktop, but that many simultaneous
+    // real-time lights overlapping in a hallway is brutal on mobile GPUs.
+    // Mobile only: cut roughly half outright, dim the rest by a varying
+    // amount so it doesn't read as one flat blanket dim. Desktop is
+    // untouched.
+    if(isMobile && embeddedLights.length){
+      // Keep roughly 1 in 3 (was 1 in 2) and dim + shrink those harder —
+      // large rooms were still stacking too many real-time lights at once.
+      embeddedLights.forEach((l, i) => {
+        if(i % 3 !== 0){
+          if(l.parent) l.parent.remove(l);
+        } else {
+          l.intensity *= 0.18 + Math.random() * 0.2; // ~18–38% of original
+          if(typeof l.distance === 'number' && l.distance > 0) l.distance *= 0.45;
+        }
+      });
+    }
   }
 
   const lights = [];
@@ -4367,13 +5009,18 @@ function createLevelGroup(levelIndex){
      lights.push(voidLight);
     flickerLights.push(voidLight);
   }
+  // Cross-void level 138 gets no ambient point light at all — true
+  // blackness, readable only by the TV screens and the glowing doors.
   // Level 30: very dim crimson point lights so blood blends into darkness.
-  if(!isVoidLevel(levelIndex)){
-    const lightColor     = (levelIndex === 30) ? 0x330000 : 0xfff5aa;
-    const lightIntensity = (levelIndex === 30) ? 0.18     : 1.2;
+  if(!isVoidLevel(levelIndex) && !isCrossVoidLevel(levelIndex)){
+    const lightColor = (levelIndex === 30) ? 0x330000 : 0xfff5aa;
+    // Same dim treatment the blood stage (30) always used, now applied on
+    // mobile for every stage — desktop keeps full brightness.
+    const lightIntensity = (levelIndex === 30) ? 0.18 : (isMobile ? 0.18 : 1.2);
+    const lightDistance  = isMobile ? 11 : 18;
     [[0,2.8,0],[10,2.8,-5],[-10,2.8,8],[20,2.8,5],[-20,2.8,-12],
      [5,2.8,25],[0,2.8,-15],[0,2.8,-30],[0,2.8,-45]].forEach(([x,y,z])=>{
-      const l = new THREE.PointLight(lightColor, lightIntensity, 18);
+      const l = new THREE.PointLight(lightColor, lightIntensity, lightDistance);
       l.position.set(x, y, z);
       l.userData.baseIntensity = lightIntensity;
       l.userData.stage30 = levelIndex === 30;
@@ -4422,14 +5069,57 @@ function createLevelGroup(levelIndex){
       accountGate = buildRumbleAccountGate(yOff);
       rumbleAccountGate = accountGate;
     }
-  } else {
-    WALL_TVS.forEach(t => {
-      const tv = buildWallTV(t.id, t.pos, t.ry, yOff);
+  } else if(isCrossVoidLevel(levelIndex)){
+    // Four TVs in a perfect cross, far apart, one per compass point — each
+    // with a colour-matched glow door pushed further out behind it, right
+    // at the edge of what the fog lets you see. A fifth, white "down" door
+    // sits dead centre and drops the player back into the normal build.
+    crossVoidDoors = [];
+    CROSS_ARMS.forEach(arm => {
+      const tvPos   = [arm.dx * CROSS_TV_DIST,   CROSS_MOUNT_Y, arm.dz * CROSS_TV_DIST];
+      const doorPos = [arm.dx * CROSS_DOOR_DIST, CROSS_DOOR_Y,  arm.dz * CROSS_DOOR_DIST];
+      const tv = buildWallTV(arm.id, tvPos, arm.ry, yOff);
       tv.g.visible = false;
       scene.add(tv.g);
-      // T9 carries the Rumble signal from level 11 onward (post-W1a fall) —
-      // reuses the existing TV rather than spawning a new one.
-      if(t.id === 'T9' && levelIndex >= RUMBLE_UNLOCK_LEVEL) addLiveFeedToTV(tv, RUMBLE_VIDEO_EMBED);
+      levelTVs.push(tv);
+      const armDoor = buildGlowDoor(doorPos, arm.color, yOff);
+      crossVoidDoors.push(armDoor);
+    });
+    crossVoidDownDoor = buildGlowDoor([0, CROSS_DOOR_Y, 0], 0xffffff, yOff, 'down');
+    // TW — Dominion must never disappear once unlocked at 115, including on
+    // this single cross-void level.
+    if(waterTVSnap){
+      const twTV = buildWallTV('TW', waterTVSnap.pos, waterTVSnap.ry, yOff);
+      twTV.g.visible = false;
+      scene.add(twTV.g);
+      levelTVs.push(twTV);
+    }
+  } else {
+    // From FOOTAGE_STRIP_LEVEL (139) onward every wall TV goes back to blank
+    // fuzz except T1/T5 (permanent normal+news feeds) and the window TVs
+    // (W1a/W1b, untouched below) — a deliberate reset, new footage to be
+    // added on a future pass.
+    const stripped = levelIndex >= FOOTAGE_STRIP_LEVEL;
+    WALL_TVS.forEach(t => {
+      const tv = buildWallTV(t.id, t.pos, t.ry, yOff, stripped);
+      tv.g.visible = false;
+      scene.add(tv.g);
+      if(!stripped){
+        // T9 carries the Rumble signal from level 11 onward (post-W1a fall) —
+        // reuses the existing TV rather than spawning a new one.
+        if(t.id === 'T9' && levelIndex >= RUMBLE_UNLOCK_LEVEL) addLiveFeedToTV(tv, RUMBLE_VIDEO_EMBED);
+        // T3 is visible from the start but stays dark — no feed attached, so
+        // there's nothing to play — until level 5, when it goes live and its
+        // label flips from "T3" to "T3 UNLOCKED".
+        if(t.id === 'T3' && levelIndex >= T3_UNLOCK_LEVEL){
+          addLiveFeedToTV(tv, T3_VIDEO_EMBED);
+          setTVLabelText(tv, 'T3 UNLOCKED');
+        }
+      }
+      // T1/T5 pick the normal+news feeds back up permanently once footage
+      // is stripped back in at 139 — same two signals introduced at 71.
+      if(stripped && t.id === 'T1') addLiveFeedToTV(tv, MAIN_RETURN_FEEDS.normal);
+      if(stripped && t.id === 'T5') addLiveFeedToTV(tv, MAIN_RETURN_FEEDS.news);
       levelTVs.push(tv);
     });
     WINDOW_TVS.forEach(t => {
@@ -4438,6 +5128,14 @@ function createLevelGroup(levelIndex){
       scene.add(tv.g);
       levelTVs.push(tv);
     });
+    // TW — new, standalone water/Dominion TV. Present from level 115 onward
+    // and never stripped/removed again (see level-transition handler below).
+    if(levelIndex >= WATER_START_LEVEL && waterTVSnap){
+      const twTV = buildWallTV('TW', waterTVSnap.pos, waterTVSnap.ry, yOff, stripped);
+      twTV.g.visible = false;
+      scene.add(twTV.g);
+      levelTVs.push(twTV);
+    }
     if(levelIndex === RETURN_LEVEL){
       // Normal build resumes — only these 4 signals are new. Everything
       // else (T4/T6/T10/W1a video textures, unlocks) behaves exactly like
@@ -4485,10 +5183,21 @@ function createLevelGroup(levelIndex){
   }
 
   // Void levels have no floor geometry and fall on a timer, not a floor
-  // cross — skip the noclip-zone placement entirely down there.
+  // cross — skip the noclip-zone placement entirely down there. Level 138
+  // (the cross void) has no floor either — its only exit is the "down"
+  // door, not a fall zone.
   if(isVoidLevel(levelIndex)){
     levelGroups[levelIndex] = {
       group, lights, tvs: levelTVs, door: exitDoor, gate: accountGate, colliders,
+    };
+    return levelGroups[levelIndex];
+  }
+  if(isCrossVoidLevel(levelIndex)){
+    levelGroups[levelIndex] = {
+      group, lights, tvs: levelTVs,
+      doors: [...crossVoidDoors, crossVoidDownDoor],
+      downDoor: crossVoidDownDoor,
+      colliders,
     };
     return levelGroups[levelIndex];
   }
@@ -4505,6 +5214,18 @@ function createLevelGroup(levelIndex){
     const zoneX = t4Snap ? t4Snap.pos[0] + 1.5 : 1.5;
     const zoneZ = t4Snap ? t4Snap.pos[2]       : 8.60;
     positions = [[zoneX, zoneZ]];
+  } else if(levelIndex >= WATER_START_LEVEL && levelIndex < waterExitLevel() && waterTVSnap){
+    // Fixed zone directly in front of TW — same spot every level of the
+    // water sequence, so the player doesn't need to re-find it each fall.
+    const inward =
+      Math.abs(waterTVSnap.ry - (-Math.PI/2)) < 0.01 ? { x:-1, z: 0 } :
+      Math.abs(waterTVSnap.ry -  (Math.PI/2)) < 0.01 ? { x: 1, z: 0 } :
+      Math.abs(waterTVSnap.ry -   Math.PI   ) < 0.01 ? { x: 0, z:-1 } :
+                                                         { x: 0, z: 1 };
+    positions = [[
+      waterTVSnap.pos[0] + inward.x * 1.6,
+      waterTVSnap.pos[2] + inward.z * 1.6,
+    ]];
   } else if(levelIndex === RETURN_LEVEL){
     // Level 71 spawns the player at mapCenter (see enterReturnLevel). A
     // fall-cross landing near that spawn point used to insta-trigger a
@@ -4540,24 +5261,28 @@ function createLevelGroup(levelIndex){
 // ── SHOW / HIDE A LEVEL ───────────────────────────────────────────────────────
 function showLevel(idx){
   if(!levelGroups[idx]) return;
-  const { group, tvs, door, gate } = levelGroups[idx];
+  const { group, tvs, door, gate, doors } = levelGroups[idx];
   group.visible = true;
   requestBushForLevel(idx, group);
   tvs.forEach(tv => { tv.g.visible = true; });
   (group.userData.crosses||[]).forEach(c => { c.visible = true; });
   tvs.forEach(tv => { if(!allTVs.find(t=>t===tv)) allTVs.push(tv); });
+  const twTV = tvs.find(t => t.id === 'TW');
+  if(twTV) attachPersistentWaterIframe(twTV);
   if(door) door.group.visible = true;
   if(gate){
     gate.group.visible = true;
     gate.hitbox.visible = true;
   }
+  if(doors) doors.forEach(d => { if(d) d.group.visible = true; });
 }
 
 // Fully tears down a TV's live iframe (not just hides it) so no audio can
 // keep playing off-screen after the level is left. Next activation rebuilds
 // a fresh iframe via attachLiveIframeToTV.
 function killLiveFeed(tv){
-  if(!tv || !tv.liveIframeObject) return;
+  if(!tv || tv.id === 'TW') return; // TW's iframe is shared/persistent — never torn down
+  if(!tv.liveIframeObject) return;
   if(tv.liveIframe) tv.liveIframe.src = 'about:blank';
   if(tv.liveIframeObject.parent) tv.liveIframeObject.parent.remove(tv.liveIframeObject);
   tv.liveIframe = null;
@@ -4567,7 +5292,7 @@ function killLiveFeed(tv){
 
 function hideLevel(idx){
   if(!levelGroups[idx]) return;
-  const { group, tvs, door, gate } = levelGroups[idx];
+  const { group, tvs, door, gate, doors } = levelGroups[idx];
   group.visible = false;
   tvs.forEach(tv => { tv.g.visible = false; killLiveFeed(tv); });
   allTVs = allTVs.filter(tv => !tvs.includes(tv));
@@ -4577,6 +5302,7 @@ function hideLevel(idx){
     gate.group.visible = false;
     gate.hitbox.visible = false;
   }
+  if(doors) doors.forEach(d => { if(d) d.group.visible = false; });
 }
 
 // Remove a level's scene graph and level-owned resources after its successor
@@ -4630,6 +5356,14 @@ function disposeLevelGroup(idx){
     );
   }
 
+  if(record.doors){
+    record.doors.forEach(d => {
+      if(!d) return;
+      if(d.group.parent) d.group.parent.remove(d.group);
+      disposeOwnedObject(d.group);
+    });
+  }
+
   if(record.group.parent) record.group.parent.remove(record.group);
   collisionMeshes = collisionMeshes.filter(mesh => !record.colliders.includes(mesh));
   flickerLights.splice(0, flickerLights.length,
@@ -4641,6 +5375,8 @@ function disposeLevelGroup(idx){
 
   if(voidExitDoor === record.door) voidExitDoor = null;
   if(rumbleAccountGate === record.gate) rumbleAccountGate = null;
+  if(record.downDoor && crossVoidDownDoor === record.downDoor) crossVoidDownDoor = null;
+  if(record.doors && crossVoidDoors.some(d => record.doors.includes(d))) crossVoidDoors = [];
   levelGroups[idx] = null;
 }
 
@@ -4786,6 +5522,12 @@ function startEntityEvent(now){
 
 function updateEntity(now, dt){
   if(!entityLoaded || !entityActor || !entityMixer) return;
+  if(isCrossVoidLevel(currentLevel)){
+    // No entity in the cross void — just the TVs and the doors.
+    entityState = 'hidden';
+    setEntityOpacity(0);
+    return;
+  }
   if(entityEventLevel !== currentLevel){
     scheduleEntityForLevel(now, currentLevel === 30);
   }
@@ -4904,9 +5646,55 @@ function triggerFall(){
     restoreNormalLighting();
   }
 
+  // ── LEVEL 115+ WATER SEQUENCE PROGRESSION ────────────────────────────────
+  if(nextIdx > WATER_START_LEVEL && nextIdx <= waterExitLevel() && waterActive){
+    // Already running (player pressed play back at 115) — carry the water
+    // baseline forward rather than resetting it, and keep climbing.
+    waterBaselineLocal += waterStep();
+    waterStartTime = performance.now();
+  } else if(nextIdx > waterExitLevel() && waterActive){
+    // Escaped — stop the rise mechanic and the rising-water audio. The TW
+    // TV itself keeps existing and playing quietly in every room until
+    // FOOTAGE_STRIP_LEVEL, where it's force-stopped below along with
+    // everything else; only the fall/death gameplay ends here.
+    stopWaterVisuals();
+    if(waterAudioEl) waterAudioEl.pause();
+    restoreNormalLighting();
+  }
+
+  // TW's Dominion iframe stays permanently on — do not strip it at 139.
+  // (Previously forced off at FOOTAGE_STRIP_LEVEL; now it persists.)
+
+  if(nextIdx === WATER_START_LEVEL && !waterHint115Shown){
+    waterHint115Shown = true;
+    setTimeout(()=>{ showStage30Cue('watch to survive', 5200); }, 2600);
+  } else if(nextIdx === WATER_START_LEVEL + 1 && !waterHint116Shown){
+    waterHint116Shown = true;
+    setTimeout(()=>{ showStage30Cue('keep watching', 5200); }, 2600);
+  } else if(nextIdx === waterExitLevel() && waterActive){
+    // Reset countdown so it starts fresh each time we land on the last water stage
+    window._waterCountdownStarted = false;
+    window._waterNoclipSpawned = false;
+    const _cdReset = document.getElementById('water-countdown');
+    if(_cdReset){ _cdReset.style.display = 'none'; _cdReset.textContent = ''; }
+    setTimeout(()=>{ showStage30Cue('find the exit or drown humanimal\n\nno more hints, you\'re not special', 5600); }, 2600);
+  }
+
   // ── LEVEL 30 INITIALIZATION ──────────────────────────────────────────────
   if(nextIdx === 30){
     startBloodLevel30();
+  }
+
+  // ── LEVEL 150 CHICKEN BOSS ───────────────────────────────────────────────
+  if(nextIdx === CHICKEN_LEVEL){
+    startChickenLevel();
+  } else if(chickenActive){
+    stopChickenLevel();
+  }
+
+  // ── LEVEL 151: ESCAPED THE CHICKEN ───────────────────────────────────────
+  if(nextIdx === CHICKEN_LEVEL + 1){
+    showChickenMsg('you found the fall.\nthe chickens never do.', 7000);
   }
 }
 
@@ -4981,6 +5769,7 @@ function loadBushFloor(bushUrl){
       const bounds = new THREE.Box3().setFromObject(template);
       const center = bounds.getCenter(new THREE.Vector3());
       bushHeight = Math.max(bounds.getSize(new THREE.Vector3()).y, 0.01);
+      bushSizeZ = Math.max(bounds.getSize(new THREE.Vector3()).z, 0.01);
       template.position.x -= center.x;
       template.position.y -= bounds.min.y;
       template.position.z -= center.z;
@@ -5027,24 +5816,521 @@ function loadBushFloor(bushUrl){
   );
 }
 
+// ── SHARK LOADER ─────────────────────────────────────────────────────────────
+function loadShark(){
+  loader.load(
+    SHARK_URL,
+    gltf => {
+      // Use gltf.scene directly — no clone needed for a single shark.
+      // Cloning with SkeletonUtils severs the bone references that
+      // gltf.animations depend on, causing the mixer to find no tracks.
+      const actor = gltf.scene;
+      // Scale so the shark is about 2.5m long — realistic bull shark
+      const bounds = new THREE.Box3().setFromObject(actor);
+      const size = bounds.getSize(new THREE.Vector3());
+      const longest = Math.max(size.x, size.y, size.z);
+      actor.scale.multiplyScalar(2.5 / Math.max(longest, 0.01));
+      actor.updateMatrixWorld(true);
+      actor.traverse(c => {
+        if(!c.isMesh){ return; }
+        c.castShadow = false;
+        c.receiveShadow = false;
+      });
+      sharkActor = actor;
+      sharkActor.visible = false;
+      scene.add(sharkActor);
+      // Create mixer on the root scene object — this is the object that owns
+      // the skeleton hierarchy that gltf.animations reference.
+      sharkMixer = new THREE.AnimationMixer(sharkActor);
+      if(gltf.animations && gltf.animations.length > 0){
+        const clip = THREE.AnimationClip.findByName(gltf.animations, gltf.animations[0].name) || gltf.animations[0];
+        const action = sharkMixer.clipAction(clip);
+        action.setLoop(THREE.LoopRepeat, Infinity);
+        action.timeScale = 0.8;
+        action.play();
+      }
+      sharkLoaded = true;
+    },
+    undefined,
+    (err) => { console.warn('Shark load failed:', err); sharkLoaded = false; }
+  );
+}
+
+// ── CHICKEN ANIMATION HELPERS ─────────────────────────────────────────────────
+function chickenPlayClip(idx){
+  if(!chickenMixer || !chickenAnimClips.length) return;
+  // Fade out old action
+  if(chickenAnimAction){
+    chickenAnimAction.fadeOut(0.35);
+  }
+  chickenAnimIdx  = ((idx % chickenAnimClips.length) + chickenAnimClips.length) % chickenAnimClips.length;
+  const clip      = chickenAnimClips[chickenAnimIdx];
+  chickenAnimAction = chickenMixer.clipAction(clip);
+  chickenAnimAction.reset();
+  chickenAnimAction.setLoop(THREE.LoopRepeat, Infinity);
+  chickenAnimAction.timeScale = 1.0;
+  chickenAnimAction.fadeIn(0.35).play();
+}
+
+function chickenAdvanceAnim(dt){
+  if(!chickenAnimClips.length) return;
+  chickenAnimTimer -= dt;
+  if(chickenAnimTimer <= 0){
+    // Play a random different clip
+    let next;
+    if(chickenAnimClips.length > 1){
+      do { next = Math.floor(Math.random() * chickenAnimClips.length); }
+      while(next === chickenAnimIdx);
+    } else {
+      next = 0;
+    }
+    chickenPlayClip(next);
+    chickenAnimTimer = 2.5 + Math.random() * 5; // next switch in 2.5–7.5 s
+  }
+}
+
+// ── CHICKEN BOSS LOADER ───────────────────────────────────────────────────────
+function loadChicken(){
+  const url = isMobile ? CHICKEN_URL_1K : CHICKEN_URL_4K;
+  loader.load(
+    url,
+    gltf => {
+      const actor = gltf.scene;
+      // Scale to roughly 2.975m tall — imposing boss height (original 3.5 * 0.85 = 15% smaller)
+      const bounds = new THREE.Box3().setFromObject(actor);
+      const size = bounds.getSize(new THREE.Vector3());
+      const tallest = Math.max(size.x, size.y, size.z);
+      actor.scale.multiplyScalar(2.975 / Math.max(tallest, 0.01));
+      actor.updateMatrixWorld(true);
+      actor.traverse(c => {
+        if(!c.isMesh){ return; }
+        c.castShadow = false;
+        c.receiveShadow = false;
+      });
+      chickenActor = actor;
+      chickenActor.visible = false;
+      scene.add(chickenActor);
+      // Compute foot offset: raise model so its bounding box bottom sits ON (not in) the floor.
+      // We add an extra 0.12 units of clearance so the feet clear the building geometry.
+      {
+        const tmpBox = new THREE.Box3().setFromObject(chickenActor);
+        chickenYOffset = -tmpBox.min.y + 0.12;  // positive = lift up by this many units
+      }
+      chickenMixer = new THREE.AnimationMixer(chickenActor);
+      if(gltf.animations && gltf.animations.length > 0){
+        // Store ALL clips so we can cycle through all 30
+        chickenAnimClips = gltf.animations.slice();
+        console.log('[Chicken] loaded', chickenAnimClips.length, 'animations:', chickenAnimClips.map(c=>c.name));
+        // Start with whichever clip looks like walking, fall back to index 0
+        const walkIdx = chickenAnimClips.findIndex(c => /walk/i.test(c.name));
+        const idleIdx = chickenAnimClips.findIndex(c => /idle/i.test(c.name));
+        chickenAnimIdx = walkIdx >= 0 ? walkIdx : (idleIdx >= 0 ? idleIdx : 0);
+        chickenPlayClip(chickenAnimIdx);
+        // Randomise how long each clip plays before switching (3–7 s)
+        chickenAnimTimer = 3 + Math.random() * 4;
+      }
+      chickenLoaded = true;
+    },
+    undefined,
+    (err) => { console.warn('Chicken boss load failed:', err); chickenLoaded = false; }
+  );
+}
+
+function showChicken(){
+  if(!chickenLoaded || !chickenActor) return;
+  chickenVisible = true;
+  chickenActor.visible = true;
+  // Start circling the player
+  chickenAngle = Math.random() * Math.PI * 2;
+  chickenRadius = 5.0 + Math.random() * 2;
+  chickenAnchorX = camera.position.x;
+  chickenAnchorZ = camera.position.z;
+}
+
+function hideChicken(){
+  if(chickenActor) chickenActor.visible = false;
+  chickenVisible = false;
+}
+
+function updateChickenHealth(){
+  const wrap = document.getElementById('chicken-health-wrap');
+  const bar  = document.getElementById('chicken-health-bar-inner');
+  if(!wrap || !bar) return;
+  const pct = Math.max(0, chickenHP / CHICKEN_MAX_HEALTH) * 100;
+  bar.style.width = pct + '%';
+  // Colour shifts red→orange→yellow as health drops (for drama)
+  if(pct > 60) bar.style.background = 'rgba(220,50,30,0.9)';
+  else if(pct > 30) bar.style.background = 'rgba(255,120,20,0.9)';
+  else bar.style.background = 'rgba(255,220,20,0.9)';
+}
+
+function chickenHitPlayer(){
+  if(chickenDeathTriggered) return;
+  chickenHP = Math.max(0, chickenHP - CHICKEN_HIT_DAMAGE);
+  updateChickenHealth();
+
+  // Red flash veil
+  const veil = document.getElementById('chicken-hit-veil');
+  if(veil){
+    veil.style.display = 'block';
+    veil.style.opacity = '1';
+    setTimeout(()=>{ veil.style.opacity = '0'; setTimeout(()=>{ veil.style.display='none'; }, 300); }, 140);
+  }
+
+  // Escape zone appears at 10hp
+  if(chickenHP <= CHICKEN_ESCAPE_HP && !chickenEscapeSpawned){
+    chickenEscapeSpawned = true;
+    spawnChickenEscape();
+    showChickenMsg('okay speciesist, you can go now', 6000);
+  }
+
+  // Two more hits after escape spawned = death
+  if(chickenHP <= 0 && !chickenDeathTriggered){
+    chickenDeathTriggered = true;
+    hideChicken();
+    stopBroadcasts();
+    showDeathScreen();
+    setTimeout(()=>{
+      window.location.href = CHICKEN_DEATH_URL;
+    }, 5000);
+  }
+}
+
+function spawnChickenEscape(){
+  // Place a noclip zone in the level if not already there
+  const existing = noclipZones.find(z => z.levelIndex === CHICKEN_LEVEL);
+  if(existing) return;
+  const candidates = [
+    [ 3, -6], [-4,-10], [ 6,-18], [-5,-22],
+    [ 2,-30], [-6,-35], [ 8, -4], [-8, -8],
+    [ 4,-14], [-3,-26],
+  ];
+  const pick = candidates[Math.floor(Math.random() * candidates.length)];
+  const [nx, nz] = clampToBounds(pick[0], pick[1]);
+  const yOff = -CHICKEN_LEVEL * LEVEL_DEPTH;
+  const floorY = levelFloorY + yOff;
+  const CS = 0.28;
+  const mat = new THREE.MeshStandardMaterial({color:0x000000,emissive:new THREE.Color(0x000000),emissiveIntensity:0,roughness:0.9,metalness:0});
+  const g = new THREE.Group();
+  g.add(new THREE.Mesh(new THREE.BoxGeometry(CS*2,0.025,0.07), mat));
+  g.add(new THREE.Mesh(new THREE.BoxGeometry(0.07,0.025,CS*2), mat));
+  g.position.set(nx, floorY, nz);
+  g.visible = true;
+  scene.add(g);
+  noclipZones.push({ x: nx, z: nz, levelIndex: CHICKEN_LEVEL, mesh: g });
+}
+
+function showChickenMsg(text, duration){
+  const el = document.getElementById('fall-msg');
+  if(!el) return;
+  el.textContent = text;
+  el.style.display = 'block';
+  el.style.opacity = '0';
+  setTimeout(()=>{ el.style.opacity = '1'; }, 60);
+  setTimeout(()=>{ el.style.opacity = '0'; setTimeout(()=>{ el.style.display = 'none'; }, 1200); }, duration);
+}
+
+function startChickenLevel(){
+  chickenHP = CHICKEN_MAX_HEALTH;
+  chickenActive = true;
+  chickenEscapeSpawned = false;
+  chickenDeathTriggered = false;
+  chickenLastHit = performance.now() + 3000; // 3s grace before first hit
+
+  // Show health bar
+  const wrap = document.getElementById('chicken-health-wrap');
+  if(wrap){ wrap.style.display = 'flex'; updateChickenHealth(); }
+
+  // Spawn the chicken if loaded, otherwise it spawns when load completes
+  if(chickenLoaded) showChicken();
+
+  // Entry message
+  showChickenMsg('find the gun and survive', 7000);
+
+  // 2-minute follow-up message
+  setTimeout(()=>{
+    if(currentLevel === CHICKEN_LEVEL && !chickenDeathTriggered){
+      showChickenMsg('no gun but keep running around like a headless chook', 7000);
+    }
+  }, CHICKEN_MSG_CHOOK_DELAY);
+}
+
+function stopChickenLevel(){
+  chickenActive = false;
+  hideChicken();
+  const wrap = document.getElementById('chicken-health-wrap');
+  if(wrap) wrap.style.display = 'none';
+}
+
+function updateChicken(dt, t){
+  if(!chickenActive || !chickenLoaded || !chickenActor || !chickenVisible) return;
+  chickenMixer.update(dt);
+
+  // Cycle through all 30 animations automatically
+  chickenAdvanceAnim(dt);
+
+  // ── Movement: orbit a slow-drifting anchor, drift INWARD over time so it can attack ──
+  // The anchor chases the player at a capped speed instead of being the
+  // player's live position, so walking toward the chicken actually closes
+  // the distance instead of the orbit re-centering on you every frame.
+  chickenAngle += dt * 0.38;
+  const playerPos = camera.position;
+  const wobble  = Math.sin(t * 0.0008) * 0.28;
+  const wobbleR = Math.sin(t * 0.0005) * 0.6;
+
+  const toPlayerX = playerPos.x - chickenAnchorX;
+  const toPlayerZ = playerPos.z - chickenAnchorZ;
+  const anchorDist = Math.sqrt(toPlayerX * toPlayerX + toPlayerZ * toPlayerZ);
+  const anchorStep = CHICKEN_ANCHOR_SPEED * dt;
+  if(anchorDist > anchorStep){
+    chickenAnchorX += (toPlayerX / anchorDist) * anchorStep;
+    chickenAnchorZ += (toPlayerZ / anchorDist) * anchorStep;
+  } else {
+    chickenAnchorX = playerPos.x;
+    chickenAnchorZ = playerPos.z;
+  }
+
+  const orbitR = chickenRadius + wobbleR;
+  chickenActor.position.x = chickenAnchorX + Math.sin(chickenAngle + wobble) * orbitR;
+  chickenActor.position.z = chickenAnchorZ + Math.cos(chickenAngle + wobble) * orbitR;
+
+  // Keep at floor level + raise model so feet sit ON the floor, not in it
+  const yOff = -CHICKEN_LEVEL * LEVEL_DEPTH;
+  chickenActor.position.y = levelFloorY + yOff + chickenYOffset;
+
+  // Face the player
+  chickenActor.rotation.y = Math.atan2(
+    playerPos.x - chickenActor.position.x,
+    playerPos.z - chickenActor.position.z
+  );
+
+  // ── Attack logic ──
+  const now  = performance.now();
+  const dx   = playerPos.x - chickenActor.position.x;
+  const dz   = playerPos.z - chickenActor.position.z;
+  const dist = Math.sqrt(dx * dx + dz * dz);
+
+  if(dist < CHICKEN_ATTACK_RANGE && now - chickenLastHit > CHICKEN_ATTACK_RATE){
+    chickenLastHit = now;
+    chickenHitPlayer();
+    // Lunge in closer briefly for drama
+    chickenRadius = Math.max(2.0, chickenRadius - 1.2);
+  } else {
+    // Slowly drift INWARD toward attack range (was drifting back OUT — that's why it never attacked)
+    const targetRadius = CHICKEN_ATTACK_RANGE - 0.5; // settle just inside attack range
+    if(chickenRadius > targetRadius){
+      chickenRadius = Math.max(targetRadius, chickenRadius - dt * 0.25);
+    }
+  }
+}
+
+function showShark(){
+  if(!sharkLoaded || !sharkActor) return;
+  sharkVisible = true;
+  sharkActor.visible = true;
+  sharkAngle = Math.random() * Math.PI * 2;
+  sharkRadius = 4.5 + Math.random() * 2;
+  sharkAnchorX = camera.position.x;
+  sharkAnchorZ = camera.position.z;
+  sharkPhase = 'cruise';
+  sharkNextPhaseAt = performance.now() + 6000 + Math.random() * 8000;
+  sharkMouthOpen = 0;
+}
+
+function hideShark(){
+  if(sharkActor) sharkActor.visible = false;
+  sharkVisible = false;
+}
+
+function updateShark(dt, t){
+  if(!sharkLoaded || !sharkActor || !sharkVisible) return;
+  sharkMixer.update(dt);
+
+  // Phase transitions
+  if(t > sharkNextPhaseAt){
+    if(sharkPhase === 'cruise'){
+      const roll = Math.random();
+      if(roll < 0.15){
+        // Direct attack from cruise
+        sharkPhase = 'attack';
+        sharkNextPhaseAt = t + 3500;
+        sharkMouthOpen = 1;
+        const playerPos = camera.position.clone();
+        sharkAttackYaw = Math.atan2(
+          playerPos.x - sharkActor.position.x,
+          playerPos.z - sharkActor.position.z
+        );
+      } else if(roll < 0.42){
+        // Fast circle then attack or leave — snapshot player's position NOW
+        // so the circle orbits that fixed point regardless of where player moves
+        sharkPhase = 'circle';
+        sharkCircleAnchorX = camera.position.x;
+        sharkCircleAnchorZ = camera.position.z;
+        sharkCircleRadius  = 3.2 + Math.random() * 1.4;
+        // Circle lasts 3–5 seconds then decides to attack or leave
+        sharkNextPhaseAt = t + 3000 + Math.random() * 2000;
+        sharkMouthOpen = 0;
+      } else if(roll < 0.55){
+        sharkPhase = 'tailwhip';
+        sharkNextPhaseAt = t + 2000;
+      } else if(roll < 0.72){
+        sharkPhase = 'fast';
+        sharkNextPhaseAt = t + 4000 + Math.random() * 3000;
+      } else {
+        // Stay cruising a bit longer
+        sharkNextPhaseAt = t + 5000 + Math.random() * 6000;
+      }
+    } else if(sharkPhase === 'circle'){
+      // After fast circling, either attack or retreat
+      const attackRoll = Math.random();
+      if(attackRoll < 0.6){
+        // Lunge attack after circling — already close, so this is terrifying
+        sharkPhase = 'attack';
+        sharkNextPhaseAt = t + 3000;
+        sharkMouthOpen = 1;
+        const playerPos = camera.position.clone();
+        sharkAttackYaw = Math.atan2(
+          playerPos.x - sharkActor.position.x,
+          playerPos.z - sharkActor.position.z
+        );
+      } else {
+        // Swim away — back to cruise from a distance
+        sharkPhase = 'cruise';
+        sharkNextPhaseAt = t + 7000 + Math.random() * 6000;
+        sharkMouthOpen = 0;
+        sharkAnchorX = sharkActor.position.x;
+        sharkAnchorZ = sharkActor.position.z;
+      }
+    } else {
+      sharkPhase = 'cruise';
+      sharkNextPhaseAt = t + 6000 + Math.random() * 8000;
+      sharkMouthOpen = 0;
+      // Re-anchor the patrol orbit to wherever the shark actually is right
+      // now (e.g. after an attack lunge), so it resumes circling smoothly
+      // instead of snapping back to an old, far-away orbit center.
+      sharkAnchorX = sharkActor.position.x;
+      sharkAnchorZ = sharkActor.position.z;
+    }
+  }
+
+  // Set swim speed based on phase
+  const targetSpeed = sharkPhase === 'fast'    ? 2.2 :
+                      sharkPhase === 'circle'  ? 3.8 :   // very fast tight circling
+                      sharkPhase === 'attack'  ? 3.0 :
+                      sharkPhase === 'tailwhip'? 1.8 : 0.55;
+  sharkSwimSpeed += (targetSpeed - sharkSwimSpeed) * Math.min(dt * 1.5, 1);
+
+  // Update mixer speed
+  if(sharkMixer._actions && sharkMixer._actions.length > 0){
+    sharkMixer._actions[0].timeScale = 0.5 + sharkSwimSpeed * 0.5;
+  }
+
+  // Circle the player
+  const levelY = -currentLevel * LEVEL_DEPTH;
+  const yOff = levelY;
+  const waterY = waterLevelLocal + yOff;
+  const swimY = waterY - 1.2 + Math.sin(t * 0.0008) * 0.4;
+
+  if(sharkPhase === 'attack'){
+    // Lunge toward player — no damage, purely visual
+    const playerPos = camera.position.clone();
+    sharkActor.position.x += (playerPos.x - sharkActor.position.x) * dt * 1.8;
+    sharkActor.position.z += (playerPos.z - sharkActor.position.z) * dt * 1.8;
+    sharkActor.position.y += (swimY - sharkActor.position.y) * dt * 2;
+    sharkActor.rotation.y = sharkAttackYaw + Math.PI;
+  } else if(sharkPhase === 'circle'){
+    // Fast tight circle around where the player WAS when it started —
+    // the circle anchor is FROZEN (sharkCircleAnchorX/Z), not chasing the player,
+    // so moving away doesn't prevent the circle from completing.
+    sharkAngle += dt * sharkSwimSpeed * 0.55; // faster angular rate for tight circle
+    sharkActor.position.x = sharkCircleAnchorX + Math.sin(sharkAngle) * sharkCircleRadius;
+    sharkActor.position.z = sharkCircleAnchorZ + Math.cos(sharkAngle) * sharkCircleRadius;
+    sharkActor.position.y = swimY + Math.sin(t * 0.003) * 0.3; // slight depth variation
+    sharkActor.rotation.y = sharkAngle + Math.PI / 2;
+  } else {
+    // Circular patrol with tailwhip wobble — orbits a slow-drifting anchor,
+    // NOT the player's live position, so it doesn't stay glued at a fixed
+    // distance when you swim toward it.
+    sharkAngle += dt * sharkSwimSpeed * 0.28;
+    const wobble = sharkPhase === 'tailwhip' ? Math.sin(t * 0.008) * 0.6 : 0;
+
+    const toPlayerX = camera.position.x - sharkAnchorX;
+    const toPlayerZ = camera.position.z - sharkAnchorZ;
+    const anchorDist = Math.sqrt(toPlayerX * toPlayerX + toPlayerZ * toPlayerZ);
+    const anchorStep = SHARK_ANCHOR_SPEED * dt;
+    if(anchorDist > anchorStep){
+      sharkAnchorX += (toPlayerX / anchorDist) * anchorStep;
+      sharkAnchorZ += (toPlayerZ / anchorDist) * anchorStep;
+    } else {
+      sharkAnchorX = camera.position.x;
+      sharkAnchorZ = camera.position.z;
+    }
+
+    sharkActor.position.x = sharkAnchorX + Math.sin(sharkAngle + wobble) * sharkRadius;
+    sharkActor.position.z = sharkAnchorZ + Math.cos(sharkAngle + wobble) * sharkRadius;
+    sharkActor.position.y = swimY;
+    sharkActor.rotation.y = sharkAngle + wobble + Math.PI / 2;
+  }
+}
+
+// ── BONE3 AUDIO ──────────────────────────────────────────────────────────────
+function initBone3Audio(){
+  if(bone3Audio) return;
+  bone3Audio = new Audio(BONE3_URL);
+  bone3Audio.volume = 0.9;
+  bone3Audio.preload = 'auto';
+}
+
+function maybePlayBone3(){
+  // 1-in-5 chance
+  if(Math.random() > 0.2) return;
+  if(!bone3Audio){ initBone3Audio(); }
+  setTimeout(()=>{
+    try {
+      bone3Audio.currentTime = 0;
+      bone3Audio.play().catch(()=>{});
+    } catch(e){}
+  }, 80);
+}
+
 function addBushToLevel(levelIndex, group){
-  if(!bushTemplate || isVoidLevel(levelIndex) || levelIndex < BUSH_VISIBLE_START_LEVEL) return;
+  if(!bushTemplate || isVoidLevel(levelIndex) || isCrossVoidLevel(levelIndex) || levelIndex < BUSH_VISIBLE_START_LEVEL || levelIndex >= FOOTAGE_STRIP_LEVEL) return;
+  const scaleXZ = BUSH_XZ_SCALE * BUSH_SCALE_TEST;
+  const instanceWidth = bushSizeZ * scaleXZ;
   if(!bushInstance){
     bushInstance = bushTemplate.clone(true);
-    bushInstance.scale.x = BUSH_XZ_SCALE;
-    bushInstance.scale.z = BUSH_XZ_SCALE;
     bushInstance.rotation.y = BUSH_ROTATION_Y;
   }
-  bushInstance.position.x = BUSH_NUDGE_X;
+  bushInstance.scale.x = scaleXZ;
+  bushInstance.scale.z = scaleXZ;
+  bushInstance.scale.y = BUSH_SCALE_TEST;
+  const yPos = levelFloorY + bushOffsetForLevel(levelIndex) * BUSH_SCALE_TEST;
+  // Sits half a width back from the known-good valley spot.
+  bushInstance.position.x = BUSH_NUDGE_X - instanceWidth / 2;
   bushInstance.position.z = BUSH_NUDGE_Z;
-  bushInstance.position.y = levelFloorY + bushOffsetForLevel(levelIndex);
+  bushInstance.position.y = yPos;
   group.add(bushInstance);
+
+  if(BUSH_DUPLICATE_ENABLED){
+    if(!bushInstance2){
+      bushInstance2 = bushTemplate.clone(true);
+      bushInstance2.rotation.y = BUSH_ROTATION_Y;
+    }
+    bushInstance2.scale.copy(bushInstance.scale);
+    // Sits half a width forward from the same spot — its left edge meets
+    // the first instance's right edge right at the valley's known-good point.
+    bushInstance2.position.x = BUSH_NUDGE_X + instanceWidth / 2;
+    bushInstance2.position.z = BUSH_NUDGE_Z + BUSH_DUPLICATE_NUDGE_Z;
+    bushInstance2.position.y = yPos + BUSH_DUPLICATE_NUDGE_Y;
+    group.add(bushInstance2);
+  }
+
   group.userData.bushAdded = true;
   group.userData.bushQueued = false;
 }
 
 function requestBushForLevel(levelIndex, group){
-  if(isVoidLevel(levelIndex) || levelIndex < BUSH_VISIBLE_START_LEVEL) return;
+  if(isVoidLevel(levelIndex) || isCrossVoidLevel(levelIndex) || levelIndex < BUSH_VISIBLE_START_LEVEL || levelIndex >= FOOTAGE_STRIP_LEVEL) return;
   if(group.userData.bushAdded && bushInstance && bushInstance.parent === group) return;
   if(group.userData.bushQueued) return;
   if(bushTemplate){
@@ -5059,6 +6345,9 @@ function requestBushForLevel(levelIndex, group){
 glbUrlReady.then(chosenUrl => {
   GLB_URL = chosenUrl;
   loadEntity();
+  loadShark();
+  loadChicken();
+  initBone3Audio();
   // Bush quality now follows the same FAST/HIRES pick as the map itself
   // (chosenUrl === GLB_1K on mobile automatically, since mobile always
   // resolves to GLB_1K without showing the selector).
@@ -5088,6 +6377,12 @@ glbUrlReady.then(chosenUrl => {
       LORE_BUTTON_DEF.pos = loreSnap.pos;
       LORE_BUTTON_DEF.ry  = loreSnap.ry;
       buildWallButton(LORE_BUTTON_DEF);
+
+      // Snap the new level-115 water TV to whichever wall is nearest the
+      // supplied coords — self-corrects for either wall orientation instead
+      // of relying on a hardcoded direction.
+      const waterSnap = snapButtonToWall([WATER_TV_X, WATER_TV_MOUNT_Y, WATER_TV_Z]);
+      waterTVSnap = { pos: waterSnap.pos, ry: waterSnap.ry };
 
       buildTikTokDoor();
       buildThisWayText();
@@ -5124,6 +6419,10 @@ document.addEventListener('keydown', e => {
       enterReturnLevel();
       return;
     }
+    if(currentLevel === CROSS_VOID_LEVEL && getDownDoorDistance() < 3){
+      enterLevel139();
+      return;
+    }
     // Check wall buttons (lore, tiktok)
     btnRaycaster.setFromCamera(new THREE.Vector2(0,0), camera);
     const btnMeshes = wallButtonMeshes.map(b => b.mesh);
@@ -5145,7 +6444,13 @@ const joyR  = { dx:0, dy:0 };
 
 function setupJoystick(el, knob, isRight){
   let active=false, startX=0, startY=0, id=-1;
-  const R=55;
+
+  // Drag radius tracks the stick's actual rendered size (now viewport-based
+  // via CSS clamp/vmin) instead of a hardcoded px value, so the feel stays
+  // consistent whether portrait or landscape shrinks/grows the control.
+  function currentR(){
+    return Math.max(30, el.offsetWidth / 2);
+  }
 
   function onStart(e){
     e.preventDefault();
@@ -5158,6 +6463,7 @@ function setupJoystick(el, knob, isRight){
     let t=null;
     for(const touch of e.changedTouches){ if(touch.identifier===id){ t=touch; break; } }
     if(!t) return;
+    const R=currentR();
     const dx=Math.max(-R,Math.min(R, t.clientX-startX));
     const dy=Math.max(-R,Math.min(R, t.clientY-startY));
     knob.style.transform=`translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
@@ -5203,6 +6509,11 @@ window.addEventListener('click', () => {
 
   if(currentLevel === VOID_END_LEVEL && getVoidDoorDistance() < 3){
     enterReturnLevel();
+    return;
+  }
+
+  if(currentLevel === CROSS_VOID_LEVEL && getDownDoorDistance() < 3){
+    enterLevel139();
     return;
   }
 
@@ -5255,8 +6566,15 @@ function animate(t){
         camera.position.x = VOID_RING_CENTER.x;
         camera.position.z = VOID_RING_CENTER.z;
       }
+      // Level 138 is the same deal — no floor, so land dead centre of the
+      // cross, right by the white "down" door.
+      if(isCrossVoidLevel(currentLevel)){
+        camera.position.x = CROSS_VOID_CENTER.x;
+        camera.position.z = CROSS_VOID_CENTER.z;
+      }
       // Show landing message
       showFallMessage();
+      maybePlayBone3();
       if(currentLevel === 30){
         setTimeout(()=>{
           showStage30Cue("THIS IS GETTING REAL.\nWATCH THE FOOTAGE.", 7200);
@@ -5422,6 +6740,33 @@ function animate(t){
         voidAutoFallAt = 0;
         triggerFall();
       }
+    } else if(currentLevel >= WATER_START_LEVEL && currentLevel <= waterExitLevel()){
+      // Water sequence — this whole level range is claimed here so it never
+      // falls through to the generic zone loop below (that loop would fire
+      // on the pre-placed zone immediately, before play is even pressed).
+      // The zone only actually triggers once waterActive AND this stage's
+      // water has reached the trigger height. The final (exit) level uses
+      // the normal random zone instead, spawned above.
+      if(waterActive){
+        const zone = noclipZones.find(z => z.levelIndex === currentLevel);
+        if(zone && !isFalling){
+          const isExitStage = currentLevel === waterExitLevel();
+          const reached = isExitStage || waterLevelLocal >= (waterBaselineLocal + waterStep() - 0.01);
+          if(reached){
+            const dx = px - zone.x, dz = pz - zone.z;
+            if(Math.sqrt(dx*dx + dz*dz) < NOCLIP_RADIUS) triggerFall();
+          }
+        }
+      }
+    } else if(currentLevel === CHICKEN_LEVEL){
+      // Level 150 — fall zone only active after escape is spawned (at 10hp)
+      if(chickenEscapeSpawned && !chickenDeathTriggered){
+        const zone = noclipZones.find(z => z.levelIndex === CHICKEN_LEVEL);
+        if(zone && !isFalling){
+          const dx = px - zone.x, dz = pz - zone.z;
+          if(Math.sqrt(dx*dx + dz*dz) < NOCLIP_RADIUS) triggerFall();
+        }
+      }
     } else {
       // Normal levels — standard zone checking
       for(const zone of noclipZones){
@@ -5434,6 +6779,8 @@ function animate(t){
   }
 
   updateEntity(t, dt);
+  updateShark(dt, t);
+  if(currentLevel === CHICKEN_LEVEL) updateChicken(dt, t);
 
   // ── UPDATE BLOOD LEVEL (Level 30) ────────────────────────────────────────
   if(currentLevel === 30 && bloodActive){
@@ -5497,6 +6844,150 @@ function animate(t){
         }, 5000);
       }
     }
+  }
+
+  // ── UPDATE WATER LEVEL (levels 115+ Dominion sequence) ──────────────────
+  if(currentLevel >= WATER_START_LEVEL && currentLevel <= waterExitLevel() && waterActive){
+    const waterFloor = levelFloorY + 0.02;
+    const stageElapsed = performance.now() - waterStartTime;
+    // On the final stage: fill from baseline all the way to the ceiling (BLOOD_MAX).
+    // WATER_STAGE_DURATION is reused as the fill time so pacing stays consistent.
+    const isLastWaterStage = currentLevel === waterExitLevel();
+    const riseTarget = isLastWaterStage
+      ? (BLOOD_MAX - Math.max(waterFloor, waterBaselineLocal))
+      : waterStep();
+    const fillProgress = Math.min(1, stageElapsed / WATER_STAGE_DURATION);
+    waterLevelLocal = Math.max(waterFloor, waterBaselineLocal) + riseTarget * fillProgress;
+    const yOffW = -currentLevel * LEVEL_DEPTH;
+    if(waterPlane) waterPlane.position.y = waterLevelLocal + yOffW;
+    const nowW = performance.now();
+    const surfaceYW = waterLevelLocal + yOffW;
+    // Death triggers when water clears the ceiling (BLOOD_MAX + ~0.35m above)
+    const ceilingY = (levelFloorY + BLOOD_MAX) + yOffW;
+    waterSubmerged = surfaceYW + 0.12 >= camera.position.y;
+    const waveTimeW = nowW * 0.001;
+    waterWaveMeshes.forEach((wave, index)=>{
+      const spec = wave.userData.waveSpec;
+      wave.position.y = surfaceYW + spec.offset +
+        Math.sin(waveTimeW * (0.6 + index * .15) + index * 2.0) * .06;
+      wave.rotation.z = Math.sin(waveTimeW * (0.42 + index * .1) + index) * .01;
+      wave.rotation.x = -Math.PI / 2 +
+        Math.cos(waveTimeW * (0.32 + index * .07) + index) * .005;
+    });
+    if(waterFleckMesh){
+      waterFleckMesh.position.y = surfaceYW + 0.02;
+      const speckTex = waterFleckMesh.userData.speckTex;
+      if(speckTex){
+        speckTex.offset.x = (waveTimeW * 0.006) % 1;
+        speckTex.offset.y = (waveTimeW * 0.004) % 1;
+      }
+    }
+    if(waterVeilEl){
+      const submersionW = Math.max(0, Math.min(1, (surfaceYW - camera.position.y + .25) / 2.4));
+      if(submersionW > 0){
+        waterVeilEl.style.display = 'block';
+        waterVeilEl.style.opacity = String(waterSubmerged ? 0.94 : .10 + submersionW * .68);
+      } else {
+        waterVeilEl.style.opacity = '0';
+        setTimeout(()=>{ if(waterVeilEl.style.opacity === '0') waterVeilEl.style.display = 'none'; }, 400);
+      }
+    }
+    if(filmGrainEl){
+      if(waterSubmerged){
+        filmGrainEl.style.display = 'block';
+        filmGrainEl.style.opacity = '0.06';
+      } else {
+        filmGrainEl.style.opacity = '0';
+        setTimeout(()=>{ if(filmGrainEl.style.opacity === '0') filmGrainEl.style.display = 'none'; }, 500);
+      }
+    }
+
+    // ── SHARK: spawn only on the final water stage ──────────────────────────
+    if(currentLevel === waterExitLevel()){
+      if(sharkLoaded && !sharkVisible && waterActive){
+        showShark();
+      }
+    } else if(sharkVisible){
+      // Left the exit stage somehow — hide the shark
+      hideShark();
+    }
+
+    // ── FINAL WATER STAGE: 120-second countdown + 60s noclip spawn ──────────
+    if(currentLevel === waterExitLevel() && !isFalling && !waterDeathShown){
+
+      // Start 120s countdown the moment we land on this stage and water is active
+      if(waterActive && !window._waterCountdownStarted){
+        window._waterCountdownStarted = true;
+        window._waterCountdownEnd = nowW + 120000; // 120 seconds
+        window._waterNoclipSpawned = false;
+
+        // Build countdown HUD if not present
+        if(!document.getElementById('water-countdown')){
+          const cd = document.createElement('div');
+          cd.id = 'water-countdown';
+          cd.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);color:rgba(60,150,255,0.92);font-family:"Courier New",monospace;font-size:clamp(38px,7vw,88px);letter-spacing:6px;pointer-events:none;z-index:8;text-shadow:0 0 24px rgba(40,120,255,0.9),0 0 48px rgba(20,80,220,0.5);display:none;text-align:center;';
+          document.body.appendChild(cd);
+        }
+        document.getElementById('water-countdown').style.display = 'block';
+      }
+
+      // Update countdown display
+      if(window._waterCountdownStarted && document.getElementById('water-countdown')){
+        const secsLeft = Math.max(0, Math.ceil((window._waterCountdownEnd - nowW) / 1000));
+        document.getElementById('water-countdown').textContent = secsLeft > 0 ? secsLeft : '☠';
+      }
+
+      // At 60 seconds remaining: spawn the random noclip zone so player has 60s to find it
+      if(window._waterCountdownStarted && !window._waterNoclipSpawned){
+        const secsLeft = (window._waterCountdownEnd - nowW) / 1000;
+        if(secsLeft <= 60){
+          window._waterNoclipSpawned = true;
+          // Pick a random position and place a noclip zone for this level
+          const existing = noclipZones.find(z => z.levelIndex === currentLevel);
+          if(!existing){
+            const candidates = [
+              [ 3, -6], [-4,-10], [ 6,-18], [-5,-22],
+              [ 2,-30], [-6,-35], [ 8, -4], [-8, -8],
+              [ 4,-14], [-3,-26],
+            ];
+            const pick = candidates[Math.floor(Math.random() * candidates.length)];
+            const [nx, nz] = clampToBounds(pick[0], pick[1]);
+            const yOff2 = -currentLevel * LEVEL_DEPTH;
+            const floorY2 = levelFloorY + yOff2;
+            const CROSS_SIZE2 = 0.28;
+            const mat2 = new THREE.MeshStandardMaterial({color:0x000000,emissive:new THREE.Color(0x000000),emissiveIntensity:0,roughness:0.9,metalness:0});
+            const g2 = new THREE.Group();
+            g2.add(new THREE.Mesh(new THREE.BoxGeometry(CROSS_SIZE2*2,0.025,0.07), mat2));
+            g2.add(new THREE.Mesh(new THREE.BoxGeometry(0.07,0.025,CROSS_SIZE2*2), mat2));
+            g2.position.set(nx, floorY2, nz);
+            g2.visible = true;
+            scene.add(g2);
+            noclipZones.push({ x: nx, z: nz, levelIndex: currentLevel, mesh: g2 });
+          }
+        }
+      }
+
+      // Death: countdown reaches zero
+      if(window._waterCountdownStarted && nowW >= window._waterCountdownEnd){
+        waterDeathShown = true;
+        window._waterCountdownStarted = false;
+        const cdEl = document.getElementById('water-countdown');
+        if(cdEl) cdEl.style.display = 'none';
+        hideShark();
+        stopBroadcasts();
+        if(waterAudioEl) waterAudioEl.pause();
+        stopWaterVisuals();
+        showDeathScreen();
+        setTimeout(()=>{
+          window.location.href = 'https://earthlingofficial.com/veganbros.html';
+        }, 5000);
+      }
+    }
+  } else if(!waterActive && sharkVisible){
+    hideShark();
+    window._waterCountdownStarted = false;
+    const cdEl = document.getElementById('water-countdown');
+    if(cdEl) cdEl.style.display = 'none';
   }
 
   // Fuzz TVs — animate static on all wall TVs except video screens
