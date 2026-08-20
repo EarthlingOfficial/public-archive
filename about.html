@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>About & Editorial Standards — Earthling Official</title>
+<meta name="description" content="Who runs Earthling Official, why the reporter publishes under a pseudonym, and how case information is verified and sourced.">
+<meta property="og:title" content="About & Editorial Standards — Earthling Official">
+<meta property="og:description" content="Who runs Earthling Official, why the reporter publishes under a pseudonym, and how case information is verified and sourced.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Earthling Official">
+<meta property="og:url" content="https://earthlingofficial.com/about.html">
+<meta property="og:image" content="https://raw.githubusercontent.com/EarthlingOfficial/public-archive/main/commm.jpg">
+<meta property="og:image:alt" content="Earthling Official — About & Editorial Standards">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="About & Editorial Standards — Earthling Official">
+<meta name="twitter:description" content="Who runs Earthling Official, why the reporter publishes under a pseudonym, and how case information is verified and sourced.">
+<meta name="twitter:image" content="https://raw.githubusercontent.com/EarthlingOfficial/public-archive/main/comm.jpg">
+<link rel="canonical" href="https://earthlingofficial.com/about.html">
+<style>
+  :root{
+    --bg:#f6f4ee;
+    --panel:#ffffff;
+    --line:#dcd6c8;
+    --text:#25281f;
+    --dim:#726c5c;
+    --moss:#3f5d3a;
+    --moss-dark:#2c4128;
+    --amber:#b8842e;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html,body{ background:var(--bg); }
+  body {
+    font-family: Georgia, 'Times New Roman', serif;
+    line-height: 1.65;
+    color: var(--text);
+  }
+  .topbar{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:18px 24px;
+    background:var(--moss-dark);
+    border-bottom:3px solid var(--amber);
+  }
+  .brand{ display:flex; align-items:center; gap:10px; text-decoration:none; color:#fff; }
+  .brand-mark{
+    width:34px; height:34px; border-radius:8px;
+    background:var(--amber);
+    display:flex; align-items:center; justify-content:center;
+    font-weight:800; font-size:16px; color:#2c4128;
+    font-family: Georgia, serif;
+  }
+  .brand-name{ font-weight:700; font-size:16px; letter-spacing:.3px; }
+  .topbar nav{ display:flex; gap:14px; font-family: -apple-system, Arial, sans-serif; }
+  .topbar nav a{
+    color:#e8e4d6; text-decoration:none; font-size:13px; font-weight:600;
+    padding:7px 14px; border-radius:6px; border:1px solid #4d6b47;
+  }
+  .topbar nav a:hover{ color:#fff; border-color:var(--amber); background:#375233; }
+
+  .container { max-width: 700px; margin: 0 auto; padding: 0 0 60px; }
+
+  .breadcrumbs{ padding:16px 24px 0; font-size:13px; color:var(--dim); font-family: -apple-system, Arial, sans-serif; }
+  .breadcrumbs ol{ list-style:none; display:flex; flex-wrap:wrap; gap:6px; padding:0; margin:0; }
+  .breadcrumbs li{ display:flex; align-items:center; gap:6px; }
+  .breadcrumbs li:not(:last-child)::after{ content:"›"; color:var(--line); margin-left:6px; }
+  .breadcrumbs a{ color:var(--dim); }
+  .breadcrumbs a:hover{ color:var(--moss); text-decoration:none; }
+  .breadcrumbs li[aria-current="page"]{ color:var(--text); font-weight:600; }
+
+  .article-head{ padding: 30px 24px 0; }
+  .kicker{
+    display:inline-flex; align-items:center; gap:6px;
+    color:var(--moss); font-size:12px; font-weight:700; letter-spacing:1px; text-transform:uppercase;
+    margin-bottom:16px; font-family: -apple-system, Arial, sans-serif;
+  }
+  .kicker::before{ content:"❧"; font-size:14px; }
+
+  h1 { font-size: 30px; line-height:1.25; margin-bottom: 16px; color: var(--moss-dark); font-weight:700; }
+  .meta { font-size: 13px; color: var(--dim); margin-bottom: 24px; padding-bottom: 20px; border-bottom: 1px solid var(--line); font-family: -apple-system, Arial, sans-serif; }
+  .meta b{ color:var(--text); }
+
+  h2 { font-size: 21px; margin-top: 38px; margin-bottom: 14px; color: var(--moss-dark); font-weight:700; padding:0 24px; }
+  p { margin-bottom: 15px; padding:0 24px; color:#3a3a30; font-size:16px; }
+  ul{ padding:0 24px 0 48px; margin-bottom:16px; }
+  ul li{ color:#3a3a30; margin-bottom:10px; font-size:16px; }
+
+  .intro-card{
+    margin:0 24px 24px; padding:20px 22px; border-left:4px solid var(--moss); border-radius:4px; background:var(--panel);
+  }
+  .intro-card .lede{ padding:0; margin-bottom:0; font-style:italic; color:#4a4a3e; }
+
+  .safety-note{ margin:26px 24px; padding: 20px 22px; border: 1px solid #d8c48a; background: #fbf3dc; border-radius: 8px; color:#5c4a1a; }
+  .safety-note strong{ color:#3d3010; }
+
+  a { color: var(--moss); text-decoration: underline; text-decoration-color: var(--line); }
+  a:hover { color: var(--moss-dark); }
+
+  .site-links{
+    margin:0 24px 24px; padding:18px; border:1px solid var(--line); border-radius:8px; background:var(--panel);
+    display:flex; flex-wrap:wrap; gap:12px; font-family: -apple-system, Arial, sans-serif;
+  }
+  .pill-link{
+    display:inline-flex; align-items:center; gap:6px;
+    font-size:14px; font-weight:700; color:var(--moss-dark);
+    border:1px solid var(--moss); padding:9px 16px; border-radius:6px;
+    background:#f0ede2; text-decoration:none;
+  }
+  .pill-link:hover{ background:var(--moss); color:#fff; }
+
+  .footer {
+    margin: 44px 24px 0; padding-top: 20px; border-top: 1px solid var(--line);
+    font-size: 12px; color: var(--dim); font-family: -apple-system, Arial, sans-serif;
+  }
+  .footer a{ color:var(--dim); }
+  .footer a:hover{ color:var(--moss); }
+</style>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "AboutPage",
+  "name": "About & Editorial Standards — Earthling Official",
+  "url": "https://earthlingofficial.com/about.html",
+  "mainEntity": {
+    "@type": "Organization",
+    "name": "Earthling Official",
+    "url": "https://earthlingofficial.com",
+    "sameAs": ["https://www.tiktok.com/@earthling_official"]
+  }
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position": 1,
+      "name": "Home",
+      "item": "https://earthlingofficial.com"
+    },
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "name": "About",
+      "item": "https://earthlingofficial.com/about.html"
+    }
+  ]
+}
+</script>
+</head>
+<body>
+
+<div class="topbar">
+  <a class="brand" href="https://earthlingofficial.com">
+    <span class="brand-mark">E</span>
+    <span class="brand-name">Earthling Official</span>
+  </a>
+  <nav>
+    <a href="https://earthlingofficial.com">Home</a>
+    <a href="https://earthlingofficial.com/find-sally-contarino.html">Find Sally</a>
+  </nav>
+</div>
+
+<div class="container">
+
+<nav class="breadcrumbs" aria-label="Breadcrumb">
+  <ol>
+    <li><a href="https://earthlingofficial.com">Home</a></li>
+    <li aria-current="page">About</li>
+  </ol>
+</nav>
+
+<div class="article-head">
+  <div class="kicker">About This Site</div>
+  <h1>About Earthling Official & Our Editorial Standards</h1>
+  <div class="meta">
+    Last updated: <b>August 20, 2026</b>
+  </div>
+</div>
+
+<div class="intro-card">
+<p class="lede">
+Earthling Official is an independent, non-commercial advocacy and archive project covering missing persons awareness, platform accountability, and public digital discourse. This page explains who publishes this site, why, and how information is verified.
+</p>
+</div>
+
+<img src="https://raw.githubusercontent.com/EarthlingOfficial/public-archive/main/comm.jpg" alt="Earthling Official" style="width:calc(100% - 48px);border-radius:8px;margin:0 24px 28px;display:block;">
+
+<h2>Why This Site Doesn't Use a Personal Byline</h2>
+<p>
+The person behind Earthling Official has received direct threats after public reporting and commentary work — including being publicly mischaracterized by a subject covered on this site. For personal safety, content here is published under the site name rather than a personal name. This is a safety decision, not an attempt to avoid accountability: the site maintains a consistent identity, a documented publishing history, and a public contact channel below for verification, corrections, or press inquiries.
+</p>
+
+<div class="safety-note">
+<strong>A note on safety:</strong> Pseudonymous publication for personal safety is a recognized and legitimate journalistic practice, used by reporters covering harassment campaigns, organized crime, extremism, and other subjects where public identification creates real risk. It does not change the standard this site holds itself to for accuracy and sourcing.
+</div>
+
+<h2>What This Site Covers</h2>
+<ul>
+  <li>Missing persons awareness — currently centered on the active case of Sally Grace Contarino (LVMPD Case #LLV260600083886)</li>
+  <li>Platform accountability reporting — documenting how social platforms handle missing persons content, moderation, and advertiser disputes</li>
+  <li>Public discourse and digital culture commentary, including satire and interactive media</li>
+</ul>
+<p>
+Missing persons content on this site is kept factually grounded and links directly to the relevant law enforcement agency for tips or information — this site is a visibility and awareness effort, not an investigative authority, and defers to police on all case facts.
+</p>
+
+<h2>How Information Is Verified</h2>
+<ul>
+  <li>Case details (names, dates, case numbers) are sourced from official police releases or confirmed news reporting, and cross-checked before publishing</li>
+  <li>Claims about platform behavior (ad restrictions, account flags, support responses) are documented with screenshots and timestamps at the time of the incident</li>
+  <li>Uncertain claims are stated as uncertain — this site avoids presenting speculation as confirmed fact, and flags where causation can't be proven</li>
+  <li>Corrections are made when errors are identified — see contact details below</li>
+</ul>
+
+<h2>Non-Commercial & Non-Partisan</h2>
+<p>
+Earthling Official is not commercially sponsored and does not accept payment for coverage. Missing persons advocacy content is run for awareness purposes only. Commentary and satire content elsewhere on the site is clearly distinct from case reporting and is not intended to be read as factual claims about real individuals beyond what is explicitly sourced.
+</p>
+
+<h2>Contact & Corrections</h2>
+<p>
+For corrections, tips, verification requests, or press inquiries, reach Earthling Official via TikTok: <a href="https://www.tiktok.com/@earthling_official">@earthling_official</a>.
+</p>
+
+<div class="site-links">
+  <a class="pill-link" href="https://earthlingofficial.com">← Back to Earthling Official</a>
+  <a class="pill-link" href="https://www.tiktok.com/@earthling_official">Contact on TikTok →</a>
+</div>
+
+<div class="footer">
+Earthling Official — Australian vegan advocacy, missing persons awareness, and independent media.
+</div>
+
+</div>
+</body>
+</html>
