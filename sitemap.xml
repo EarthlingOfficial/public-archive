@@ -1,95 +1,105 @@
-<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-
-  <!-- Core -->
-  <url>
-    <loc>https://earthlingofficial.com/</loc>
-    <priority>1.0</priority>
-  </url>
-  <url>
-    <loc>https://earthlingofficial.com/quiz.html</loc>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://earthlingofficial.com/sapiencism.html</loc>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://earthlingofficial.com/deanus-politicus-carnivorus-paradoxus.html</loc>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://earthlingofficial.com/keepdeansafe.html</loc>
-    <priority>0.6</priority>
-  </url>
-  <url>
-    <loc>https://earthlingofficial.com/public-conduct-record.html</loc>
-    <priority>0.6</priority>
-  </url>
-  <url>
-    <loc>https://earthlingofficial.com/legal.html</loc>
-    <priority>0.4</priority>
-  </url>
-
-  <!-- Sally Contarino -->
-  <url>
-    <loc>https://earthlingofficial.com/find-sally-contarino.html</loc>
-    <priority>0.9</priority>
-  </url>
-  <url>
-    <loc>https://earthlingofficial.com/cari-sally-contarino.html</loc>
-    <priority>0.9</priority>
-  </url>
-  <url>
-    <loc>https://earthlingofficial.com/sally-contarino-missing-las-vegas.html</loc>
-    <priority>0.9</priority>
-  </url>
-  <url>
-    <loc>https://earthlingofficial.com/sally-contarino-news.html</loc>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://earthlingofficial.com/sally-contarino-videos.html</loc>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://earthlingofficial.com/sally-contarino-viral.html</loc>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://earthlingofficial.com/sally-contarino-reddit.html</loc>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://earthlingofficial.com/reddit-missing-persons-suppression.html</loc>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://earthlingofficial.com/missing-behind-paywall.html</loc>
-    <priority>0.8</priority>
-  </url>
-
-  <!-- Go Dean! Game Series -->
-  <url>
-    <loc>https://earthlingofficial.com/veganbros.html</loc>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://earthlingofficial.com/veganbrosstage9.html</loc>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://earthlingofficial.com/veganbrosstage8.html</loc>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://earthlingofficial.com/veganbrosstage7.html</loc>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://earthlingofficial.com/veganbrosstage6.html</loc>
-    <priority>0.7</priority>
-  </url>
-
+<!--  Core  -->
+<url>
+<loc>https://earthlingofficial.com/</loc>
+<priority>1.0</priority>
+</url>
+<url>
+<loc>https://earthlingofficial.com/about.html</loc>
+<priority>0.8</priority>
+</url>
+<url>
+<loc>https://earthlingofficial.com/quiz.html</loc>
+<priority>0.8</priority>
+</url>
+<url>
+<loc>https://earthlingofficial.com/sapiencism.html</loc>
+<priority>0.8</priority>
+</url>
+<url>
+<loc>https://earthlingofficial.com/deanus-politicus-carnivorus-paradoxus.html</loc>
+<priority>0.7</priority>
+</url>
+<url>
+<loc>https://earthlingofficial.com/keepdeansafe.html</loc>
+<priority>0.6</priority>
+</url>
+<url>
+<loc>https://earthlingofficial.com/public-conduct-record.html</loc>
+<priority>0.6</priority>
+</url>
+<url>
+<loc>https://earthlingofficial.com/legal.html</loc>
+<priority>0.4</priority>
+</url>
+<!--  Sally Contarino  -->
+<url>
+<loc>https://earthlingofficial.com/find-sally-contarino.html</loc>
+<priority>0.9</priority>
+</url>
+<url>
+<loc>https://earthlingofficial.com/cari-sally-contarino.html</loc>
+<priority>0.9</priority>
+</url>
+<url>
+<loc>https://earthlingofficial.com/sally-contarino-missing-las-vegas.html</loc>
+<priority>0.9</priority>
+</url>
+<url>
+<loc>https://earthlingofficial.com/sally-contarino-news.html</loc>
+<priority>0.8</priority>
+</url>
+<url>
+<loc>https://earthlingofficial.com/sally-contarino-videos.html</loc>
+<priority>0.8</priority>
+</url>
+<url>
+<loc>https://earthlingofficial.com/sally-contarino-viral.html</loc>
+<priority>0.7</priority>
+</url>
+<url>
+<loc>https://earthlingofficial.com/sally-contarino-reddit.html</loc>
+<priority>0.7</priority>
+</url>
+<url>
+<loc>https://earthlingofficial.com/reddit-missing-persons-suppression.html</loc>
+<priority>0.7</priority>
+</url>
+<url>
+<loc>https://earthlingofficial.com/missing-behind-paywall.html</loc>
+<priority>0.8</priority>
+</url>
+<!--  Go Dean! Game Series  -->
+<url>
+<loc>https://earthlingofficial.com/veganbros.html</loc>
+<priority>0.8</priority>
+</url>
+<url>
+<loc>https://earthlingofficial.com/the-backrooms.html</loc>
+<priority>0.8</priority>
+</url>
+<url>
+<loc>https://earthlingofficial.com/veganbrosstage10.html</loc>
+<priority>0.7</priority>
+</url>
+<url>
+<loc>https://earthlingofficial.com/veganbrosstage9.html</loc>
+<priority>0.7</priority>
+</url>
+<url>
+<loc>https://earthlingofficial.com/veganbrosstage8.html</loc>
+<priority>0.7</priority>
+</url>
+<url>
+<loc>https://earthlingofficial.com/veganbrosstage7.html</loc>
+<priority>0.7</priority>
+</url>
+<url>
+<loc>https://earthlingofficial.com/veganbrosstage6.html</loc>
+<priority>0.7</priority>
+</url>
+<url>
+<loc>https://earthlingofficial.com/veganbrosstage5.html</loc>
+<priority>0.7</priority>
+</url>
 </urlset>
-
