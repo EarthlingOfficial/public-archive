@@ -765,7 +765,15 @@ const VOID_LIVE_FEEDS = [
 const RUMBLE_VIDEO_EMBED = 'https://www.youtube.com/embed/ReasWedj2rA?si=1VmwbOh4Y4GV-0L3&autoplay=1&enablejsapi=1';
 const RUMBLE_ACCOUNT_URL = 'https://rumble.com/user/earthlingofficial';
 const T3_VIDEO_EMBED = 'https://www.youtube.com/embed/uYJAuw52Zek?si=OuoEq51-1cC3O92G&autoplay=1&enablejsapi=1';
-const RUMBLE_PUB_CODE = '4q8ygs'; // used by the Rumble JS Player API loader
+
+// T2/T8 — permanent monetized Rumble links, PC only, from level 1 onward
+// (never stripped, unlike T9/T3 — see level-build loop below). Mobile can't
+// reliably tap-to-play the Rumble JS player, so it gets the catbox mp4
+// mirrors instead, played as a plain video texture like T10/T4.
+const T2_VIDEO_EMBED = 'https://rumble.com/embed/v7cgdbs/?pub=4q8ygs'; // Black Triangles and the Truth About Go Dean
+const T8_VIDEO_EMBED = 'https://rumble.com/embed/v7cbn8w/?pub=4q8ygs'; // Dean Withers Pushed by Australian
+const T2_VIDEO_URL_MOBILE = 'https://files.catbox.moe/jx3w5t.mp4'; // Black Triangles — catbox mirror for mobile
+const T8_VIDEO_URL_MOBILE = 'https://files.catbox.moe/1sx18z.mp4'; // Pushed one — catbox mirror for mobile
 
 // Level 71 resumes the normal build. Only 4 signals are new: news on T5,
 // both window feeds, and one normal wall TV. Everything else in the GLB
@@ -1030,9 +1038,11 @@ let chickenAnimClips  = [];    // all 30 clips
 let chickenAnimIdx    = 0;     // which clip is playing
 let chickenAnimTimer  = 0;     // seconds until next clip switch
 let chickenYOffset    = 0;     // auto-computed foot lift so model isn't in the ground
+const _chickenMeasureBox = new THREE.Box3(); // reused every frame to re-measure the animated pose's actual lowest point
+const CHICKEN_EXTRA_LIFT = 1.5;  // manual fine-tune (metres) — keeps the chicken on the visible floor while lowering the previous 1.8m placement slightly.
 let chickenAnchorX    = 0;     // orbit center — drifts toward player at capped speed, not locked to it
 let chickenAnchorZ    = 0;
-const CHICKEN_ANCHOR_SPEED = 2.4; // units/sec the anchor is allowed to chase the player
+const CHICKEN_ANCHOR_SPEED = 5.0; // units/sec — the chicken should actively close distance, not trail behind the player
 
 // ── SHARK STATE ───────────────────────────────────────────────────────────────
 let sharkActor      = null;
@@ -1042,7 +1052,7 @@ let sharkVisible    = false;
 let sharkSwimSpeed  = 1.0;
 let sharkAngle      = 0;
 let sharkRadius     = 5.5;
-let sharkPhase      = 'cruise';   // cruise | fast | attack | tailwhip
+let sharkPhase      = 'cruise';   // cruise | fast | circle | attack | tailwhip
 let sharkPhaseTimer = 0;
 let sharkNextPhaseAt = 0;
 let sharkAttackYaw  = 0;
@@ -1050,7 +1060,17 @@ let sharkMouthBone  = null;
 let sharkMouthOpen  = 0;
 let sharkAnchorX    = 0;     // orbit center — snapshot of player pos, not locked to it live
 let sharkAnchorZ    = 0;
+let sharkCircleAnchorX = 0; // frozen anchor for the fast-circle phase (player pos at circle start)
+let sharkCircleAnchorZ = 0;
+let sharkCircleRadius  = 3.8; // tighter circle for dramatic effect
 const SHARK_ANCHOR_SPEED = 1.1; // units/sec the anchor is allowed to drift during cruise
+// Every phase switch used to snap the shark straight to a brand-new anchor+radius,
+// which is what caused it to "teleport"/jump and occasionally appear to move
+// backwards. Instead of trusting the raw formula position immediately, blend
+// from wherever it actually was into the new phase's position over a short window.
+let sharkBlendFromX = 0, sharkBlendFromZ = 0, sharkBlendFromY = 0;
+let sharkBlendStartT = -99999;
+const SHARK_BLEND_MS = 550;
 const BONE3_URL = 'https://raw.githubusercontent.com/EarthlingOfficial/public-archive/main/bone3.mp3';
 let bone3Audio  = null;
 let entityAction    = null;
@@ -3011,7 +3031,18 @@ renderer.outputColorSpace  = THREE.SRGBColorSpace;
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x000000);
-scene.fog = new THREE.FogExp2(0x1a1208, 0.035);
+
+// Every scene.fog assignment in this file goes through here so mobile's
+// short draw distance stays consistent everywhere (normal levels, void,
+// cross-void, level 30) instead of only being fixed in one spot and
+// reverting the moment the level changes — which is what went wrong last
+// time. Desktop densities are untouched; mobile gets a flat multiplier so
+// visibility drops to roughly 10m instead of 40m+.
+const MOBILE_FOG_DENSITY_MULT = 4.5;
+function applyFog(color, density){
+  scene.fog = new THREE.FogExp2(color, isMobile ? density * MOBILE_FOG_DENSITY_MULT : density);
+}
+applyFog(0x1a1208, 0.035);
 
 // Neutral studio-lit PMREM map, kept for the bush's materials only (applied
 // in loadBushFloor below) — NOT assigned to scene.environment, since that
@@ -3302,6 +3333,30 @@ function createT10VideoTex(){
   );
   t10VideoEl = result.vid;
   t10VideoTex = result.tex;
+  return result.tex;
+}
+
+// T2/T8 mobile — same two Rumble videos as the PC embeds, but played as a
+// plain video texture from the catbox mirrors since Rumble's JS player
+// doesn't reliably respond to a tap on touch devices.
+let t2VideoEl = null;
+let t2VideoTex = null;
+let t8VideoEl = null;
+let t8VideoTex = null;
+
+function createT2VideoTex(){
+  if(t2VideoEl) return t2VideoTex;
+  const result = createVideoTexture(T2_VIDEO_URL_MOBILE, { autoplay: false, volume: 0.85 });
+  t2VideoEl = result.vid;
+  t2VideoTex = result.tex;
+  return result.tex;
+}
+
+function createT8VideoTex(){
+  if(t8VideoEl) return t8VideoTex;
+  const result = createVideoTexture(T8_VIDEO_URL_MOBILE, { autoplay: false, volume: 0.85 });
+  t8VideoEl = result.vid;
+  t8VideoTex = result.tex;
   return result.tex;
 }
 
@@ -3756,11 +3811,6 @@ function interactWithTV(tv){
     return;
   }
 
-  if(tv.liveEmbed && isRumbleEmbed(tv.liveEmbed)){
-    toggleRumbleTV(tv);
-    return;
-  }
-
   if(tv.liveEmbed){
     activateInWorldLiveTV(tv);
     return;
@@ -3792,6 +3842,21 @@ function interactWithTV(tv){
   if(tv.id === 'T10' && tv.videoEl){
     toggleVideoEl(tv.videoEl);
     t10VideoEl = tv.videoEl;
+    return;
+  }
+
+  // T2/T8 on mobile — catbox mirror of the Rumble monetized videos, played
+  // as a plain video texture for reliable touch playback. On PC these ids
+  // never reach here — they carry tv.liveEmbed and get caught by the
+  // `if(tv.liveEmbed)` check above, which plays the real Rumble iframe.
+  if(tv.id === 'T2' && tv.videoEl){
+    toggleVideoEl(tv.videoEl);
+    t2VideoEl = tv.videoEl;
+    return;
+  }
+  if(tv.id === 'T8' && tv.videoEl){
+    toggleVideoEl(tv.videoEl);
+    t8VideoEl = tv.videoEl;
     return;
   }
 
@@ -3882,13 +3947,29 @@ function buildWallTV(id, pos, ry, levelYOffset=0, stripped=false){
       ntex.needsUpdate = true;
       screenMat = new THREE.MeshBasicMaterial({map: ntex, side: THREE.DoubleSide});
     }
+  } else if(id === 'T2' && isMobile){
+    // PC gets the real Rumble embed (added in the level-build loop below);
+    // mobile plays the catbox mirror directly as a video texture instead.
+    const vtex = createT2VideoTex();
+    videoEl = t2VideoEl;
+    videoTex = vtex;
+    drawTVStandby(nctx, id, 'BLACK TRIANGLES');
+    ntex.needsUpdate = true;
+    screenMat = new THREE.MeshBasicMaterial({map: ntex, side: THREE.DoubleSide});
+  } else if(id === 'T8' && isMobile){
+    const vtex = createT8VideoTex();
+    videoEl = t8VideoEl;
+    videoTex = vtex;
+    drawTVStandby(nctx, id, 'PUSHED');
+    ntex.needsUpdate = true;
+    screenMat = new THREE.MeshBasicMaterial({map: ntex, side: THREE.DoubleSide});
   } else {
     screenMat = new THREE.MeshBasicMaterial({map: ntex});
   }
 
   const screen=new THREE.Mesh(new THREE.PlaneGeometry(2.2,1.4), screenMat);
   screen.position.set(0,0,0.075); frame.add(screen);
-  if((id === 'W1a' || id === 'W1b' || id === 'T10' || id === 'T4') && videoEl && videoTex){
+  if((id === 'W1a' || id === 'W1b' || id === 'T10' || id === 'T4' || id === 'T2' || id === 'T8') && videoEl && videoTex){
     attachVideoToScreen(videoEl, videoTex, screen, ntex);
   }
 
@@ -4188,20 +4269,20 @@ function applyVoidAtmosphere(levelIndex){
     ambientLight.color.set(0x000000);
     ambientLight.intensity = 0.0015;
     scene.background = new THREE.Color(0x000000);
-    scene.fog = new THREE.FogExp2(0x000000, 0.022);
+    applyFog(0x000000, 0.022);
     if(readout) readout.style.display = 'none';
   } else if(isVoidLevel(levelIndex)){
     ambientLight.color.set(0x07150c);
     ambientLight.intensity = levelIndex === VOID_END_LEVEL ? 0.018 : 0.008;
     scene.background = new THREE.Color(0x000000);
-    scene.fog = new THREE.FogExp2(0x000000, levelIndex === VOID_END_LEVEL ? 0.018 : 0.035);
+    applyFog(0x000000, levelIndex === VOID_END_LEVEL ? 0.018 : 0.035);
     if(readout) readout.style.display = levelIndex === VOID_END_LEVEL ? 'block' : 'none';
   } else {
     if(readout) readout.style.display = 'none';
     if(scene.background) scene.background.set(0x000000);
     ambientLight.color.set(0xfff5cc);
     ambientLight.intensity = 0.4;
-    scene.fog = new THREE.FogExp2(0x1a1208, 0.035);
+    applyFog(0x1a1208, 0.035);
   }
 }
 
@@ -4214,82 +4295,13 @@ function setTVBlank(tv){
   tv.ntex.needsUpdate = true;
 }
 
-function isRumbleEmbed(url){
-  return !!url && /rumble\.com/.test(url);
-}
-
-function getRumbleVideoId(url){
-  const m = /rumble\.com\/embed\/([^/?]+)/.exec(url || '');
-  return m ? m[1] : null;
-}
-
-// Bootstrap loader for Rumble's own JS Player API (official snippet from
-// player.rumble.com/developers). Defines a queueing window.Rumble() stub
-// synchronously, then loads the real library async — safe to call this
-// more than once, and safe to call Rumble(...) immediately after.
-let rumbleJSLoaded = false;
-function ensureRumbleJS(){
-  if(rumbleJSLoaded) return;
-  rumbleJSLoaded = true;
-  (function(r,u,m,b,l,e){
-    r._Rumble=b; r[b]=r[b]||function(){
-      (r[b]._=r[b]._||[]).push(arguments);
-      if(r[b]._.length===1){
-        l=u.createElement(m); e=u.getElementsByTagName(m)[0];
-        l.async=1;
-        l.src='https://rumble.com/embedJS/'+RUMBLE_PUB_CODE+
-          (arguments[1] && arguments[1].video ? '.'+arguments[1].video : '')+
-          '/?url='+encodeURIComponent(location.href)+
-          '&args='+encodeURIComponent(JSON.stringify([].slice.apply(arguments)));
-        e.parentNode.insertBefore(l,e);
-      }
-    };
-  })(window,document,'script','Rumble');
-}
-
-// Rumble TVs (T9/T3) get a plain div instead of an iframe — the Rumble JS
-// Player API creates and controls its own player inside it, which is what
-// lets a press call a real API.play()/pause() instead of hoping a URL
-// autoplay param survives browser autoplay policy.
-let rumbleDivCounter = 0;
-function attachRumblePlayerToTV(tv, videoId){
-  if(!tv || !tv.screen) return;
-  const parent = tv.screen.parent;
-  if(!parent) return;
-  ensureRumbleJS();
-  const div = document.createElement('div');
-  div.className = 'in-world-rumble-player';
-  div.id = 'rumble-player-' + tv.id + '-' + (rumbleDivCounter++);
-  div.style.width = '1100px';
-  div.style.height = '700px';
-  div.style.background = '#000';
-  div.style.pointerEvents = 'none';
-  const object = new CSS3DObject(div);
-  object.position.set(0, 0, 0.085);
-  object.scale.set(0.002, 0.002, 0.002);
-  object.visible = false;
-  parent.add(object);
-  tv.liveIframe = null; // Rumble TVs don't use the generic iframe path
-  tv.liveIframeObject = object;
-  tv.rumbleDiv = div;
-  tv.rumbleVideoId = videoId;
-  tv.rumbleApi = null;
-  tv.rumbleLoaded = false;
-}
-
 function addLiveFeedToTV(tv, embedUrl){
   if(!tv) return tv;
   tv.liveEmbed = embedUrl;
   tv.g.userData.liveEmbed = embedUrl;
-  if(isRumbleEmbed(embedUrl)){
-    // Rumble TVs (T9/T3): set up the JS-API player div now so the screen is
-    // ready the moment the feed is unlocked. Nothing plays until the first
-    // press — see toggleRumbleTV. Non-Rumble live feeds are untouched and
-    // keep the existing iframe/activate-on-first-press path.
-    attachRumblePlayerToTV(tv, getRumbleVideoId(embedUrl));
-    tv.liveActive = false;
-    return tv;
-  }
+  // Rumble's own iframe embed (rumble.com/embed/<id>/) plays fine through
+  // the same CSS3D iframe path used for every YouTube TV — no separate
+  // JS-API integration needed, and one less thing that can silently fail.
   attachLiveIframeToTV(tv);
   return tv;
 }
@@ -4371,42 +4383,6 @@ function activateInWorldLiveTV(tv){
   tv.liveIframe.style.pointerEvents = 'auto';
   playClickSound();
 }
-
-// Rumble TVs (T9/T3) only — uses the official Rumble Player JS API (see
-// attachRumblePlayerToTV/ensureRumbleJS) instead of reloading an iframe src
-// and hoping a URL autoplay param survives the browser's autoplay policy.
-// First press loads and plays the video via Rumble('play', {...}), which is
-// itself the play command; later presses toggle play/pause through the real
-// API object handed back in the api callback.
-function toggleRumbleTV(tv){
-  if(!tv || !tv.rumbleDiv || !tv.rumbleVideoId || !tv.liveIframeObject) return;
-  tv.liveIframeObject.visible = true;
-
-  if(!tv.rumbleLoaded){
-    tv.rumbleLoaded = true;
-    Rumble('play', {
-      video: tv.rumbleVideoId,
-      div: tv.rumbleDiv.id,
-      api: function(api){
-        tv.rumbleApi = api;
-        tv.liveActive = true;
-      },
-    });
-    playClickSound();
-    return;
-  }
-
-  if(!tv.rumbleApi){ playClickSound(); return; } // still loading — next press works
-  if(tv.rumbleApi.getPaused()){
-    tv.rumbleApi.play(true);
-    tv.liveActive = true;
-  } else {
-    tv.rumbleApi.pause();
-    tv.liveActive = false;
-  }
-  playClickSound();
-}
-
 
 const LORE_BUTTON_DEF = {
   id: 'btn-lore',
@@ -4885,7 +4861,7 @@ function startBloodLevel30(){
   ambientLight.color.set(0x220000);
   ambientLight.intensity = 0.025;
   // Denser red-black fog so the room closes in as the blood rises.
-  scene.fog = new THREE.FogExp2(0x080000, 0.072);
+  applyFog(0x080000, 0.072);
 
   // ── Auto-play T4 video so the watch timer can start ───────────────────────
   createT4VideoTex();
@@ -4898,7 +4874,7 @@ function startBloodLevel30(){
 function restoreNormalLighting(){
   ambientLight.color.set(0xfff5cc);
   ambientLight.intensity = 0.4;
-  scene.fog = new THREE.FogExp2(0x1a1208, 0.035);
+  applyFog(0x1a1208, 0.035);
 }
 
 function updateStage30Lighting(now){
@@ -5117,6 +5093,13 @@ function createLevelGroup(levelIndex){
       // is stripped back in at 139 — same two signals introduced at 71.
       if(stripped && t.id === 'T1') addLiveFeedToTV(tv, MAIN_RETURN_FEEDS.normal);
       if(stripped && t.id === 'T5') addLiveFeedToTV(tv, MAIN_RETURN_FEEDS.news);
+      // T2/T8 — permanent monetized Rumble links, PC only, from level 1
+      // onward. Deliberately outside the `!stripped` gate above (unlike
+      // T9/T3) so they survive the level-139 reset instead of going dark.
+      // Mobile skips this entirely — it already got the catbox video
+      // texture back in buildWallTV.
+      if(!isMobile && t.id === 'T2') addLiveFeedToTV(tv, T2_VIDEO_EMBED);
+      if(!isMobile && t.id === 'T8') addLiveFeedToTV(tv, T8_VIDEO_EMBED);
       levelTVs.push(tv);
     });
     WINDOW_TVS.forEach(t => {
@@ -5285,6 +5268,33 @@ function killLiveFeed(tv){
   tv.liveIframe = null;
   tv.liveIframeObject = null;
   tv.liveActive = false;
+}
+
+// DEV: warp straight to any level, no fall sequence. Press F9 in-game to jump to level 100.
+function warpToLevel(idx){
+  idx = Math.max(0, Math.floor(Number(idx)) || 0);
+  if(idx === currentLevel) return;
+  if(!levelGroups[idx]) createLevelGroup(idx);
+  hideLevel(currentLevel);
+  showLevel(idx);
+  currentLevel = idx;
+  applyVoidAtmosphere(idx);
+
+  const targetFloorY = levelFloorY - idx * LEVEL_DEPTH;
+  camera.position.y = targetFloorY + EYE_HEIGHT;
+
+  if(idx === 30){
+    startBloodLevel30();
+  } else if(bloodActive){
+    stopBlood();
+    restoreNormalLighting();
+  }
+
+  if(idx === CHICKEN_LEVEL){
+    startChickenLevel();
+  } else if(chickenActive){
+    stopChickenLevel();
+  }
 }
 
 function hideLevel(idx){
@@ -5893,11 +5903,11 @@ function loadChicken(){
     url,
     gltf => {
       const actor = gltf.scene;
-      // Scale to roughly 3.5m tall — imposing boss height
+      // Scale to roughly 3.0m tall — imposing but slightly smaller boss height
       const bounds = new THREE.Box3().setFromObject(actor);
       const size = bounds.getSize(new THREE.Vector3());
       const tallest = Math.max(size.x, size.y, size.z);
-      actor.scale.multiplyScalar(3.5 / Math.max(tallest, 0.01));
+      actor.scale.multiplyScalar(3.0 / Math.max(tallest, 0.01));
       actor.updateMatrixWorld(true);
       actor.traverse(c => {
         if(!c.isMesh){ return; }
@@ -5914,13 +5924,17 @@ function loadChicken(){
       }
       chickenMixer = new THREE.AnimationMixer(chickenActor);
       if(gltf.animations && gltf.animations.length > 0){
-        // Store ALL clips so we can cycle through all 30
-        chickenAnimClips = gltf.animations.slice();
-        console.log('[Chicken] loaded', chickenAnimClips.length, 'animations:', chickenAnimClips.map(c=>c.name));
+        const allClips = gltf.animations.slice();
+        console.log('[Chicken] loaded', allClips.length, 'animations:', allClips.map(c=>c.name));
+        // Only cycle walk / run / attack clips — everything else (fall, idle,
+        // death, etc.) is excluded so it stops randomly playing a "fall" pose
+        // mid-fight and stops sliding around in poses that aren't locomotion.
+        const wanted = allClips.filter(c => /walk|run|attack/i.test(c.name) && !/fall|death|die/i.test(c.name));
+        chickenAnimClips = wanted.length > 0 ? wanted : allClips;
+        console.log('[Chicken] using', chickenAnimClips.length, 'clips:', chickenAnimClips.map(c=>c.name));
         // Start with whichever clip looks like walking, fall back to index 0
         const walkIdx = chickenAnimClips.findIndex(c => /walk/i.test(c.name));
-        const idleIdx = chickenAnimClips.findIndex(c => /idle/i.test(c.name));
-        chickenAnimIdx = walkIdx >= 0 ? walkIdx : (idleIdx >= 0 ? idleIdx : 0);
+        chickenAnimIdx = walkIdx >= 0 ? walkIdx : 0;
         chickenPlayClip(chickenAnimIdx);
         // Randomise how long each clip plays before switching (3–7 s)
         chickenAnimTimer = 3 + Math.random() * 4;
@@ -5938,7 +5952,7 @@ function showChicken(){
   chickenActor.visible = true;
   // Start circling the player
   chickenAngle = Math.random() * Math.PI * 2;
-  chickenRadius = 5.0 + Math.random() * 2;
+  chickenRadius = 4.2 + Math.random() * 0.8;
   chickenAnchorX = camera.position.x;
   chickenAnchorZ = camera.position.z;
 }
@@ -6092,7 +6106,25 @@ function updateChicken(dt, t){
 
   // Keep at floor level + raise model so feet sit ON the floor, not in it
   const yOff = -CHICKEN_LEVEL * LEVEL_DEPTH;
-  chickenActor.position.y = levelFloorY + yOff + chickenYOffset;
+  chickenActor.position.y = levelFloorY + yOff + chickenYOffset + CHICKEN_EXTRA_LIFT;
+
+  // The load-time offset above is a single number captured from the bind
+  // pose, before any animation plays — it can't account for the walk cycle
+  // moving the legs, which is why the feet could drift below the floor
+  // mid-stride. So re-measure the model's ACTUAL lowest point every frame,
+  // after this frame's animation pose has been applied, and correct any
+  // remaining gap immediately rather than trusting the old static number.
+  _chickenMeasureBox.setFromObject(chickenActor);
+  if(isFinite(_chickenMeasureBox.min.y)){
+    // BUG FIX: this used to target "levelFloorY + yOff" only, which silently
+    // cancelled out CHICKEN_EXTRA_LIFT every single frame — the lift was
+    // added on the line above, then immediately subtracted back out here.
+    // The extra lift now has to be part of the target too, or it does nothing.
+    const floorTargetY = levelFloorY + yOff + CHICKEN_EXTRA_LIFT;
+    const footDelta = _chickenMeasureBox.min.y - floorTargetY;
+    chickenActor.position.y -= footDelta;
+    chickenYOffset -= footDelta; // keep the running offset converged so next frame starts closer
+  }
 
   // Face the player
   chickenActor.rotation.y = Math.atan2(
@@ -6112,10 +6144,11 @@ function updateChicken(dt, t){
     // Lunge in closer briefly for drama
     chickenRadius = Math.max(2.0, chickenRadius - 1.2);
   } else {
-    // Slowly drift INWARD toward attack range (was drifting back OUT — that's why it never attacked)
-    const targetRadius = CHICKEN_ATTACK_RANGE - 0.5; // settle just inside attack range
+    // Close right into combat distance instead of settling at the outer edge
+    // of the hit radius, where the attack animation visibly struck thin air.
+    const targetRadius = 2.4;
     if(chickenRadius > targetRadius){
-      chickenRadius = Math.max(targetRadius, chickenRadius - dt * 0.25);
+      chickenRadius = Math.max(targetRadius, chickenRadius - dt * 0.9);
     }
   }
 }
@@ -6131,6 +6164,23 @@ function showShark(){
   sharkPhase = 'cruise';
   sharkNextPhaseAt = performance.now() + 6000 + Math.random() * 8000;
   sharkMouthOpen = 0;
+
+  // FIX (backward blip at level start): sharkActor.position was never set
+  // here, so it kept whatever stale x/y/z it had from the LAST time it was
+  // shown (possibly far away / a different level). updateShark() then
+  // "blended" from that old stale spot to the fresh cruise target over
+  // SHARK_BLEND_MS, which is what looked like the shark briefly moving
+  // backwards right as the level opened. Spawn it directly on its real
+  // cruise target and cancel any leftover blend so frame 1 has no old
+  // position to ease away from.
+  const levelY  = -currentLevel * LEVEL_DEPTH;
+  const waterY  = waterLevelLocal + levelY;
+  const swimY0  = waterY - 1.2;
+  sharkActor.position.x = sharkAnchorX + Math.sin(sharkAngle) * sharkRadius;
+  sharkActor.position.z = sharkAnchorZ + Math.cos(sharkAngle) * sharkRadius;
+  sharkActor.position.y = swimY0;
+   sharkActor.rotation.y = sharkAngle + Math.PI / 2;
+  sharkBlendStartT = -99999; // outside SHARK_BLEND_MS window -> no blend on next update
 }
 
 function hideShark(){
@@ -6142,11 +6192,14 @@ function updateShark(dt, t){
   if(!sharkLoaded || !sharkActor || !sharkVisible) return;
   sharkMixer.update(dt);
 
+  const sharkPhaseBefore = sharkPhase;
+
   // Phase transitions
   if(t > sharkNextPhaseAt){
     if(sharkPhase === 'cruise'){
       const roll = Math.random();
       if(roll < 0.15){
+        // Direct attack from cruise
         sharkPhase = 'attack';
         sharkNextPhaseAt = t + 3500;
         sharkMouthOpen = 1;
@@ -6156,14 +6209,46 @@ function updateShark(dt, t){
           playerPos.x - sharkActor.position.x,
           playerPos.z - sharkActor.position.z
         );
-      } else if(roll < 0.3){
+      } else if(roll < 0.50){
+        // Fast circle then attack or leave — snapshot player's position NOW
+        // so the circle orbits that fixed point regardless of where player moves
+        sharkPhase = 'circle';
+        sharkCircleAnchorX = camera.position.x;
+        sharkCircleAnchorZ = camera.position.z;
+        sharkCircleRadius  = 3.2 + Math.random() * 1.4;
+        // Circle lasts 3–5 seconds then decides to attack or leave
+        sharkNextPhaseAt = t + 3000 + Math.random() * 2000;
+        sharkMouthOpen = 0;
+      } else if(roll < 0.63){
         sharkPhase = 'tailwhip';
         sharkNextPhaseAt = t + 2000;
-      } else if(roll < 0.55){
+      } else if(roll < 0.85){
         sharkPhase = 'fast';
         sharkNextPhaseAt = t + 4000 + Math.random() * 3000;
       } else {
-        sharkNextPhaseAt = t + 5000 + Math.random() * 6000;
+        // Stay cruising a bit longer
+        sharkNextPhaseAt = t + 3000 + Math.random() * 3000;
+      }
+    } else if(sharkPhase === 'circle'){
+      // After fast circling, either attack or retreat
+      const attackRoll = Math.random();
+      if(attackRoll < 0.6){
+        // Lunge attack after circling — already close, so this is terrifying
+        sharkPhase = 'attack';
+        sharkNextPhaseAt = t + 3000;
+        sharkMouthOpen = 1;
+        const playerPos = camera.position.clone();
+        sharkAttackYaw = Math.atan2(
+          playerPos.x - sharkActor.position.x,
+          playerPos.z - sharkActor.position.z
+        );
+      } else {
+        // Swim away — back to cruise from a distance
+        sharkPhase = 'cruise';
+        sharkNextPhaseAt = t + 7000 + Math.random() * 6000;
+        sharkMouthOpen = 0;
+        sharkAnchorX = sharkActor.position.x;
+        sharkAnchorZ = sharkActor.position.z;
       }
     } else {
       sharkPhase = 'cruise';
@@ -6178,9 +6263,11 @@ function updateShark(dt, t){
   }
 
   // Set swim speed based on phase
-  const targetSpeed = sharkPhase === 'fast' ? 2.2 :
-                      sharkPhase === 'attack' ? 3.0 :
-                      sharkPhase === 'tailwhip' ? 1.8 : 0.55;
+  // Bumped every baseline up — cruise in particular was reading as sluggish.
+  const targetSpeed = sharkPhase === 'fast'    ? 3.0 :
+                      sharkPhase === 'circle'  ? 4.4 :   // very fast tight circling
+                      sharkPhase === 'attack'  ? 3.6 :
+                      sharkPhase === 'tailwhip'? 2.2 : 1.0;
   sharkSwimSpeed += (targetSpeed - sharkSwimSpeed) * Math.min(dt * 1.5, 1);
 
   // Update mixer speed
@@ -6194,13 +6281,24 @@ function updateShark(dt, t){
   const waterY = waterLevelLocal + yOff;
   const swimY = waterY - 1.2 + Math.sin(t * 0.0008) * 0.4;
 
+  let tx, ty, tz, targetRotY;
+
   if(sharkPhase === 'attack'){
     // Lunge toward player
     const playerPos = camera.position.clone();
-    sharkActor.position.x += (playerPos.x - sharkActor.position.x) * dt * 1.8;
-    sharkActor.position.z += (playerPos.z - sharkActor.position.z) * dt * 1.8;
-    sharkActor.position.y += (swimY - sharkActor.position.y) * dt * 2;
-    sharkActor.rotation.y = sharkAttackYaw + Math.PI;
+    tx = sharkActor.position.x + (playerPos.x - sharkActor.position.x) * dt * 1.8;
+    tz = sharkActor.position.z + (playerPos.z - sharkActor.position.z) * dt * 1.8;
+    ty = sharkActor.position.y + (swimY - sharkActor.position.y) * dt * 2;
+    targetRotY = sharkAttackYaw + Math.PI;
+  } else if(sharkPhase === 'circle'){
+    // Fast tight circle around where the player WAS when it started —
+    // the circle anchor is FROZEN (sharkCircleAnchorX/Z), not chasing the player,
+    // so moving away doesn't prevent the circle from completing.
+    sharkAngle += dt * sharkSwimSpeed * 0.55; // faster angular rate for tight circle
+    tx = sharkCircleAnchorX + Math.sin(sharkAngle) * sharkCircleRadius;
+    tz = sharkCircleAnchorZ + Math.cos(sharkAngle) * sharkCircleRadius;
+    ty = swimY + Math.sin(t * 0.003) * 0.3; // slight depth variation
+     targetRotY = sharkAngle + Math.PI / 2;
   } else {
     // Circular patrol with tailwhip wobble — orbits a slow-drifting anchor,
     // NOT the player's live position, so it doesn't stay glued at a fixed
@@ -6220,10 +6318,51 @@ function updateShark(dt, t){
       sharkAnchorZ = camera.position.z;
     }
 
-    sharkActor.position.x = sharkAnchorX + Math.sin(sharkAngle + wobble) * sharkRadius;
-    sharkActor.position.z = sharkAnchorZ + Math.cos(sharkAngle + wobble) * sharkRadius;
-    sharkActor.position.y = swimY;
-    sharkActor.rotation.y = sharkAngle + wobble + Math.PI / 2;
+    tx = sharkAnchorX + Math.sin(sharkAngle + wobble) * sharkRadius;
+    tz = sharkAnchorZ + Math.cos(sharkAngle + wobble) * sharkRadius;
+    ty = swimY;
+     targetRotY = sharkAngle + wobble + Math.PI / 2;
+  }
+
+  // A phase just changed this frame — every phase switch re-anchors to a
+  // different center/radius, which used to make tx/ty/tz snap far away from
+  // where the shark actually was (the "jumping"/"moving backwards" bug).
+  // Ease into the new target instead of snapping straight to it.
+  if(sharkPhase !== sharkPhaseBefore){
+    sharkBlendFromX = sharkActor.position.x;
+    sharkBlendFromY = sharkActor.position.y;
+    sharkBlendFromZ = sharkActor.position.z;
+    sharkBlendStartT = t;
+  }
+
+  const previousSharkX = sharkActor.position.x;
+  const previousSharkZ = sharkActor.position.z;
+  const blendElapsed = t - sharkBlendStartT;
+  if(blendElapsed < SHARK_BLEND_MS){
+    const raw = blendElapsed / SHARK_BLEND_MS;
+    const bt = raw * raw * (3 - 2 * raw); // smoothstep, avoids a linear "snap-then-glide" feel
+    sharkActor.position.x = sharkBlendFromX + (tx - sharkBlendFromX) * bt;
+    sharkActor.position.y = sharkBlendFromY + (ty - sharkBlendFromY) * bt;
+    sharkActor.position.z = sharkBlendFromZ + (tz - sharkBlendFromZ) * bt;
+  } else {
+    sharkActor.position.x = tx;
+    sharkActor.position.y = ty;
+    sharkActor.position.z = tz;
+  }
+  // During a phase transition the blended position can briefly travel away
+  // from the old orbit tangent. Face the actual short movement vector during
+  // that blend so the shark never appears to swim backwards. Once the blend
+  // ends, use the phase's normal heading above.
+  if(sharkPhase !== 'attack' && blendElapsed < SHARK_BLEND_MS){
+    const movedX = sharkActor.position.x - previousSharkX;
+    const movedZ = sharkActor.position.z - previousSharkZ;
+    if(Math.hypot(movedX, movedZ) > 0.0001){
+      sharkActor.rotation.y = Math.atan2(movedX, movedZ);
+    } else {
+      sharkActor.rotation.y = targetRotY;
+    }
+  } else {
+    sharkActor.rotation.y = targetRotY;
   }
 }
 
@@ -6364,6 +6503,7 @@ document.addEventListener('keydown', e => {
   keys.add(e.code);
   if(e.code==='Escape') popupEl.style.display='none';
   if(e.code==='Backquote'){ showCoords=!showCoords; coordsEl.style.display=showCoords?'block':'none'; }
+  if(e.code==='KeyL'){ warpToLevel(100); return; }
   if(e.code==='KeyE' && controls.isLocked){
     if(currentLevel === VOID_END_LEVEL && getRumbleGateDistance() < 3){
       openRumbleAccount();
