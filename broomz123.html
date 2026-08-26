@@ -765,7 +765,6 @@ const VOID_LIVE_FEEDS = [
 const RUMBLE_VIDEO_EMBED = 'https://www.youtube.com/embed/ReasWedj2rA?si=1VmwbOh4Y4GV-0L3&autoplay=1&enablejsapi=1';
 const RUMBLE_ACCOUNT_URL = 'https://rumble.com/user/earthlingofficial';
 const T3_VIDEO_EMBED = 'https://www.youtube.com/embed/uYJAuw52Zek?si=OuoEq51-1cC3O92G&autoplay=1&enablejsapi=1';
-const RUMBLE_PUB_CODE = '4q8ygs'; // used by the Rumble JS Player API loader
 
 // T2/T8 — permanent monetized Rumble links, PC only, from level 1 onward
 // (never stripped, unlike T9/T3 — see level-build loop below). Mobile can't
@@ -1053,7 +1052,7 @@ let sharkVisible    = false;
 let sharkSwimSpeed  = 1.0;
 let sharkAngle      = 0;
 let sharkRadius     = 5.5;
-let sharkPhase      = 'cruise';   // cruise | fast | attack | tailwhip
+let sharkPhase      = 'cruise';   // cruise | fast | circle | attack | tailwhip
 let sharkPhaseTimer = 0;
 let sharkNextPhaseAt = 0;
 let sharkAttackYaw  = 0;
@@ -1061,6 +1060,9 @@ let sharkMouthBone  = null;
 let sharkMouthOpen  = 0;
 let sharkAnchorX    = 0;     // orbit center — snapshot of player pos, not locked to it live
 let sharkAnchorZ    = 0;
+let sharkCircleAnchorX = 0; // frozen anchor for the fast-circle phase (player pos at circle start)
+let sharkCircleAnchorZ = 0;
+let sharkCircleRadius  = 3.8; // tighter circle for dramatic effect
 const SHARK_ANCHOR_SPEED = 1.1; // units/sec the anchor is allowed to drift during cruise
 const BONE3_URL = 'https://raw.githubusercontent.com/EarthlingOfficial/public-archive/main/bone3.mp3';
 let bone3Audio  = null;
@@ -3802,11 +3804,6 @@ function interactWithTV(tv){
     return;
   }
 
-  if(tv.liveEmbed && isRumbleEmbed(tv.liveEmbed)){
-    toggleRumbleTV(tv);
-    return;
-  }
-
   if(tv.liveEmbed){
     activateInWorldLiveTV(tv);
     return;
@@ -3842,9 +3839,9 @@ function interactWithTV(tv){
   }
 
   // T2/T8 on mobile — catbox mirror of the Rumble monetized videos, played
-  // as a plain video texture since touch can't reliably drive the Rumble
-  // JS player. On PC these ids never reach here — they carry tv.liveEmbed
-  // instead and get caught by the isRumbleEmbed check above.
+  // as a plain video texture for reliable touch playback. On PC these ids
+  // never reach here — they carry tv.liveEmbed and get caught by the
+  // `if(tv.liveEmbed)` check above, which plays the real Rumble iframe.
   if(tv.id === 'T2' && tv.videoEl){
     toggleVideoEl(tv.videoEl);
     t2VideoEl = tv.videoEl;
@@ -4291,82 +4288,13 @@ function setTVBlank(tv){
   tv.ntex.needsUpdate = true;
 }
 
-function isRumbleEmbed(url){
-  return !!url && /rumble\.com/.test(url);
-}
-
-function getRumbleVideoId(url){
-  const m = /rumble\.com\/embed\/([^/?]+)/.exec(url || '');
-  return m ? m[1] : null;
-}
-
-// Bootstrap loader for Rumble's own JS Player API (official snippet from
-// player.rumble.com/developers). Defines a queueing window.Rumble() stub
-// synchronously, then loads the real library async — safe to call this
-// more than once, and safe to call Rumble(...) immediately after.
-let rumbleJSLoaded = false;
-function ensureRumbleJS(){
-  if(rumbleJSLoaded) return;
-  rumbleJSLoaded = true;
-  (function(r,u,m,b,l,e){
-    r._Rumble=b; r[b]=r[b]||function(){
-      (r[b]._=r[b]._||[]).push(arguments);
-      if(r[b]._.length===1){
-        l=u.createElement(m); e=u.getElementsByTagName(m)[0];
-        l.async=1;
-        l.src='https://rumble.com/embedJS/'+RUMBLE_PUB_CODE+
-          (arguments[1] && arguments[1].video ? '.'+arguments[1].video : '')+
-          '/?url='+encodeURIComponent(location.href)+
-          '&args='+encodeURIComponent(JSON.stringify([].slice.apply(arguments)));
-        e.parentNode.insertBefore(l,e);
-      }
-    };
-  })(window,document,'script','Rumble');
-}
-
-// Rumble TVs (T9/T3) get a plain div instead of an iframe — the Rumble JS
-// Player API creates and controls its own player inside it, which is what
-// lets a press call a real API.play()/pause() instead of hoping a URL
-// autoplay param survives browser autoplay policy.
-let rumbleDivCounter = 0;
-function attachRumblePlayerToTV(tv, videoId){
-  if(!tv || !tv.screen) return;
-  const parent = tv.screen.parent;
-  if(!parent) return;
-  ensureRumbleJS();
-  const div = document.createElement('div');
-  div.className = 'in-world-rumble-player';
-  div.id = 'rumble-player-' + tv.id + '-' + (rumbleDivCounter++);
-  div.style.width = '1100px';
-  div.style.height = '700px';
-  div.style.background = '#000';
-  div.style.pointerEvents = 'none';
-  const object = new CSS3DObject(div);
-  object.position.set(0, 0, 0.085);
-  object.scale.set(0.002, 0.002, 0.002);
-  object.visible = false;
-  parent.add(object);
-  tv.liveIframe = null; // Rumble TVs don't use the generic iframe path
-  tv.liveIframeObject = object;
-  tv.rumbleDiv = div;
-  tv.rumbleVideoId = videoId;
-  tv.rumbleApi = null;
-  tv.rumbleLoaded = false;
-}
-
 function addLiveFeedToTV(tv, embedUrl){
   if(!tv) return tv;
   tv.liveEmbed = embedUrl;
   tv.g.userData.liveEmbed = embedUrl;
-  if(isRumbleEmbed(embedUrl)){
-    // Rumble TVs (T9/T3): set up the JS-API player div now so the screen is
-    // ready the moment the feed is unlocked. Nothing plays until the first
-    // press — see toggleRumbleTV. Non-Rumble live feeds are untouched and
-    // keep the existing iframe/activate-on-first-press path.
-    attachRumblePlayerToTV(tv, getRumbleVideoId(embedUrl));
-    tv.liveActive = false;
-    return tv;
-  }
+  // Rumble's own iframe embed (rumble.com/embed/<id>/) plays fine through
+  // the same CSS3D iframe path used for every YouTube TV — no separate
+  // JS-API integration needed, and one less thing that can silently fail.
   attachLiveIframeToTV(tv);
   return tv;
 }
@@ -4448,42 +4376,6 @@ function activateInWorldLiveTV(tv){
   tv.liveIframe.style.pointerEvents = 'auto';
   playClickSound();
 }
-
-// Rumble TVs (T9/T3) only — uses the official Rumble Player JS API (see
-// attachRumblePlayerToTV/ensureRumbleJS) instead of reloading an iframe src
-// and hoping a URL autoplay param survives the browser's autoplay policy.
-// First press loads and plays the video via Rumble('play', {...}), which is
-// itself the play command; later presses toggle play/pause through the real
-// API object handed back in the api callback.
-function toggleRumbleTV(tv){
-  if(!tv || !tv.rumbleDiv || !tv.rumbleVideoId || !tv.liveIframeObject) return;
-  tv.liveIframeObject.visible = true;
-
-  if(!tv.rumbleLoaded){
-    tv.rumbleLoaded = true;
-    Rumble('play', {
-      video: tv.rumbleVideoId,
-      div: tv.rumbleDiv.id,
-      api: function(api){
-        tv.rumbleApi = api;
-        tv.liveActive = true;
-      },
-    });
-    playClickSound();
-    return;
-  }
-
-  if(!tv.rumbleApi){ playClickSound(); return; } // still loading — next press works
-  if(tv.rumbleApi.getPaused()){
-    tv.rumbleApi.play(true);
-    tv.liveActive = true;
-  } else {
-    tv.rumbleApi.pause();
-    tv.liveActive = false;
-  }
-  playClickSound();
-}
-
 
 const LORE_BUTTON_DEF = {
   id: 'btn-lore',
@@ -6245,6 +6137,7 @@ function updateShark(dt, t){
     if(sharkPhase === 'cruise'){
       const roll = Math.random();
       if(roll < 0.15){
+        // Direct attack from cruise
         sharkPhase = 'attack';
         sharkNextPhaseAt = t + 3500;
         sharkMouthOpen = 1;
@@ -6254,14 +6147,46 @@ function updateShark(dt, t){
           playerPos.x - sharkActor.position.x,
           playerPos.z - sharkActor.position.z
         );
-      } else if(roll < 0.3){
+      } else if(roll < 0.42){
+        // Fast circle then attack or leave — snapshot player's position NOW
+        // so the circle orbits that fixed point regardless of where player moves
+        sharkPhase = 'circle';
+        sharkCircleAnchorX = camera.position.x;
+        sharkCircleAnchorZ = camera.position.z;
+        sharkCircleRadius  = 3.2 + Math.random() * 1.4;
+        // Circle lasts 3–5 seconds then decides to attack or leave
+        sharkNextPhaseAt = t + 3000 + Math.random() * 2000;
+        sharkMouthOpen = 0;
+      } else if(roll < 0.55){
         sharkPhase = 'tailwhip';
         sharkNextPhaseAt = t + 2000;
-      } else if(roll < 0.55){
+      } else if(roll < 0.72){
         sharkPhase = 'fast';
         sharkNextPhaseAt = t + 4000 + Math.random() * 3000;
       } else {
+        // Stay cruising a bit longer
         sharkNextPhaseAt = t + 5000 + Math.random() * 6000;
+      }
+    } else if(sharkPhase === 'circle'){
+      // After fast circling, either attack or retreat
+      const attackRoll = Math.random();
+      if(attackRoll < 0.6){
+        // Lunge attack after circling — already close, so this is terrifying
+        sharkPhase = 'attack';
+        sharkNextPhaseAt = t + 3000;
+        sharkMouthOpen = 1;
+        const playerPos = camera.position.clone();
+        sharkAttackYaw = Math.atan2(
+          playerPos.x - sharkActor.position.x,
+          playerPos.z - sharkActor.position.z
+        );
+      } else {
+        // Swim away — back to cruise from a distance
+        sharkPhase = 'cruise';
+        sharkNextPhaseAt = t + 7000 + Math.random() * 6000;
+        sharkMouthOpen = 0;
+        sharkAnchorX = sharkActor.position.x;
+        sharkAnchorZ = sharkActor.position.z;
       }
     } else {
       sharkPhase = 'cruise';
@@ -6276,9 +6201,10 @@ function updateShark(dt, t){
   }
 
   // Set swim speed based on phase
-  const targetSpeed = sharkPhase === 'fast' ? 2.2 :
-                      sharkPhase === 'attack' ? 3.0 :
-                      sharkPhase === 'tailwhip' ? 1.8 : 0.55;
+  const targetSpeed = sharkPhase === 'fast'    ? 2.2 :
+                      sharkPhase === 'circle'  ? 3.8 :   // very fast tight circling
+                      sharkPhase === 'attack'  ? 3.0 :
+                      sharkPhase === 'tailwhip'? 1.8 : 0.55;
   sharkSwimSpeed += (targetSpeed - sharkSwimSpeed) * Math.min(dt * 1.5, 1);
 
   // Update mixer speed
@@ -6299,6 +6225,15 @@ function updateShark(dt, t){
     sharkActor.position.z += (playerPos.z - sharkActor.position.z) * dt * 1.8;
     sharkActor.position.y += (swimY - sharkActor.position.y) * dt * 2;
     sharkActor.rotation.y = sharkAttackYaw + Math.PI;
+  } else if(sharkPhase === 'circle'){
+    // Fast tight circle around where the player WAS when it started —
+    // the circle anchor is FROZEN (sharkCircleAnchorX/Z), not chasing the player,
+    // so moving away doesn't prevent the circle from completing.
+    sharkAngle += dt * sharkSwimSpeed * 0.55; // faster angular rate for tight circle
+    sharkActor.position.x = sharkCircleAnchorX + Math.sin(sharkAngle) * sharkCircleRadius;
+    sharkActor.position.z = sharkCircleAnchorZ + Math.cos(sharkAngle) * sharkCircleRadius;
+    sharkActor.position.y = swimY + Math.sin(t * 0.003) * 0.3; // slight depth variation
+    sharkActor.rotation.y = sharkAngle + Math.PI / 2;
   } else {
     // Circular patrol with tailwhip wobble — orbits a slow-drifting anchor,
     // NOT the player's live position, so it doesn't stay glued at a fixed
