@@ -4935,7 +4935,15 @@ function createLevelGroup(levelIndex){
   // up standing.
   const roomLights = [];
 
-  if(glbTemplate && !isVoidLevel(levelIndex) && !isCrossVoidLevel(levelIndex)){
+  // Level 0 is special: the loader callback that creates glbTemplate attaches
+  // the ORIGINAL template object straight into levelGroups[0].group itself
+  // (see glbUrlReady.then(...) below) instead of a clone, since level 0's
+  // group is the one that's never disposed. Cloning the whole map here too
+  // used to leave two full copies of the room — every mesh, every baked
+  // light, every collider — stacked exactly on top of each other for the
+  // entire session. Skip the clone for level 0; colliders/roomLights for it
+  // are collected separately where glbTemplate is attached.
+  if(glbTemplate && levelIndex !== 0 && !isVoidLevel(levelIndex) && !isCrossVoidLevel(levelIndex)){
     const clone = glbTemplate.clone(true);
     // The template owns the shared geometries/material textures. Level
     // instances are disposable scene graphs, so never dispose their shared
@@ -6357,6 +6365,19 @@ glbUrlReady.then(chosenUrl => {
 
       glbTemplate.traverse(c => { if(c.isMesh) collisionMeshes.push(c); });
 
+      // Level 0 skips the clone path in createLevelGroup (see comment there),
+      // so its baked ceiling lights need collecting here instead, the same
+      // way createLevelGroup does it for every other level — otherwise
+      // level 0 would never get the mobile dim + distance-cull treatment.
+      const level0RoomLights = [];
+      glbTemplate.traverse(c => { if(c.isLight) level0RoomLights.push(c); });
+      if(isMobile && level0RoomLights.length){
+        level0RoomLights.forEach(l => {
+          l.intensity *= 0.35 + Math.random() * 0.15;
+          if(typeof l.distance === 'number' && l.distance > 0) l.distance *= 0.6;
+        });
+      }
+
       // ── Calibrate blood to real room geometry ────────────────────────────
       // box.max.y = top of room geometry = ceiling in world space.
       // Blood fills from floor (box.min.y) to ceiling (box.max.y) in 5 min.
@@ -6382,6 +6403,7 @@ glbUrlReady.then(chosenUrl => {
 
       createLevelGroup(0);
       levelGroups[0].group.add(glbTemplate);
+      levelGroups[0].roomLights = level0RoomLights;
       showLevel(0);
 
       setTimeout(()=>{ if(!levelGroups[1]) createLevelGroup(1); }, 3000);
