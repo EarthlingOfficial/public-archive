@@ -493,7 +493,7 @@
     transition: opacity 0.08s;
   }
 
-  /* ── MAP SIZE SELECTOR (PC only) ── */
+  /* ── MAP SIZE / MOBILE QUALITY SELECTOR ── */
   #map-selector {
     position:fixed; inset:0; z-index:30;
     background:rgba(0,0,0,0.93);
@@ -522,6 +522,8 @@
   .ms-btn:hover { background:rgba(200,185,122,0.1); }
   .ms-btn.ms-recommended { border-color:rgba(200,185,122,0.85); }
   .ms-note { font-size:10px; opacity:0.35; letter-spacing:1px; }
+  #ms-mobile-btns { display:none; }
+  #ms-mobile-btns .ms-btn { min-width:190px; }
 </style>
 </head>
 <body>
@@ -644,21 +646,25 @@
 <div id="coords"></div>
 <!-- CSS3D renderer layer for in-world YouTube -->
 <div id="css3d"></div>
-<!-- PC map size selector (shown after age gate, before GLB loads) -->
+<!-- Map/quality selector (shown after age gate, before GLB loads) -->
 <div id="map-selector">
   <div id="map-selector-panel">
     <div class="ms-tag">&#9888;&nbsp; BEFORE YOU ENTER &nbsp;&#9888;</div>
-    <div class="ms-title">CHOOSE YOUR MAP</div>
+    <div class="ms-title" id="ms-title">CHOOSE YOUR MAP</div>
     <div class="ms-rule"></div>
-    <div class="ms-body">
+    <div class="ms-body" id="ms-body">
       The high-res map is large and may take several minutes to load.<br>
       The fast map loads quickly and plays identically.
     </div>
-    <div class="ms-btns">
+    <div class="ms-btns" id="ms-pc-btns">
       <button class="ms-btn ms-recommended" id="ms-fast">FAST LOAD &mdash; 1K</button>
       <button class="ms-btn" id="ms-hires">HIGH RES &mdash; 4K</button>
     </div>
-    <div class="ms-note">mobile always uses fast load &nbsp;·&nbsp; your choice starts the download</div>
+    <div class="ms-btns" id="ms-mobile-btns">
+      <button class="ms-btn ms-recommended" id="ms-mobile-low">LOW-END PHONE &mdash; 1K</button>
+  <button class="ms-btn" id="ms-mobile-high">HIGH-END PHONE &mdash; 1K DETAIL</button>
+    </div>
+    <div class="ms-note" id="ms-note">mobile always uses fast load &nbsp;·&nbsp; your choice starts the download</div>
   </div>
 </div>
 <script type="module">
@@ -691,19 +697,18 @@ const ENTITY_4K_URL = 'https://raw.githubusercontent.com/EarthlingOfficial/publi
 const ENTITY_URL = isMobile ? ENTITY_1K_URL : ENTITY_4K_URL;
 const SHARK_URL = 'https://raw.githubusercontent.com/EarthlingOfficial/public-archive/main/bullshark.glb';
 
-// Resolved after map selector (PC) or immediately (mobile)
-let GLB_URL = isMobile ? GLB_1K : null; // null = waiting for PC choice
+// PC still chooses between the original 1K/4K builds. Mobile always uses the
+// 1K build, but now chooses whether to keep the full renderer/lighting detail
+// or use the deliberately lighter low-end preset.
+let mobileQuality = isMobile ? null : 'desktop';
+function isLowEndMobile(){
+  return isMobile && mobileQuality === 'low';
+}
 
-// ── MAP SELECTOR (PC only) ────────────────────────────────────────────────────
+// ── MAP / MOBILE QUALITY SELECTOR ─────────────────────────────────────────────
+let GLB_URL = null; // waiting for the selector on both PC and mobile
 let _glbUrlResolve = null;
 const glbUrlReady = new Promise(res => { _glbUrlResolve = res; });
-
-if(isMobile){
-  _glbUrlResolve(GLB_1K);
-} else {
-  // Show selector after age gate confirms — triggered by ageConfirmed flag
-  // The selector is shown in the age-gate confirm handler below
-}
 
 // ── WALL TV DEFINITIONS ───────────────────────────────────────────────────────
 const WALL_TV_RAYS = [
@@ -3018,12 +3023,19 @@ function randomNoclipPositions(){
 const canvas   = document.getElementById('c');
 const renderer = new THREE.WebGLRenderer({
   canvas,
-  antialias: !isMobile,
+  // Start mobile at the high-detail renderer so the high-end choice can
+  // retain antialiasing. The low-end preset lowers the expensive settings
+  // that can still be changed after the renderer is created.
+  antialias: true,
   powerPreference: 'high-performance',
+  precision: 'highp',
+  stencil: false,
 });
-renderer.setPixelRatio(isMobile ? Math.min(devicePixelRatio, 1.15) : Math.min(devicePixelRatio, 2));
+// Mobile quality is selected before the GLB starts loading. This starts at
+// the high-detail 1K setting; the low-end button applies the cheaper preset.
+renderer.setPixelRatio(isMobile ? Math.min(devicePixelRatio, 2) : Math.min(devicePixelRatio, 2));
 renderer.setSize(innerWidth, innerHeight);
-renderer.shadowMap.enabled = !isMobile;
+renderer.shadowMap.enabled = true;
 renderer.shadowMap.type    = THREE.PCFSoftShadowMap;
 renderer.toneMapping       = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 0.9;
@@ -3032,15 +3044,12 @@ renderer.outputColorSpace  = THREE.SRGBColorSpace;
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x000000);
 
-// Every scene.fog assignment in this file goes through here so mobile's
-// short draw distance stays consistent everywhere (normal levels, void,
-// cross-void, level 30) instead of only being fixed in one spot and
-// reverting the moment the level changes — which is what went wrong last
-// time. Desktop densities are untouched; mobile gets a flat multiplier so
-// visibility drops to roughly 10m instead of 40m+.
+// Every scene.fog assignment in this file goes through here. Only the
+// low-end mobile preset gets the aggressive short draw distance; PC and
+// high-end mobile retain the original fog distances.
 const MOBILE_FOG_DENSITY_MULT = 4.5;
 function applyFog(color, density){
-  scene.fog = new THREE.FogExp2(color, isMobile ? density * MOBILE_FOG_DENSITY_MULT : density);
+  scene.fog = new THREE.FogExp2(color, isLowEndMobile() ? density * MOBILE_FOG_DENSITY_MULT : density);
 }
 applyFog(0x1a1208, 0.035);
 
@@ -3052,12 +3061,24 @@ const pmremGenerator = new THREE.PMREMGenerator(renderer);
 const bushEnvMap = pmremGenerator.fromScene(new RoomEnvironment(), 0.04).texture;
 pmremGenerator.dispose();
 
-const camera = new THREE.PerspectiveCamera(80, innerWidth/innerHeight, 0.05, 500);
+const camera = new THREE.PerspectiveCamera(80, innerWidth/innerHeight, 0.05, isMobile ? 100 : 500);
 camera.position.set(0, EYE_HEIGHT, 0);
 
 const ambientLight = new THREE.AmbientLight(0xfff5cc, 0.4);
 scene.add(ambientLight);
 const flickerLights = [];
+
+function applyMobileQualityPreset(){
+  if(!isMobile || !mobileQuality) return;
+  const highEnd = mobileQuality === 'high';
+  renderer.setPixelRatio(Math.min(devicePixelRatio, highEnd ? 2 : 0.8));
+  renderer.shadowMap.enabled = highEnd;
+  renderer.toneMappingExposure = highEnd ? 0.9 : 0.78;
+  ambientLight.intensity = highEnd ? 0.4 : 0.28;
+  camera.far = highEnd ? 500 : 100;
+  camera.updateProjectionMatrix();
+  applyFog(0x1a1208, 0.035);
+}
 
 const css3dRenderer = new CSS3DRenderer();
 css3dRenderer.setSize(innerWidth, innerHeight);
@@ -3068,12 +3089,20 @@ css3dRenderer.domElement.style.zIndex = '2';
 css3dRenderer.domElement.style.pointerEvents = 'none';
 document.getElementById('css3d').appendChild(css3dRenderer.domElement);
 
-const composer = new EffectComposer(renderer);
-composer.addPass(new RenderPass(scene, camera));
-composer.addPass(new UnrealBloomPass(new THREE.Vector2(innerWidth,innerHeight), 0.4, 0.5, 0.85));
-composer.addPass(new OutputPass());
+// Bloom is a desktop-only post-process. Avoid allocating its render targets
+// on phones even though the mobile path renders the scene directly.
+const composer = isMobile ? null : new EffectComposer(renderer);
+if(composer){
+  composer.addPass(new RenderPass(scene, camera));
+  composer.addPass(new UnrealBloomPass(new THREE.Vector2(innerWidth,innerHeight), 0.4, 0.5, 0.85));
+  composer.addPass(new OutputPass());
+}
 
+let lastMobileRenderAt = -Infinity;
 function renderScene(){
+  const now = performance.now();
+  if(isLowEndMobile() && now - lastMobileRenderAt < 1000 / 30) return;
+  lastMobileRenderAt = now;
   if(isMobile) renderer.render(scene, camera);
   else composer.render();
   css3dRenderer.render(scene, camera);
@@ -4619,6 +4648,58 @@ function buildWallButton(def){
   return g;
 }
 
+// Put the real-world entrance on the darker wall beside its old position.
+// These X/Z values are based on the supplied Level 10 coordinate screenshot.
+// The raised Y value lets the image tuck slightly into the ceiling trim.
+const LEVEL10_TAPE_DOOR_POS = [-35.62, 1.47, 8.61];
+const LEVEL10_TAPE_DOOR_URL = 'https://earthlingofficial.com/veganbrosstage10.html';
+const LEVEL10_DOOR_IMAGE_URL = 'https://raw.githubusercontent.com/EarthlingOfficial/public-archive/main/enterhere.jpg';
+
+// A wallpaper-matched image door on the existing wall, with one lightweight
+// invisible hitbox. The image is the same proportions as the old tape outline,
+// so the doorway stays the same size while the uploaded wallpaper can visually
+// line up with the surrounding room. It belongs to level 10's group, so it is
+// visible and interactive on both PC and mobile without adding anything to the
+// TV/CSS3D systems.
+function buildLevel10TapeDoor(){
+  const snap = snapButtonToWall(LEVEL10_TAPE_DOOR_POS);
+  const g = new THREE.Group();
+  const doorWidth = 1.55;
+  const doorHeight = 2.25;
+  const doorTexture = new THREE.TextureLoader().load(
+    LEVEL10_DOOR_IMAGE_URL,
+    texture => {
+      texture.colorSpace = THREE.SRGBColorSpace;
+      texture.anisotropy = Math.min(4, renderer.capabilities.getMaxAnisotropy());
+      texture.needsUpdate = true;
+    },
+    undefined,
+    error => console.warn('Level 10 entrance image failed to load:', error)
+  );
+  const doorMesh = new THREE.Mesh(
+    new THREE.PlaneGeometry(doorWidth, doorHeight),
+    new THREE.MeshBasicMaterial({
+      map: doorTexture,
+      side: THREE.DoubleSide,
+      toneMapped: false,
+    })
+  );
+  doorMesh.position.z = 0.045;
+  g.add(doorMesh);
+
+  const hitbox = new THREE.Mesh(
+    new THREE.BoxGeometry(doorWidth + 0.18, doorHeight + 0.18, 0.12),
+    new THREE.MeshBasicMaterial({ visible: false }),
+  );
+  hitbox.position.z = 0.08;
+  g.add(hitbox);
+
+  g.position.set(snap.pos[0], snap.pos[1], snap.pos[2]);
+  g.rotation.y = snap.ry;
+  wallButtonMeshes.push({ mesh: hitbox, url: LEVEL10_TAPE_DOOR_URL, sameWindow: true });
+  return { group: g, hitbox };
+}
+
 // ── ALL TVS FLAT ARRAY (updated per level) ────────────────────────────────────
 let allTVs = [];
 
@@ -4931,7 +5012,10 @@ function createLevelGroup(levelIndex){
   group.visible = false;
   const colliders = [];
 
-  if(glbTemplate && !isVoidLevel(levelIndex) && !isCrossVoidLevel(levelIndex)){
+  // Level 0 owns the original loaded template. Later levels receive clones;
+  // cloning here as well would place two identical buildings at level 0
+  // because the loader attaches glbTemplate directly below.
+  if(glbTemplate && levelIndex !== 0 && !isVoidLevel(levelIndex) && !isCrossVoidLevel(levelIndex)){
     const clone = glbTemplate.clone(true);
     // The template owns the shared geometries/material textures. Level
     // instances are disposable scene graphs, so never dispose their shared
@@ -4940,9 +5024,9 @@ function createLevelGroup(levelIndex){
     const embeddedLights = [];
     clone.traverse(c => {
       if(c.isMesh){
-        c.castShadow=true; c.receiveShadow=true;
+        c.castShadow=!isLowEndMobile(); c.receiveShadow=!isLowEndMobile(); c.frustumCulled=true;
         colliders.push(c);
-      } else if(c.isLight){
+      } else if(c.isLight && !c.userData.mobileLightBudgeted){
         embeddedLights.push(c);
       }
     });
@@ -4954,7 +5038,7 @@ function createLevelGroup(levelIndex){
     // Mobile only: cut roughly half outright, dim the rest by a varying
     // amount so it doesn't read as one flat blanket dim. Desktop is
     // untouched.
-    if(isMobile && embeddedLights.length){
+    if(isLowEndMobile() && embeddedLights.length){
       // Keep roughly 1 in 3 (was 1 in 2) and dim + shrink those harder —
       // large rooms were still stacking too many real-time lights at once.
       embeddedLights.forEach((l, i) => {
@@ -4989,10 +5073,13 @@ function createLevelGroup(levelIndex){
     const lightColor = (levelIndex === 30) ? 0x330000 : 0xfff5aa;
     // Same dim treatment the blood stage (30) always used, now applied on
     // mobile for every stage — desktop keeps full brightness.
-    const lightIntensity = (levelIndex === 30) ? 0.18 : (isMobile ? 0.18 : 1.2);
-    const lightDistance  = isMobile ? 11 : 18;
-    [[0,2.8,0],[10,2.8,-5],[-10,2.8,8],[20,2.8,5],[-20,2.8,-12],
-     [5,2.8,25],[0,2.8,-15],[0,2.8,-30],[0,2.8,-45]].forEach(([x,y,z])=>{
+    const lightIntensity = (levelIndex === 30) ? 0.18 : (isLowEndMobile() ? 0.18 : 1.2);
+    const lightDistance  = isLowEndMobile() ? 11 : 18;
+    const roomLightPositions = isLowEndMobile()
+      ? [[0,2.8,0],[10,2.8,-5],[-10,2.8,8],[0,2.8,-15]]
+      : [[0,2.8,0],[10,2.8,-5],[-10,2.8,8],[20,2.8,5],[-20,2.8,-12],
+         [5,2.8,25],[0,2.8,-15],[0,2.8,-30],[0,2.8,-45]];
+    roomLightPositions.forEach(([x,y,z])=>{
       const l = new THREE.PointLight(lightColor, lightIntensity, lightDistance);
       l.position.set(x, y, z);
       l.userData.baseIntensity = lightIntensity;
@@ -5022,6 +5109,11 @@ function createLevelGroup(levelIndex){
   const levelTVs = [];
   let exitDoor = null;
   let accountGate = null;
+  let tapeDoor = null;
+  if(levelIndex === 10){
+    tapeDoor = buildLevel10TapeDoor();
+    group.add(tapeDoor.group);
+  }
   if(isVoidLevel(levelIndex)){
     const isLive = levelIndex === VOID_END_LEVEL;
     VOID_TV_LOCAL_POSITIONS.forEach(([x, y, z, ry], index)=>{
@@ -5168,7 +5260,8 @@ function createLevelGroup(levelIndex){
   // door, not a fall zone.
   if(isVoidLevel(levelIndex)){
     levelGroups[levelIndex] = {
-      group, lights, tvs: levelTVs, door: exitDoor, gate: accountGate, colliders,
+      group, lights, tvs: levelTVs, door: exitDoor, gate: accountGate,
+      tapeDoor, colliders,
     };
     return levelGroups[levelIndex];
   }
@@ -5233,7 +5326,8 @@ function createLevelGroup(levelIndex){
   });
 
   levelGroups[levelIndex] = {
-    group, lights, tvs: levelTVs, door: exitDoor, gate: accountGate, colliders,
+    group, lights, tvs: levelTVs, door: exitDoor, gate: accountGate,
+    tapeDoor, colliders,
   };
   return levelGroups[levelIndex];
 }
@@ -5362,6 +5456,15 @@ function disposeLevelGroup(idx){
       ...wallButtonMeshes.filter(entry => entry.mesh !== record.gate.hitbox),
     );
   }
+  if(record.tapeDoor){
+    if(record.tapeDoor.group.parent) record.tapeDoor.group.parent.remove(record.tapeDoor.group);
+    disposeOwnedObject(record.tapeDoor.group);
+    wallButtonMeshes.splice(
+      0,
+      wallButtonMeshes.length,
+      ...wallButtonMeshes.filter(entry => entry.mesh !== record.tapeDoor.hitbox),
+    );
+  }
 
   if(record.doors){
     record.doors.forEach(d => {
@@ -5393,7 +5496,9 @@ function disposeLevelGroup(idx){
 // It is shown in short, staged sightings, then its opacity drops as it gets
 // close enough for the player to question what they saw.
 const ENTITY_HEIGHT = 2.18;
-const ENTITY_FAR_DISTANCE = isMobile ? 22 : 32;
+function entityFarDistance(){
+  return isLowEndMobile() ? 22 : 32;
+}
 
 // Hazmat patrol field calibrated from the supplied level-0 coordinate
 // screenshots. The old entity clamp stopped at X=-22, which kept him out of
@@ -5493,7 +5598,7 @@ function startEntityEvent(now){
   const right = new THREE.Vector3(-forward.z, 0, forward.x);
   const player = camera.position.clone();
   const side = Math.random() < 0.5 ? -1 : 1;
-  const depth = Math.min(ENTITY_FAR_DISTANCE, 13 + Math.random() * 8);
+  const depth = Math.min(entityFarDistance(), 13 + Math.random() * 8);
   const lane = 5.5 + Math.random() * 3.8;
 
   if(profile.kind === 'cross'){
@@ -5732,8 +5837,8 @@ function loadEntity(){
       entityMaterials = [];
       actor.traverse(child => {
         if(!child.isMesh) return;
-        child.castShadow = !isMobile;
-        child.receiveShadow = !isMobile;
+        child.castShadow = !isLowEndMobile();
+        child.receiveShadow = !isLowEndMobile();
         const materials = Array.isArray(child.material) ? child.material : [child.material];
         materials.forEach(material => {
           if(!material) return;
@@ -6448,7 +6553,33 @@ glbUrlReady.then(chosenUrl => {
   loader.load(GLB_URL,
     gltf => {
       glbTemplate = gltf.scene;
-      glbTemplate.traverse(c => { if(c.isMesh){ c.castShadow=true; c.receiveShadow=true; } });
+      const templateLights = [];
+      glbTemplate.traverse(c => {
+        if(c.isMesh){
+          c.castShadow = !isLowEndMobile();
+          c.receiveShadow = !isLowEndMobile();
+          c.frustumCulled = true;
+        } else if(c.isLight){
+          templateLights.push(c);
+        }
+      });
+      // Level 0 uses the original template rather than a clone, so apply the
+      // same cheap mobile light budget to it before it is shown. The marker
+      // prevents later level clones from cutting the already-budgeted lights
+      // a second time.
+      if(isLowEndMobile() && templateLights.length){
+        templateLights.forEach((light, i) => {
+          light.userData.mobileLightBudgeted = true;
+          if(i % 3 !== 0){
+            if(light.parent) light.parent.remove(light);
+          } else {
+            light.intensity *= 0.18 + Math.random() * 0.2;
+            if(typeof light.distance === 'number' && light.distance > 0){
+              light.distance *= 0.45;
+            }
+          }
+        });
+      }
 
       const box = new THREE.Box3().setFromObject(glbTemplate);
       const center = new THREE.Vector3(); box.getCenter(center);
@@ -6523,7 +6654,11 @@ document.addEventListener('keydown', e => {
     const btnHits = btnRaycaster.intersectObjects(btnMeshes, false);
     if(btnHits.length > 0 && btnHits[0].distance < 6){
       const hit = wallButtonMeshes.find(b => b.mesh === btnHits[0].object);
-      if(hit){ window.open(hit.url, '_blank'); return; }
+       if(hit){
+         if(hit.sameWindow) window.location.href = hit.url;
+         else window.open(hit.url, '_blank');
+         return;
+       }
     }
     // Check nearest wall TV
     const nearTV = getNearestWallTV();
@@ -6616,7 +6751,11 @@ window.addEventListener('click', () => {
   const btnHits = btnRaycaster.intersectObjects(btnMeshes, false);
   if(btnHits.length > 0 && btnHits[0].distance < 5){
     const hit = wallButtonMeshes.find(b => b.mesh === btnHits[0].object);
-    if(hit){ window.open(hit.url, '_blank'); return; }
+     if(hit){
+       if(hit.sameWindow) window.location.href = hit.url;
+       else window.open(hit.url, '_blank');
+       return;
+     }
   }
 
   // Wall TV click — interact with nearest T1–T10 within range
@@ -6628,7 +6767,7 @@ window.addEventListener('resize',()=>{
   camera.aspect=innerWidth/innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(innerWidth,innerHeight);
-  composer.setSize(innerWidth,innerHeight);
+  if(composer) composer.setSize(innerWidth,innerHeight);
   css3dRenderer.setSize(innerWidth,innerHeight);
 });
 
@@ -7202,10 +7341,20 @@ document.getElementById('age-gate-confirm').addEventListener('click',()=>{
   gate.style.opacity='0';
   setTimeout(()=>{
     gate.style.display='none';
-    // PC: show map selector before GLB starts loading
-    if(!isMobile){
-      const sel = document.getElementById('map-selector');
-      if(sel) sel.classList.add('active');
+    // PC keeps the original map selector. Mobile gets a quality choice while
+    // staying on the 1K build in either case.
+    const sel = document.getElementById('map-selector');
+    if(sel){
+      if(isMobile){
+        document.getElementById('ms-title').textContent = 'CHOOSE PHONE QUALITY';
+        document.getElementById('ms-body').innerHTML =
+          'Both options use the fast 1K map.<br>Choose the preset that suits your phone.';
+        document.getElementById('ms-pc-btns').style.display = 'none';
+        document.getElementById('ms-mobile-btns').style.display = 'flex';
+        document.getElementById('ms-note').textContent =
+          'low-end saves battery and frames · high-end keeps more detail';
+      }
+      sel.classList.add('active');
     }
   },400);
   tryShowSkip();
@@ -7214,15 +7363,27 @@ document.getElementById('age-gate-leave').addEventListener('click',()=>{
   window.location.href='https://www.earthlingofficial.com';
 });
 
-// Map selector buttons (PC only)
+// PC map selector buttons — unchanged
 document.getElementById('ms-fast').addEventListener('click',()=>{
   document.getElementById('map-selector').classList.remove('active');
+  mobileQuality = 'desktop';
   _glbUrlResolve(GLB_1K);
 });
 document.getElementById('ms-hires').addEventListener('click',()=>{
   document.getElementById('map-selector').classList.remove('active');
+  mobileQuality = 'desktop';
   _glbUrlResolve(GLB_4K);
 });
+
+// Mobile quality buttons — both deliberately load the 1K build.
+function chooseMobileQuality(quality){
+  mobileQuality = quality;
+  applyMobileQualityPreset();
+  document.getElementById('map-selector').classList.remove('active');
+  _glbUrlResolve(GLB_1K);
+}
+document.getElementById('ms-mobile-low').addEventListener('click',()=>chooseMobileQuality('low'));
+document.getElementById('ms-mobile-high').addEventListener('click',()=>chooseMobileQuality('high'));
 
 function tryShowSkip(){
   if(ageConfirmed && glbLoaded){
