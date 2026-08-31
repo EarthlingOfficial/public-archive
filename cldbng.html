@@ -62,15 +62,15 @@ canvas{position:fixed;inset:0;width:100%;height:100%;z-index:0}
 #stmt .sl{display:block;color:#e8e0cc;font-family:Georgia,serif;font-size:clamp(15px,2.8vw,26px);font-style:italic;letter-spacing:.05em;line-height:1.6;text-shadow:0 2px 40px rgba(0,0,0,1),0 0 60px rgba(0,0,0,.9)}
 #stmt .sa{display:block;color:rgba(200,184,106,0.28);font-size:clamp(7px,1vw,9px);letter-spacing:4px;margin-top:8px;font-style:normal}
 #stmt.show{animation:stmtA 10s forwards}
+#stmt.red .sl{color:#ff3b30;text-shadow:0 2px 40px rgba(0,0,0,1),0 0 30px rgba(255,20,20,.35)}
 @keyframes stmtA{0%{opacity:0;filter:blur(6px)}8%{opacity:1;filter:blur(0)}78%{opacity:1}100%{opacity:0;filter:blur(3px)}}
 #live{position:fixed;top:12px;left:50%;transform:translateX(-50%);z-index:18;pointer-events:none;display:none;color:#ff2222;font-size:8px;letter-spacing:4px;padding:3px 10px;border:1px solid rgba(255,34,34,.35);background:rgba(0,0,0,.8);animation:lb .9s infinite}
 @keyframes lb{0%,100%{opacity:1}50%{opacity:0.4}}
 /* Street view mode — bar at bottom, no fullscreen overlay */
-#svbar{position:fixed;bottom:0;left:0;right:0;z-index:85;display:none;align-items:center;padding:10px 16px;background:rgba(0,0,0,.9);border-top:1px solid rgba(200,184,106,.14);gap:14px}
-#svtimer{color:var(--gold);font-size:15px;letter-spacing:4px;min-width:32px;font-weight:700}
-#svtxt{color:rgba(232,224,204,0.6);font-family:Georgia,serif;font-style:italic;font-size:clamp(9px,1.4vw,12px);flex:1;line-height:1.5}
-#svback{color:rgba(200,184,106,.5);font-size:8px;letter-spacing:3px;cursor:pointer;padding:5px 10px;border:1px solid rgba(200,184,106,.2);white-space:nowrap;pointer-events:all}
-#svback:hover{color:var(--gold)}
+/* Street view UI removed — no bar, no buttons. Escape releases the mouse to interact natively. */
+#mapFull{position:fixed;inset:0;z-index:80;display:none;background:#000}
+#mapFullPano{position:absolute;inset:0}
+#mapMsg{position:fixed;top:9%;left:50%;transform:translateX(-50%);z-index:81;pointer-events:none;text-align:center;max-width:78%;color:#ff3b30;font-family:Georgia,serif;font-style:italic;letter-spacing:.03em;font-size:clamp(11px,1.6vw,15px);line-height:1.6;text-shadow:0 2px 30px rgba(0,0,0,1),0 0 24px rgba(255,20,20,.3)}
 /* Resume hint — only shown when NOT in a feed */
 /* Resume hint removed — mouse silently re-locks on next click instead of nagging */
 #bbunlock{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:30;pointer-events:none;opacity:0;transition:opacity .5s;text-align:center}
@@ -154,11 +154,9 @@ canvas{position:fixed;inset:0;width:100%;height:100%;z-index:0}
 
 <div id="stmt"><span class="sl" id="sl"></span><span class="sa" id="sa"></span></div>
 
-<!-- Street view mode: bar at bottom, door stays in 3D space -->
-<div id="svbar">
-  <div id="svtimer">60</div>
-  <div id="svtxt"></div>
-  <div id="svback" onclick="exitSV()">✕ BACK</div>
+<div id="mapFull">
+  <div id="mapFullPano"></div>
+  <div id="mapMsg"></div>
 </div>
 
 <div id="bbunlock"><div class="but">BILLBOARD UNLOCKED</div><div class="bus">CLIMB TO A BILLBOARD — PRESS E</div></div>
@@ -319,7 +317,7 @@ let doorCount=0;
 const openedDoors=new Set();
 let nearDoor=null,nearBB=null,nearFinalBB=false,nearStone=false;
 let activeDoorIdx=-1,doorState='closed';
-let svActive=false,svTimer=null,svSeconds=60,svLinkTimer=0,svPano=null,svMarker=null,svMission=null;
+let svTimer=null,svSeconds=60,svPano=null,svMarker=null,svMission=null,svLinkTimer=0;
 const doorObjs=[],bbObjs=[];
 let finalBBObj=null,stoneObj=null;
 let finalBBUnlocked=false,stoneVisible=false;
@@ -816,7 +814,7 @@ function setupControls(){
     if(k==='e')interact();
     if(k===' '){doJump();e.preventDefault();}
     if(k==='f'&&flyUnlocked){flyMode=!flyMode;toast(flyMode?'FLY ON':'FLY OFF');}
-    if(k==='escape'){closeFeed();exitSV();}
+    if(k==='escape'){closeFeed();exitMapFull();}
   });
   document.addEventListener('keyup',e=>{
     const k=e.key.toLowerCase();
@@ -890,15 +888,20 @@ function openDoor(dIdx){
     activeDoorIdx=dobj.doorIdx;doorState='feed';
     loadFeed(dobj,d);
     if(d.live)$('live').style.display='block';
-    sfxOpen();showBigStmt(d.overlay,'— '+d.label);triggerHBSpike();
+    sfxOpen();showBigStmt(d.overlay,'— '+d.label,d.type==='streetview');triggerHBSpike();
+    return;
+  }
+  const isThisDoorActive=activeDoorIdx===dobj.doorIdx;
+  if(doorState==='map'&&isThisDoorActive){
+    exitMapFull();
+  } else if(doorState==='feed'&&isThisDoorActive){
+    if(d.type==='streetview'){enterMapFull(dobj,d);}
+    else{closeFeed();}
   } else {
-    if(doorState==='feed'){closeFeed();}
-    else if(doorState==='streetview'){exitSV();}
-    else{
-      activeDoorIdx=dobj.doorIdx;doorState='feed';
-      loadFeed(dobj,d);
-      if(d.live)$('live').style.display='block';
-    }
+    closeFeed();exitMapFull();
+    activeDoorIdx=dobj.doorIdx;doorState='feed';
+    loadFeed(dobj,d);
+    if(d.live)$('live').style.display='block';
   }
 }
 
@@ -912,8 +915,10 @@ function loadFeed(dobj,d){
   });
   if(!dobj.cssObj)return;
   if(d.type==='streetview'){
+    // Lightweight preview only — nothing loads until the player presses E again.
+    if(dobj.svEl)dobj.svEl.innerHTML='<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:rgba(232,224,204,.5);font-family:Georgia,serif;font-style:italic;font-size:14px;letter-spacing:.05em;text-align:center;padding:20px;box-sizing:border-box;">PRESS E TO ENTER</div>';
     dobj.cssObj.visible=true;
-    svInit(dobj,d);
+    doorState='feed';
     return;
   }
   if(!dobj.iframe)return;
@@ -931,25 +936,27 @@ function loadFeed(dobj,d){
   // No pointer lock exit — stays seamless
 }
 
-// ── STREET VIEW: real, walkable, joystick/WASD-driven ─────────────────
-// Mouse-look (and the right joystick on mobile) keeps driving rig.rotation.y /
-// camera.rotation.x exactly like normal movement — pointer lock never drops.
-// Holding forward steps you to whichever real Street View link is closest to
-// the direction you're facing. No native drag-to-pan, no click arrows.
-function svInit(dobj,d){
-  if(!dobj.svEl||typeof google==='undefined'||!google.maps){
-    toast('MAP UNAVAILABLE — CHECK CONNECTION');closeFeed();return;
+// ── FULLSCREEN 3D MAP: entered on the second E press ───────────────────
+// Mouse-look keeps driving rig.rotation.y/camera.rotation.x exactly as it
+// always does (that handler runs unconditionally, doorState or not) — we just
+// read those same values here to steer the panorama. Pointer lock is never
+// touched, so there is no pop-up, no cursor change, nothing to "resume."
+function enterMapFull(dobj,d){
+  if(typeof google==='undefined'||!google.maps){
+    toast('MAP UNAVAILABLE — CHECK CONNECTION');return;
   }
-  doorState='streetview';svActive=true;svLinkTimer=0;
-  dobj.svEl.innerHTML='';
-  $('svbar').style.display='flex';
+  doorState='map';svLinkTimer=0;
+  if(dobj.cssObj)dobj.cssObj.visible=false;
+  $('mapFull').style.display='block';
+  $('mapMsg').textContent='';
+  const el=$('mapFullPano');el.innerHTML='';
   const svc=new google.maps.StreetViewService();
   svc.getPanorama({location:{lat:d.lat,lng:d.lng},radius:200},(data,status)=>{
-    if(doorState!=='streetview')return; // player already backed out
+    if(doorState!=='map')return; // player already backed out
     if(status!=='OK'||!data||!data.location){
-      toast('NO STREET VIEW COVERAGE HERE');closeFeed();return;
+      toast('NO STREET VIEW COVERAGE HERE');exitMapFull();return;
     }
-    svPano=new google.maps.StreetViewPanorama(dobj.svEl,{
+    svPano=new google.maps.StreetViewPanorama(el,{
       pano:data.location.pano,pov:{heading:0,pitch:0},zoom:1,
       disableDefaultUI:true,clickToGo:false,scrollwheel:false,
       panControl:false,linksControl:false,addressControl:false,
@@ -962,9 +969,9 @@ function svInit(dobj,d){
     });
     svMission={narrative:d.narrative&&d.narrative.length?d.narrative:[d.overlay||''],idx:0,
       targetLat:d.lat,targetLng:d.lng,targetRadiusM:d.targetRadiusM||60,done:false};
-    svPano.addListener('position_changed',svUpdateDistance);
-    svUpdateDistance();
-    startSVTimer();
+    svPano.addListener('position_changed',mapUpdateDistance);
+    mapUpdateDistance();
+    startMapTimer();
   });
 }
 
@@ -975,64 +982,61 @@ function haversineM(lat1,lng1,lat2,lng2){
   return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
 }
 
-function svUpdateDistance(){
+function mapUpdateDistance(){
   if(!svPano||!svMission||svMission.done)return;
   const p=svPano.getPosition();if(!p)return;
   const dist=haversineM(p.lat(),p.lng(),svMission.targetLat,svMission.targetLng);
-  svMission.lastDist=dist;
   const line=svMission.narrative[svMission.idx]||'';
-  $('svtxt').textContent=line+'   ['+Math.round(dist)+'m TO TARGET]';
-  if(dist<=svMission.targetRadiusM)svSucceed();
+  $('mapMsg').textContent=line+'   ['+Math.round(dist)+'m]';
+  if(dist<=svMission.targetRadiusM)mapSucceed();
 }
 
-function svSucceed(){
+function mapSucceed(){
   if(!svMission||svMission.done)return;
   svMission.done=true;clearInterval(svTimer);svTimer=null;
-  $('svtxt').textContent='TARGET REACHED.';
+  $('mapMsg').textContent='TARGET REACHED.';
   sfxOpen();triggerHBSpike();
-  setTimeout(()=>{exitSV();},2200);
+  setTimeout(exitMapFull,2200);
 }
 
-function exitSV(){
-  clearInterval(svTimer);svTimer=null;svActive=false;
-  $('svbar').style.display='none';
-  if(activeDoorIdx>=0){
-    const dobj=doorObjs.find(o=>o.doorIdx===activeDoorIdx);
-    if(dobj&&dobj.cssObj)dobj.cssObj.visible=false;
-    if(dobj&&dobj.svEl)dobj.svEl.innerHTML='';
-  }
-  svPano=null;svMarker=null;svMission=null;
-  doorState='closed';activeDoorIdx=-1;
-  $('live').style.display='none';
-  if(!isMobile)document.body.requestPointerLock().catch(()=>{});
-}
-
-function startSVTimer(){
-  svSeconds=60;$('svtimer').textContent=60;
+function startMapTimer(){
+  svSeconds=60;
   clearInterval(svTimer);
   svTimer=setInterval(()=>{
     if(!svMission||svMission.done)return;
-    svSeconds--;$('svtimer').textContent=svSeconds;
+    svSeconds--;
     const step=Math.max(8,Math.floor(56/Math.max(1,svMission.narrative.length)));
     svMission.idx=Math.min(svMission.narrative.length-1,Math.floor((60-svSeconds)/step));
-    svUpdateDistance();
+    mapUpdateDistance();
     if(svSeconds<=0){
       clearInterval(svTimer);svTimer=null;
-      exitSV();
-      showBigStmt('One minute. You chose to look.\nThey never had a choice to leave.','— THE TIMER');
+      exitMapFull();
+      showBigStmt('One minute. You chose to look.\nThey never had a choice to leave.','— THE TIMER',true);
       sfxScare();
     }
   },1000);
 }
 
+function exitMapFull(){
+  clearInterval(svTimer);svTimer=null;
+  $('mapFull').style.display='none';
+  $('mapFullPano').innerHTML='';
+  svPano=null;svMarker=null;svMission=null;
+  if(activeDoorIdx>=0){
+    const dobj=doorObjs.find(o=>o.doorIdx===activeDoorIdx);
+    if(dobj&&dobj.svEl)dobj.svEl.innerHTML='';
+    if(dobj&&dobj.cssObj)dobj.cssObj.visible=false;
+  }
+  doorState='closed';activeDoorIdx=-1;
+  $('live').style.display='none';
+  // Pointer lock was never dropped, so nothing to re-request — this is just a safety net.
+  if(!isMobile&&document.pointerLockElement!==document.body)document.body.requestPointerLock().catch(()=>{});
+}
+
 function closeFeed(){
   doorObjs.forEach(o=>{if(o.cssObj)o.cssObj.visible=false;if(o.iframe)o.iframe.src='about:blank';if(o.svEl)o.svEl.innerHTML='';});
   $('live').style.display='none';
-  $('svbar').style.display='none';
-  clearInterval(svTimer);svTimer=null;svActive=false;
-  svPano=null;svMarker=null;svMission=null;
   doorState='closed';activeDoorIdx=-1;
-  if(!isMobile)document.body.requestPointerLock().catch(()=>{});
 }
 
 // ── BILLBOARD LOGIC ───────────────────────────────────────────────────
@@ -1122,7 +1126,7 @@ function updateNear(){
       nearDoor=i;$('xh').classList.add('lock');
       if(!isMobile){
         const d=DOORS[o.doorIdx];
-        const lbl=o.opened?(doorState==='streetview'?'EXIT STREET VIEW':doorState==='feed'?'CLOSE':'OPEN'):'OPEN';
+        const lbl=o.opened?(doorState==='map'?'EXIT MAP':doorState==='feed'?(DOORS[o.doorIdx].type==='streetview'&&activeDoorIdx===o.doorIdx?'ENTER':'CLOSE'):'OPEN'):'OPEN';
         $('hint').style.display='block';$('hint').textContent='[ E ] '+lbl+' — '+d.label;
       }return;
     }
@@ -1149,10 +1153,9 @@ function doJump(){if(onGround&&!flyMode)vel.y=JUMP_V;}
 
 function updateMovement(dt){
   if(!started)return;
-  if(svActive){
-    // Right joystick still turns the view on mobile, same as normal movement.
-    // Desktop mouse-look already updates rig.rotation.y/camera.rotation.x every
-    // frame regardless of svActive, since pointer lock is never dropped here.
+  if(doorState==='map'){
+    // Right joystick turns the view on mobile; desktop mouse-look already
+    // updates rig.rotation.y/camera.rotation.x every frame unconditionally.
     if(td.r.a){
       rig.rotation.y-=td.r.mx*0.055;
       camera.rotation.x=Math.max(-1.3,Math.min(1.3,camera.rotation.x-td.r.my*0.055));
@@ -1173,7 +1176,7 @@ function updateMovement(dt){
           const diff=Math.abs(((l.heading-targetHeading+540)%360)-180);
           if(diff<bestDiff){bestDiff=diff;best=l;}
         });
-        if(best&&best.pano){svPano.setPano(best.pano);}
+        if(best&&best.pano)svPano.setPano(best.pano);
         svLinkTimer=0.55;
       }
     }
@@ -1238,9 +1241,10 @@ function updateHB(dt){
 }
 
 function showStmt(){const s=stmtQ[stmtIdx++%stmtQ.length];showBigStmt(s.t,s.a);}
-function showBigStmt(text,attr){
+function showBigStmt(text,attr,red){
   $('sl').textContent=text||'';$('sa').textContent=attr||'';
-  const el=$('stmt');el.classList.remove('show');void el.offsetWidth;el.classList.add('show');
+  const el=$('stmt');el.classList.remove('show');void el.offsetWidth;
+  el.classList.toggle('red',!!red);el.classList.add('show');
 }
 
 let AC_=null;
