@@ -1156,13 +1156,17 @@ function updateMovement(dt){
   if(doorState==='map'){
     // Right joystick turns the view on mobile; desktop mouse-look already
     // updates rig.rotation.y/camera.rotation.x every frame unconditionally.
+    // A/D turn the view directly (keyboard-only alternative to mouse — Street
+    // View has no sidestep, so these turn instead of strafing).
+    if(kA)rig.rotation.y+=2.2*dt;
+    if(kD)rig.rotation.y-=2.2*dt;
     if(td.r.a){
       rig.rotation.y-=td.r.mx*0.055;
       camera.rotation.x=Math.max(-1.3,Math.min(1.3,camera.rotation.x-td.r.my*0.055));
     }
     if(svPano){
       const headingDeg=((-rig.rotation.y*180/Math.PI)+360)%360;
-      const pitchDeg=Math.max(-70,Math.min(70,-camera.rotation.x*180/Math.PI));
+      const pitchDeg=Math.max(-70,Math.min(70,camera.rotation.x*180/Math.PI));
       svPano.setPov({heading:headingDeg,pitch:pitchDeg});
       const fwdHeld=kW||td.l.my<-0.1;
       const backHeld=kS||td.l.my>0.1;
