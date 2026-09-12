@@ -73,27 +73,6 @@ canvas{position:fixed;inset:0;width:100%;height:100%;z-index:0}
 /* Street view UI removed — no bar, no buttons. Escape releases the mouse to interact natively. */
 #mapFull{position:fixed;inset:0;z-index:80;display:none;background:#000}
 #mapFullPano{position:absolute;inset:0}
- #mapFull::after{content:'';position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse at center,transparent 48%,rgba(0,0,0,.32) 100%);z-index:1}
- #mapStats{position:fixed;top:16px;left:16px;z-index:84;display:none;width:min(260px,calc(100vw - 32px));padding:12px 14px;background:rgba(3,5,9,.78);border:1px solid rgba(200,184,106,.26);box-shadow:0 8px 30px rgba(0,0,0,.45);pointer-events:none}
- #mapStats .mapTitle{color:var(--gold);font-size:9px;letter-spacing:3px;margin-bottom:10px}
- .mapStat{margin-top:8px}
- .mapStatHead{display:flex;justify-content:space-between;align-items:center;color:rgba(232,224,204,.72);font-size:8px;letter-spacing:2px;margin-bottom:4px}
- .mapStatHead strong{font-size:9px;color:#f1ead8;font-weight:400}
- .mapStatTrack{height:7px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);overflow:hidden}
- .mapStatFill{display:block;height:100%;width:100%;transition:width .22s ease,filter .22s ease}
- #mapHealthFill{background:linear-gradient(90deg,#7a1717,#ef4d44);box-shadow:0 0 10px rgba(239,77,68,.45)}
- #mapSanityFill{background:linear-gradient(90deg,#244a9c,#71b7ff);box-shadow:0 0 10px rgba(113,183,255,.45)}
- #mapStats.damaged #mapHealthFill{filter:brightness(1.55)}
- #mapStats.shaken #mapSanityFill{filter:brightness(1.55)}
- #mapControls{margin-top:11px;color:rgba(200,184,106,.48);font-size:7px;letter-spacing:1.5px;line-height:1.6}
- #mapMotion{position:absolute;inset:0;z-index:83;pointer-events:none;opacity:0;transition:opacity .25s}
- #mapMotion.walking{opacity:1}
- #mapMotion::before,#mapMotion::after{content:'';position:absolute;left:50%;top:50%;background:rgba(232,224,204,.42)}
- #mapMotion::before{width:18px;height:1px;transform:translate(-50%,-50%)}
- #mapMotion::after{width:1px;height:18px;transform:translate(-50%,-50%)}
- .live-parallax-wrap{transform-style:preserve-3d;perspective:900px}
- .live-parallax-wrap::after{content:'';position:absolute;inset:0;border:1px solid rgba(255,50,50,.2);box-shadow:inset 0 0 18px rgba(255,20,20,.1);pointer-events:none}
- .live-parallax-media{will-change:transform;transform-origin:50% 50%;backface-visibility:hidden}
 #mapMsg{position:fixed;top:9%;left:50%;transform:translateX(-50%);z-index:81;pointer-events:none;text-align:center;max-width:78%;color:#ff3b30;font-family:Georgia,serif;font-style:italic;letter-spacing:.03em;font-size:clamp(11px,1.6vw,15px);line-height:1.6;text-shadow:0 2px 30px rgba(0,0,0,1),0 0 24px rgba(255,20,20,.3)}
 /* Resume hint — only shown when NOT in a feed */
 /* Resume hint removed — mouse silently re-locks on next click instead of nagging */
@@ -134,7 +113,7 @@ canvas{position:fixed;inset:0;width:100%;height:100%;z-index:0}
 <!-- Google Maps JS API — powers the real, walkable Street View inside "map" doors.
      Key below is the one already in use; restrict it to your domain in Google Cloud Console
      (APIs & Services > Credentials > this key > Application restrictions > Websites). -->
-<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDkv5cMLdPRV0qGF1kwtjb2h6WaVEe4ud8"></script>
+<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDkv5cMLdPRV0qGF1kwtjb2h6WaVEe4ud8&libraries=geometry"></script>
 </head>
 <body>
 
@@ -181,13 +160,6 @@ canvas{position:fixed;inset:0;width:100%;height:100%;z-index:0}
 
 <div id="mapFull">
   <div id="mapFullPano"></div>
-   <div id="mapMotion"></div>
-   <div id="mapStats">
-     <div class="mapTitle">STREET VIEW // SURVIVAL HUD</div>
-     <div class="mapStat"><div class="mapStatHead"><span>HEALTH</span><strong id="mapHealthText">100</strong></div><div class="mapStatTrack"><i id="mapHealthFill" class="mapStatFill"></i></div></div>
-     <div class="mapStat"><div class="mapStatHead"><span>SANITY</span><strong id="mapSanityText">100</strong></div><div class="mapStatTrack"><i id="mapSanityFill" class="mapStatFill"></i></div></div>
-     <div id="mapControls">WASD MOVE THROUGH THE MAP · MOUSE LOOK · E / ESC EXIT</div>
-   </div>
   <div id="mapMsg"></div>
 </div>
 
@@ -406,6 +378,8 @@ let flyMode=false,flyUnlocked=false,bbWatched=0;
 const vel=new THREE.Vector3();
 let kW=0,kA=0,kS=0,kD=0,onGround=false;
 const SPEED=6,GRAV=22,JUMP_V=16,PLAYER_H=1.85;
+const DOOR_DW=1.1,DOOR_DH=2.4;
+const PARALLAX_RANGE=2.0,PARALLAX_EASE=6; // world units of side-to-side/up-down movement that sweeps the full slide range
 let groundY=0;
 const td={l:{a:0,id:-1,sx:0,sy:0,mx:0,my:0},r:{a:0,id:-1,sx:0,sy:0,mx:0,my:0}};
 let doorCount=0;
@@ -413,8 +387,12 @@ const openedDoors=new Set();
 let nearDoor=null,nearBB=null,nearFinalBB=false,nearStone=false;
 let activeDoorIdx=-1,doorState='closed';
 let svTimer=null,svSeconds=60,svPano=null,svMarker=null,svMission=null,svLinkTimer=0;
- let svMoveTimer=0,svMoveDirection=0,svWalkBob=0,svLastPano=null;
- let mapHealth=100,mapSanity=100;
+// Free-roam state: svVirtualPos is a dead-reckoned lat/lng that moves every
+// frame with WASD/joystick input, independent of the discrete pano graph.
+// It's periodically resynced to the nearest real Street View node (svStreetSvc)
+// so the imagery stays accurate to wherever you've actually walked.
+let svVirtualPos=null,svStreetSvc=null,svResyncCD=0;
+const SV_SPEED=3.2;
 const doorObjs=[],bbObjs=[];
 let finalBBObj=null,stoneObj=null;
 let finalBBUnlocked=false,stoneVisible=false;
@@ -707,7 +685,7 @@ function mkHieroglyphTexture(){
 
 // ── BUILD: DOORS ──────────────────────────────────────────────────────
 function buildDoors(){
-  const DW=1.1,DH=2.4;
+  const DW=DOOR_DW,DH=DOOR_DH;
   for(let i=0;i<15;i++){
     const d=DOORS[i];
     const spot=findDoorSpot(i);
@@ -746,21 +724,24 @@ function buildDoors(){
         svEl.style.cssText=`background:#000;display:block;width:${PW}px;height:${PH}px;`;
         mountEl=svEl;
       } else {
-        // Crop wrapper: clips a wide 16:9 video to fill this tall frame with
-        // no black bars — the video is scaled to match frame height, so the
-        // sides overflow and get cropped instead of top/bottom padding.
+        // Crop wrapper: clips a wide 16:9 video to exactly fill this tall
+        // frame's height, same as it's always done — the sides overflow
+        // naturally because of the aspect ratio, and THAT overflow is the
+        // slide room parallax uses. Height is never touched, because
+        // YouTube's own control bar sits fixed to the video's bottom edge —
+        // resizing height pushes it out of the visible crop and breaks it.
         const wrap=document.createElement('div');
-         wrap.style.cssText=`width:${PW}px;height:${PH}px;overflow:hidden;position:relative;background:#000;`;
-         if(d.live)wrap.classList.add('live-parallax-wrap');
+        wrap.style.cssText=`width:${PW}px;height:${PH}px;overflow:hidden;position:relative;background:#000;`;
         iframe=document.createElement('iframe');
-         if(d.live)iframe.classList.add('live-parallax-media');
         iframe.allow='autoplay;encrypted-media;fullscreen;picture-in-picture';
         iframe.setAttribute('sandbox','allow-scripts allow-same-origin allow-presentation allow-popups allow-forms');
         iframe.src='about:blank';
         const coverW=Math.round(PH*16/9);
         const cropShift=d.cropShiftPx||0; // positive = reveal more of the video's LEFT side
-         iframe.style.cssText=`position:absolute;top:0;left:50%;transform:translate3d(calc(-50% + ${cropShift}px),0,0) scale(1.03);width:${coverW}px;height:${PH}px;border:0;background:#000;`;
+        iframe.style.cssText=`position:absolute;top:0;left:50%;transform:translateX(calc(-50% + ${cropShift}px));width:${coverW}px;height:${PH}px;border:0;background:#000;`;
         iframe.width=coverW;iframe.height=PH;
+        iframe.dataset.baseCropShift=cropShift;
+        iframe.dataset.maxSlideX=((coverW-PW)/2).toFixed(1);
         wrap.appendChild(iframe);
         mountEl=wrap;
       }
@@ -772,7 +753,7 @@ function buildDoors(){
       cssObj.rotation.y=spot.ry;cssObj.visible=false;
       scene.add(cssObj);
     }
-     doorObjs.push({grp,fill,handle,gl,glow,pos:{x:spot.x,y:spot.y,z:spot.z},ry:spot.ry,doorIdx:i,opened:false,cssObj,iframe,svEl,liveParallax:!!d.live});
+    doorObjs.push({grp,fill,handle,gl,glow,pos:{x:spot.x,y:spot.y,z:spot.z},ry:spot.ry,doorIdx:i,opened:false,cssObj,iframe,svEl,_px:0,_py:0});
   }
 }
 
@@ -918,7 +899,7 @@ function setupControls(){
     if(k==='s'||k==='arrowdown'){kS=1;e.preventDefault();}
     if(k==='a'||k==='arrowleft'){kA=1;e.preventDefault();}
     if(k==='d'||k==='arrowright'){kD=1;e.preventDefault();}
-     if(k==='e'){if(doorState==='map')exitMapFull();else interact();}
+    if(k==='e')interact();
     if(k===' '){doJump();e.preventDefault();}
     if(k==='f'&&flyUnlocked){flyMode=!flyMode;toast(flyMode?'FLY ON':'FLY OFF');}
     if(k==='escape'){closeFeed();exitMapFull();}
@@ -1048,65 +1029,18 @@ function loadFeed(dobj,d){
   // No pointer lock exit — stays seamless
 }
 
-// Live doors only: add a restrained screen-space offset inside the video
-// surface. The 3D door still receives normal camera parallax; this second
-// layer makes live feeds feel like a shallow, responsive display rather than
-// a flat texture glued to the frame.
-function updateLiveDoorParallax(t){
-  if(!rig||!camera)return;
-  doorObjs.forEach(o=>{
-    if(!o.liveParallax||!o.cssObj||!o.cssObj.visible||!o.iframe)return;
-    const d=DOORS[o.doorIdx];
-    if(!d||!d.live)return;
-    const dx=o.pos.x-rig.position.x,dz=o.pos.z-rig.position.z;
-    const dist=Math.max(2,Math.hypot(dx,dz));
-    const worldAngle=Math.atan2(dx,dz);
-    let yaw=worldAngle-rig.rotation.y;
-    yaw=Math.atan2(Math.sin(yaw),Math.cos(yaw));
-    const proximity=Math.max(0,Math.min(1,1-dist/24));
-    const x=Math.max(-18,Math.min(18,Math.sin(yaw)*10+Math.sin(t*1.4+o.doorIdx)*2))*proximity;
-    const y=Math.max(-12,Math.min(12,camera.rotation.x*7+Math.sin(t*1.8+o.doorIdx)*1.5))*proximity;
-    o.iframe.style.transform=`translate3d(calc(-50% + ${d.cropShiftPx||0}px + ${x.toFixed(2)}px),${y.toFixed(2)}px,0) scale(${(1.03+proximity*.035).toFixed(3)})`;
-  });
-}
-
-function updateMapVitals(){
-  const hf=$('mapHealthFill'),sf=$('mapSanityFill'),ht=$('mapHealthText'),st=$('mapSanityText');
-  if(hf)hf.style.width=Math.max(0,Math.min(100,mapHealth))+'%';
-  if(sf)sf.style.width=Math.max(0,Math.min(100,mapSanity))+'%';
-  if(ht)ht.textContent=Math.round(mapHealth);
-  if(st)st.textContent=Math.round(mapSanity);
-}
-function resetMapVitals(){
-  mapHealth=100;mapSanity=100;updateMapVitals();
-  const el=$('mapStats');if(el)el.classList.remove('damaged','shaken');
-}
-// Public hooks for the enemy system that can be added later.
-window.drainMapHealth=amount=>{
-  mapHealth=Math.max(0,mapHealth-(Number(amount)||0));updateMapVitals();
-  const el=$('mapStats');if(el){el.classList.remove('damaged');void el.offsetWidth;el.classList.add('damaged');}
-  return mapHealth;
-};
-window.drainMapSanity=amount=>{
-  mapSanity=Math.max(0,mapSanity-(Number(amount)||0));updateMapVitals();
-  const el=$('mapStats');if(el){el.classList.remove('shaken');void el.offsetWidth;el.classList.add('shaken');}
-  return mapSanity;
-};
-
 // ── FULLSCREEN 3D MAP: entered on the second E press ───────────────────
-// This uses real Street View links as the map's traversable 3D nodes. The
-// player keeps the normal first-person mouse look, and WASD selects the
-// nearest linked panorama in the requested direction.
+// Mouse-look keeps driving rig.rotation.y/camera.rotation.x exactly as it
+// always does (that handler runs unconditionally, doorState or not) — we just
+// read those same values here to steer the panorama. Pointer lock is never
+// touched, so there is no pop-up, no cursor change, nothing to "resume."
 function enterMapFull(dobj,d){
   if(typeof google==='undefined'||!google.maps){
     toast('MAP UNAVAILABLE — CHECK CONNECTION');return;
   }
   doorState='map';svLinkTimer=0;
-  svMoveTimer=0;svWalkBob=0;svLastPano=null;resetMapVitals();
   if(dobj.cssObj)dobj.cssObj.visible=false;
   $('mapFull').style.display='block';
-  $('mapStats').style.display='block';
-  $('mapMotion').classList.remove('walking');
   $('mapMsg').textContent='';
   const el=$('mapFullPano');el.innerHTML='';
   const svc=new google.maps.StreetViewService();
@@ -1122,7 +1056,6 @@ function enterMapFull(dobj,d){
       motionTracking:false,motionTrackingControl:false,
       fullscreenControl:false,zoomControl:false,enableCloseButton:false
     });
-     svLastPano=data.location.pano;
     svMarker=new google.maps.Marker({
       position:{lat:d.lat,lng:d.lng},map:svPano,title:'TARGET',
       label:{text:'TARGET',color:'#000',fontWeight:'700',fontSize:'10px'}
@@ -1133,6 +1066,11 @@ function enterMapFull(dobj,d){
     svPano.addListener('position_changed',mapUpdateDistance);
     mapUpdateDistance();
     startMapTimer();
+    // Free-roam setup: seed the virtual walking position at the pano we just
+    // loaded, so movement dead-reckons from here.
+    svVirtualPos={lat:data.location.latLng.lat(),lng:data.location.latLng.lng()};
+    svResyncCD=0;
+    if(!svStreetSvc)svStreetSvc=new google.maps.StreetViewService();
   });
 }
 
@@ -1185,12 +1123,9 @@ function startMapTimer(){
 function exitMapFull(){
   clearInterval(svTimer);svTimer=null;
   $('mapFull').style.display='none';
-  $('mapStats').style.display='none';
-  $('mapMotion').classList.remove('walking');
   $('mapFullPano').innerHTML='';
   svPano=null;svMarker=null;svMission=null;
-  svLastPano=null;svMoveTimer=0;
-  camera.position.y=0;
+  svVirtualPos=null;
   if(activeDoorIdx>=0){
     const dobj=doorObjs.find(o=>o.doorIdx===activeDoorIdx);
     if(dobj&&dobj.svEl)dobj.svEl.innerHTML='';
@@ -1313,7 +1248,6 @@ function updateNear(){
 
 function interact(){
   if(!started||ending)return;primeAudio();sfxUI();
-  if(doorState==='map'){exitMapFull();return;}
   if(nearStone){clickStone();return;}
   if(nearFinalBB){activateFinalBB();return;}
   if(nearDoor!==null){openDoor(nearDoor);return;}
@@ -1322,39 +1256,12 @@ function interact(){
 
 function doJump(){if(onGround&&!flyMode)vel.y=JUMP_V;}
 
-function moveStreetView(direction){
-  if(!svPano||!svMission||svMission.done||svMoveTimer>0)return;
-  const links=svPano.getLinks()||[];
-  if(!links.length){toast('NO WALKABLE LINK IN THAT DIRECTION');svMoveTimer=.5;return;}
-  const currentHeading=((-rig.rotation.y*180/Math.PI)+360)%360;
-  const targetHeading=(currentHeading+direction+360)%360;
-  let best=null,bestDiff=999;
-  links.forEach(link=>{
-    if(!link||typeof link.heading!=='number')return;
-    const diff=Math.abs(((link.heading-targetHeading+540)%360)-180);
-    if(diff<bestDiff){bestDiff=diff;best=link;}
-  });
-  if(best&&best.pano){
-    svPano.setPano(best.pano);
-    rig.rotation.y=-best.heading*Math.PI/180;
-    svPano.setPov({heading:best.heading,pitch:camera.rotation.x*180/Math.PI});
-    svLastPano=best.pano;
-    svMoveTimer=.38;
-    svWalkBob=1;
-    $('mapMotion').classList.add('walking');
-    setTimeout(()=>$('mapMotion').classList.remove('walking'),180);
-  } else {
-    toast('NO WALKABLE LINK IN THAT DIRECTION');svMoveTimer=.5;
-  }
-}
-
 function updateMovement(dt){
   if(!started)return;
   if(doorState==='map'){
-    // Mouse-look still controls the view. Each WASD direction now traverses
-    // the closest real Street View link, which gives the map a game-like
-    // first-person movement loop instead of a static panorama.
-    svMoveTimer=Math.max(0,svMoveTimer-dt);
+    // Mouse-look (desktop) and the right joystick (mobile) both drive
+    // rig.rotation.y/camera.rotation.x every frame unconditionally — read
+    // those same values here to steer the panorama's POV.
     if(td.r.a){
       rig.rotation.y-=td.r.mx*0.055;
       camera.rotation.x=Math.max(-1.3,Math.min(1.3,camera.rotation.x-td.r.my*0.055));
@@ -1363,13 +1270,61 @@ function updateMovement(dt){
       const headingDeg=((-rig.rotation.y*180/Math.PI)+360)%360;
       const pitchDeg=Math.max(-70,Math.min(70,camera.rotation.x*180/Math.PI));
       svPano.setPov({heading:headingDeg,pitch:pitchDeg});
-      const forward=kW||td.l.my<-0.1,back=kS||td.l.my>0.1,left=kA||td.l.mx<-0.1,right=kD||td.l.mx>0.1;
-      if(forward&&!back)moveStreetView(0);
-      else if(back&&!forward)moveStreetView(180);
-      else if(left&&!right)moveStreetView(-90);
-      else if(right&&!left)moveStreetView(90);
-      svWalkBob=Math.max(0,svWalkBob-dt*3.2);
-      camera.position.y=Math.sin((1-svWalkBob)*Math.PI*2)*0.012*svWalkBob;
+      // Full 3D free-roam: WASD/left-joystick move in ANY direction relative
+      // to facing (not just forward/back), the same way the outside city
+      // world does. We dead-reckon a virtual lat/lng every frame so movement
+      // is continuous rather than snapping between fixed link nodes.
+      const fwd=new THREE.Vector3(-Math.sin(rig.rotation.y),0,-Math.cos(rig.rotation.y));
+      const rgt=new THREE.Vector3(Math.cos(rig.rotation.y),0,-Math.sin(rig.rotation.y));
+      let mx=0,mz=0;
+      if(kW||td.l.my<-0.1){mx+=fwd.x;mz+=fwd.z;}
+      if(kS||td.l.my>0.1){mx-=fwd.x;mz-=fwd.z;}
+      if(kA||td.l.mx<-0.1){mx-=rgt.x;mz-=rgt.z;}
+      if(kD||td.l.mx>0.1){mx+=rgt.x;mz+=rgt.z;}
+      const mag=Math.hypot(mx,mz);
+      const canFreeRoam=svVirtualPos&&google.maps.geometry&&google.maps.geometry.spherical;
+      if(mag>0.001&&canFreeRoam){
+        mx/=mag;mz/=mag;
+        // Three.js -Z is "north" here, so convert to a compass heading.
+        const moveHeadingDeg=(Math.atan2(mx,-mz)*180/Math.PI+360)%360;
+        const cur=new google.maps.LatLng(svVirtualPos.lat,svVirtualPos.lng);
+        const next=google.maps.geometry.spherical.computeOffset(cur,SV_SPEED*dt,moveHeadingDeg);
+        svVirtualPos={lat:next.lat(),lng:next.lng()};
+        // Resync to the nearest real panorama so imagery keeps matching the
+        // virtual position as it drifts away from the node we last loaded.
+        // This is what lets you walk up into hills/mountains — Street View's
+        // own imagery coverage there does the work, nothing here blocks it.
+        svResyncCD-=dt;
+        if(svResyncCD<=0&&svStreetSvc){
+          svResyncCD=0.5;
+          svStreetSvc.getPanorama({location:svVirtualPos,radius:25,source:google.maps.StreetViewSource.OUTDOOR},(data,status)=>{
+            if(doorState!=='map'||!svPano)return;
+            if(status==='OK'&&data&&data.location&&data.location.pano!==svPano.getPano()){
+              svPano.setPano(data.location.pano);
+            }
+          });
+        }
+      }
+      // Fallback for the rare case the geometry library failed to load:
+      // snap between discrete links exactly as before, so movement never
+      // just breaks.
+      if(!canFreeRoam){
+        const fwdHeld=kW||td.l.my<-0.1;
+        const backHeld=kS||td.l.my>0.1;
+        svLinkTimer-=dt;
+        if(svMission&&!svMission.done&&svLinkTimer<=0&&(fwdHeld||backHeld)){
+          const targetHeading=(headingDeg+(backHeld&&!fwdHeld?180:0)+360)%360;
+          const links=svPano.getLinks()||[];
+          let best=null,bestDiff=999;
+          links.forEach(l=>{
+            if(!l)return;
+            const diff=Math.abs(((l.heading-targetHeading+540)%360)-180);
+            if(diff<bestDiff){bestDiff=diff;best=l;}
+          });
+          if(best&&best.pano)svPano.setPano(best.pano);
+          svLinkTimer=0.55;
+        }
+      }
     }
     return;
   }
@@ -1640,13 +1595,40 @@ function updateMinimap(dt){
   _mmX.strokeStyle='rgba(200,184,106,0.18)';_mmX.lineWidth=1;_mmX.stroke();
 }
 
+// Applies to every door that isn't a street-view map — streetview doors
+// never get an iframe at all (o.iframe stays null for them), so the guard
+// below already excludes them without needing to check door type.
+// Horizontal-only: vertical sliding was cropping YouTube's own control bar
+// out of view, so height/vertical offset is left completely alone here —
+// native play/pause/settings controls stay exactly as they'd normally work.
+function updateDoorParallax(dt){
+  for(let i=0;i<doorObjs.length;i++){
+    const o=doorObjs[i];
+    if(!o.iframe||!o.cssObj)continue;
+    if(!o.cssObj.visible){
+      if(o._px)o._px=0;
+      continue;
+    }
+    const dx=rig.position.x-o.pos.x,dz=rig.position.z-o.pos.z;
+    const rightX=Math.cos(o.ry),rightZ=-Math.sin(o.ry);
+    const lateral=dx*rightX+dz*rightZ;
+    const maxX=parseFloat(o.iframe.dataset.maxSlideX||'0');
+    const fracX=Math.max(-1,Math.min(1,lateral/PARALLAX_RANGE));
+    const targetPx=fracX*maxX;
+    const ease=Math.min(1,PARALLAX_EASE*dt);
+    o._px+=(targetPx-o._px)*ease;
+    const base=parseFloat(o.iframe.dataset.baseCropShift||'0');
+    const totalX=Math.max(-maxX,Math.min(maxX,base+o._px));
+    o.iframe.style.transform=`translateX(calc(-50% + ${totalX.toFixed(1)}px))`;
+  }
+}
+
 function animate(){
   const dt=Math.min(clock.getDelta(),0.05);
   const t=clock.elapsedTime;
   updateDayNight(dt);
   if(started){
-    updateMovement(dt);updateNear();updateHB(dt);updateMusic(dt);checkVoid(dt);updateMinimap(dt);
-     updateLiveDoorParallax(t);
+    updateMovement(dt);updateNear();updateHB(dt);updateMusic(dt);checkVoid(dt);updateMinimap(dt);updateDoorParallax(dt);
     stmtT-=dt;if(stmtT<=0){stmtT=20+Math.random()*22;showStmt();}
     const bob=Math.sin(t*2)*0.15;
     bbObjs.forEach(o=>{if(o.tri)o.tri.position.y=o.tri.userData.baseY+bob;});
