@@ -119,18 +119,28 @@ canvas{position:fixed;inset:0;width:100%;height:100%;z-index:0}
 {
   "imports": {
     "three": "https://esm.sh/three@0.169.0",
-    "3d-tiles-renderer": "https://esm.sh/3d-tiles-renderer@0.4.5?external=three"
+    "three/addons/": "https://unpkg.com/three@0.169.0/examples/jsm/",
+    "3d-tiles-renderer": "https://esm.sh/3d-tiles-renderer@0.5.0?external=three",
+    "3d-tiles-renderer/core/plugins": "https://esm.sh/3d-tiles-renderer@0.5.0/core/plugins?external=three",
+    "3d-tiles-renderer/three/plugins": "https://esm.sh/3d-tiles-renderer@0.5.0/three/plugins?external=three"
   }
 }
 </script>
 <script type="module">
 import * as THREE3 from 'three';
-import { GooglePhotorealisticTilesRenderer } from '3d-tiles-renderer';
+import { TilesRenderer } from '3d-tiles-renderer';
+import { GoogleCloudAuthPlugin } from '3d-tiles-renderer/core/plugins';
+import { GLTFExtensionsPlugin, ReorientationPlugin, TileCompressionPlugin } from '3d-tiles-renderer/three/plugins';
+import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 
 // Isolated renderer: its own WebGL context, its own (modern) Three.js
 // instance, completely separate from the game's r128 CSS3D/city engine.
 // The classic game script drives it through window.Tiles3D only.
-const EYE_H=1.7,WALK_SPEED=4.2,SPAWN_UP=220,SPAWN_OFFSET=70,GROUND_POLL_MS=250,GROUND_POLL_MAX=60;
+const EYE_H=1.7,WALK_SPEED=4.2,SPAWN_UP=220,SPAWN_OFFSET=70,GROUND_POLL_MS=250,GROUND_POLL_MAX=120;
+// Google 3D Tiles does not infer a tileset URL from the auth plugin. The
+// renderer must start at Google's root tileset, then the auth plugin adds the
+// API-key authentication to the tile requests.
+const GOOGLE_3D_TILES_ROOT='https://tile.googleapis.com/v1/3dtiles/root.json';
 let renderer3=null,scene3=null,camera3=null,canvas3=null,tiles=null;
 let running=false,ready=false,look={h:0,p:0},move={f:0,b:0,l:0,r:0},lastT=performance.now();
 
@@ -168,6 +178,10 @@ function loop(){
   requestAnimationFrame(loop);
   if(!running||!tiles)return;
   const now=performance.now(),dt=Math.min(0.05,(now-lastT)/1000);lastT=now;
+  // Keep updating the tileset while the ground poll is waiting. The old
+  // ordering rendered an empty scene until `ready` became true, but `ready`
+  // could only become true after tiles had been updated and loaded.
+  tiles.update();
   if(!ready){renderer3.render(scene3,camera3);return;}
   camera3.rotation.y=look.h;camera3.rotation.x=look.p;
   const fwd=new THREE3.Vector3(-Math.sin(look.h),0,-Math.cos(look.h));
@@ -185,7 +199,6 @@ function loop(){
   const g=raycastGround();
   if(g!==null)camera3.position.y+=(g+EYE_H-camera3.position.y)*Math.min(1,10*dt);
   camera3.updateMatrixWorld();
-  tiles.update();
   renderer3.render(scene3,camera3);
 }
 requestAnimationFrame(loop);
@@ -197,10 +210,18 @@ window.Tiles3D={
     look={h:0,p:0};move={f:0,b:0,l:0,r:0};
     canvas3.style.display='block';
     document.getElementById('tilesLoading').style.display='block';
-    tiles=new GooglePhotorealisticTilesRenderer(opts.apiKey);
-    // Local frame is Y-up, X-north, Z-east, centered at (lat,lng) — i.e.
-    // the door's real-world target sits at local (0,ground,0).
-    tiles.setLatLonToYUp(opts.lat*Math.PI/180,opts.lng*Math.PI/180);
+    // 3d-tiles-renderer 0.5 uses the supported Google Cloud auth plugin.
+    // ReorientationPlugin places the requested lat/lng at local (0,0,0),
+    // with +Y up and the camera starting a short distance from the target.
+    tiles=new TilesRenderer(GOOGLE_3D_TILES_ROOT);
+    tiles.registerPlugin(new GoogleCloudAuthPlugin({apiToken:opts.apiKey}));
+    tiles.registerPlugin(new ReorientationPlugin({
+      lat:opts.lat*Math.PI/180,lon:opts.lng*Math.PI/180
+    }));
+    const draco=new DRACOLoader();
+    draco.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.5.6/');
+    tiles.registerPlugin(new GLTFExtensionsPlugin({dracoLoader:draco}));
+    tiles.registerPlugin(new TileCompressionPlugin());
     tiles.setCamera(camera3);
     tiles.setResolutionFromRenderer(camera3,renderer3);
     scene3.add(tiles.group);
@@ -509,7 +530,7 @@ const td={l:{a:0,id:-1,sx:0,sy:0,mx:0,my:0},r:{a:0,id:-1,sx:0,sy:0,mx:0,my:0}};
 let doorCount=0;
 const openedDoors=new Set();
 let nearDoor=null,nearBB=null,nearFinalBB=false,nearStone=false;
-let activeDoorIdx=-1,doorState='closed';
+let activeDoorIdx=-1,doorState='closed',doorwayArmed=false;
 let svTimer=null,svSeconds=60,svMission=null;
 const GMAPS_KEY='AIzaSyDkv5cMLdPRV0qGF1kwtjb2h6WaVEe4ud8'; // needs Map Tiles API enabled + billed in Cloud Console
 const doorObjs=[],bbObjs=[];
@@ -1096,6 +1117,7 @@ function openDoor(dIdx){
     if(dobj.handle)dobj.handle.visible=false;
     dobj.gl.intensity=0.6;
     activeDoorIdx=dobj.doorIdx;doorState='feed';
+    doorwayArmed=false;
     loadFeed(dobj,d);
     if(d.live)$('live').style.display='block';
     sfxOpen();
@@ -1128,8 +1150,9 @@ function loadFeed(dobj,d){
   });
   if(!dobj.cssObj)return;
   if(d.type==='streetview'){
-    // Lightweight preview only — nothing loads until the player presses E again.
-    if(dobj.svEl)dobj.svEl.innerHTML='<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:rgba(232,224,204,.5);font-family:Georgia,serif;font-style:italic;font-size:14px;letter-spacing:.05em;text-align:center;padding:20px;box-sizing:border-box;">PRESS E TO ENTER</div>';
+    // Lightweight preview only. Once the player walks through the open frame,
+    // checkDoorwayEntry() switches to the 3D map automatically.
+    if(dobj.svEl)dobj.svEl.innerHTML='<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:rgba(232,224,204,.5);font-family:Georgia,serif;font-style:italic;font-size:14px;letter-spacing:.05em;text-align:center;padding:20px;box-sizing:border-box;">WALK THROUGH</div>';
     dobj.cssObj.visible=true;
     doorState='feed';
     stopLiveTicker();
@@ -1153,9 +1176,10 @@ function loadFeed(dobj,d){
 
 function enterMapFull(dobj,d){
   if(!window.Tiles3D){
-    toast('3D TILES UNAVAILABLE — CHECK CONNECTION');return;
+    toast('3D TILE ENGINE FAILED — REFRESH PAGE');return;
   }
   doorState='map';
+  doorwayArmed=false;
   if(dobj.cssObj)dobj.cssObj.visible=false;
   $('mapFull').style.display='block';
   $('mapMsg').textContent='';
@@ -1165,7 +1189,7 @@ function enterMapFull(dobj,d){
   window.Tiles3D.enter({
     lat:d.lat,lng:d.lng,apiKey:GMAPS_KEY,
     onReady:()=>{if(doorState==='map'){mapUpdateDistance();startMapTimer();}},
-    onFail:()=>{if(doorState==='map'){toast('NO 3D TILE COVERAGE HERE');exitMapFull();}}
+    onFail:()=>{if(doorState==='map'){toast('3D TILES FAILED — CHECK MAP TILES API + BILLING');exitMapFull();}}
   });
 }
 
@@ -1218,7 +1242,7 @@ function exitMapFull(){
     if(dobj&&dobj.svEl)dobj.svEl.innerHTML='';
     if(dobj&&dobj.cssObj)dobj.cssObj.visible=false;
   }
-  doorState='closed';activeDoorIdx=-1;
+  doorState='closed';activeDoorIdx=-1;doorwayArmed=false;
   $('live').style.display='none';
   // Pointer lock was never dropped, so nothing to re-request — this is just a safety net.
   if(!isMobile&&document.pointerLockElement!==document.body)document.body.requestPointerLock().catch(()=>{});
@@ -1228,7 +1252,7 @@ function closeFeed(){
   doorObjs.forEach(o=>{if(o.cssObj)o.cssObj.visible=false;if(o.iframe)o.iframe.src='about:blank';if(o.svEl)o.svEl.innerHTML='';});
   $('live').style.display='none';
   stopLiveTicker();
-  doorState='closed';activeDoorIdx=-1;
+  doorState='closed';activeDoorIdx=-1;doorwayArmed=false;
 }
 
 // ── BILLBOARD LOGIC ───────────────────────────────────────────────────
@@ -1318,7 +1342,7 @@ function updateNear(){
       nearDoor=i;$('xh').classList.add('lock');
       if(!isMobile){
         const d=DOORS[o.doorIdx];
-        const lbl=o.opened?(doorState==='map'?'EXIT MAP':doorState==='feed'?(DOORS[o.doorIdx].type==='streetview'&&activeDoorIdx===o.doorIdx?'ENTER':'CLOSE'):'OPEN'):'OPEN';
+        const lbl=o.opened?(doorState==='map'?'EXIT MAP':doorState==='feed'?(DOORS[o.doorIdx].type==='streetview'&&activeDoorIdx===o.doorIdx?'WALK THROUGH':'CLOSE'):'OPEN'):'OPEN';
         $('hint').style.display='block';$('hint').textContent='[ E ] '+lbl+' — '+d.label;
       }return;
     }
@@ -1339,6 +1363,21 @@ function interact(){
   if(nearFinalBB){activateFinalBB();return;}
   if(nearDoor!==null){openDoor(nearDoor);return;}
   if(nearBB!==null){activateBB(nearBB);return;}
+}
+
+function checkDoorwayEntry(){
+  if(doorState!=='feed'||activeDoorIdx<0)return;
+  const dobj=doorObjs.find(o=>o.doorIdx===activeDoorIdx);
+  if(!dobj||!dobj.opened||DOORS[dobj.doorIdx].type!=='streetview')return;
+  const dx=rig.position.x-dobj.pos.x,dz=rig.position.z-dobj.pos.z;
+  // Convert the player position into the doorway's local coordinates. The
+  // opening is centered on local z=0, so either approach direction works.
+  const c=Math.cos(dobj.ry),s=Math.sin(dobj.ry);
+  const localX=dx*c-dz*s,localZ=dx*s+dz*c;
+  if(Math.abs(localZ)>1.05)doorwayArmed=true;
+  if(doorwayArmed&&Math.abs(localX)<DOOR_DW*.52&&Math.abs(localZ)<0.72){
+    enterMapFull(dobj,DOORS[dobj.doorIdx]);
+  }
 }
 
 function doJump(){if(onGround&&!flyMode)vel.y=JUMP_V;}
@@ -1397,6 +1436,7 @@ function updateMovement(dt){
     const wh=rayFwd.intersectObjects(cityMeshes,false);
     if(wh.length>0&&wh[0].distance<0.65)rig.position.addScaledVector(fd,-(0.65-wh[0].distance));
   }
+  checkDoorwayEntry();
 }
 
 function checkVoid(dt){
