@@ -31,8 +31,11 @@ canvas{position:fixed;inset:0;width:100%;height:100%;z-index:0}
 #wen{padding:11px 40px;background:var(--gold-dim);border:1px solid rgba(200,184,106,.35);color:var(--gold);font-family:'Courier New',monospace;font-size:10px;letter-spacing:5px;cursor:pointer;transition:all .2s}
 #wen:hover{background:rgba(200,184,106,.25);border-color:var(--gold)}
 #wex{padding:11px 40px;background:rgba(40,8,8,.15);border:1px solid rgba(100,15,15,.25);color:#4a1818;font-family:'Courier New',monospace;font-size:10px;letter-spacing:5px;cursor:pointer}
-#connect{position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:100;transition:opacity 1.8s}
+#connect{position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:100;transition:opacity 1.8s;overflow:hidden}
 #connect.fade{opacity:0;pointer-events:none}
+#connectBgVideo{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:0}
+#connectBgOverlay{position:absolute;inset:0;background:rgba(0,0,0,.82);z-index:1}
+#cp1,#cp2{position:relative;z-index:2}
 #cp1{display:flex;flex-direction:column;align-items:center;text-align:center}
 .cs{color:#181610;font-size:9px;letter-spacing:7px;margin-bottom:14px}
 .ct{color:var(--gold);font-size:clamp(26px,7vw,52px);letter-spacing:14px;margin-bottom:4px;font-weight:700}
@@ -104,16 +107,12 @@ canvas{position:fixed;inset:0;width:100%;height:100%;z-index:0}
 #voidsub{color:rgba(200,184,106,0.16);font-size:8px;letter-spacing:4px;margin-top:18px}
 #strobe{position:fixed;inset:0;background:#fff;pointer-events:none;z-index:12;opacity:0}
 #mob{display:none;position:fixed;bottom:0;left:0;right:0;height:200px;z-index:90;pointer-events:none}
-#btnrun{left:50%;margin-left:-52px}
-#btnrun.active{background:rgba(200,184,106,.35);color:#07090c}
 .jz{position:absolute;bottom:24px;width:90px;height:90px;border-radius:50%;background:rgba(255,255,255,.02);border:1px solid rgba(200,184,106,.1);touch-action:none;pointer-events:all}
 #lj{left:18px}#rj{right:18px}
 .kn{position:absolute;top:50%;left:50%;width:32px;height:32px;margin:-16px 0 0 -16px;background:rgba(200,184,106,.2);border-radius:50%;pointer-events:none}
-.mbb{position:absolute;bottom:44px;width:46px;height:46px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;letter-spacing:2px;border:1px solid rgba(200,184,106,.22);background:rgba(200,184,106,.07);color:var(--gold);pointer-events:all;touch-action:none;cursor:pointer}
-#btnj{left:50%;margin-left:-52px}
-#btnf{left:50%;margin-left:6px}
-#btnf.locked{color:rgba(200,184,106,.18);border-color:rgba(200,184,106,.06)}
-#btne{left:50%;margin-left:-98px}
+/* On-screen E/F/J/RUN buttons removed — mobile now uses tap (interact),
+   double-tap (jump), triple-tap (fly in hub / super speed in maps) instead,
+   detected globally outside the two joystick zones. See onScreenTap(). */
 @media(pointer:coarse){#mob{display:block}#hint{display:none!important}}
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -172,6 +171,18 @@ let running3Flag=false,vel3Y=0,onGround3=true,jumpReq=false,flyMode3=false;
 // back there instead of falling through the world.
 let lastSafeX=0,lastSafeY=0,lastSafeZ=0,noGroundFallTime=0;
 
+// ── SUPER SPEED (Google-Maps-walkthroughs only, never the main city) ──
+// 11x whatever the current walk/run blend would otherwise be. Auto-expires
+// after 60s; can also be cancelled early by toggling again (PC: Ctrl,
+// mobile: triple-tap — see the classic script's mobileTripleTap()).
+const SUPER_SPEED_MULT=11,SUPER_SPEED_MS=60000;
+let superSpeedActive=false,superSpeedTimer=null;
+function setSuperSpeed(on){
+  superSpeedActive=!!on;
+  if(superSpeedTimer){clearTimeout(superSpeedTimer);superSpeedTimer=null;}
+  if(superSpeedActive)superSpeedTimer=setTimeout(()=>{superSpeedActive=false;superSpeedTimer=null;},SUPER_SPEED_MS);
+}
+
 // ── PER-SESSION LOOK (set from enter() opts) ─────────────────────────
 // skyMode 'cycle'  = normal 6-stage day/evening/night loop (default).
 // skyMode 'amazon' = one skybox, near-black tint, dimmed lights, heavy grain, screen darken.
@@ -218,7 +229,13 @@ function buildReturnFrame(colorHex){
   // 10m from spawn — spawn sits at local (0, SPAWN_OFFSET) once settled.
   const ang=Math.random()*Math.PI*2;
   const fx=Math.sin(ang)*10,fz=SPAWN_OFFSET+Math.cos(ang)*10;
-  const gy=(camera3?camera3.position.y-EYE_H:0);
+  // BUG FIX: this used to copy the PLAYER's current ground height instead of
+  // sampling the ground at the frame's own (fx,fz) — fine right at spawn,
+  // but wrong the instant the player moves off flat ground, and wrong at
+  // spots like Rockefeller Plaza where dense city mesh sits well above/below
+  // spawn's own reading. Raycast at the frame's actual position instead.
+  const g=raycastGround(fx,fz);
+  const gy=g!==null?g:(camera3?camera3.position.y-EYE_H:0);
   grp.position.set(fx,gy,fz);
   returnFrame3=grp;returnFramePos={x:fx,z:fz};
   scene3.add(grp);
@@ -247,13 +264,52 @@ function buildPyramidPortal(){
   // Fixed 5m directly behind spawn (spawn sits at local (0,SPAWN_OFFSET)),
   // not a random angle like the return frame — this one's meant to be found.
   const fx=0,fz=SPAWN_OFFSET+5;
-  const gy=(camera3?camera3.position.y-EYE_H:0);
+  // Same bug/fix as buildReturnFrame above — this was landing wherever the
+  // player's own ground height happened to be, which inside Rockefeller
+  // Plaza's dense mesh meant the portal spawned floating mid-building
+  // instead of on the ground 5m behind the player.
+  const g=raycastGround(fx,fz);
+  const gy=g!==null?g:(camera3?camera3.position.y-EYE_H:0);
   grp.position.set(fx,gy,fz);grp.rotation.y=Math.PI; // faces back toward spawn
   pyramidPortal3=grp;pyramidPortalPos={x:fx,z:fz};
   scene3.add(grp);
 }
 function clearPyramidPortal(){
   if(pyramidPortal3){scene3.remove(pyramidPortal3);pyramidPortal3=null;pyramidPortalPos=null;}
+}
+
+// ── BILLBOARD VIDEO (Norway mountain destination only) ──────────────────
+// A real 3D plane with a THREE.VideoTexture, not an iframe/CSS3D overlay —
+// this scene has its own isolated renderer with no CSS3DRenderer of its
+// own, so a video texture on a mesh is the natural fit, same idea as the
+// canvas-texture sprites already used elsewhere (mkHieroglyphTexture etc.)
+// Streams via HTTP range requests like any <video>; muted+playsInline is
+// required for autoplay to actually fire on mobile browsers.
+let billboardVideoEl=null,billboardVideoTex=null,billboardVideoMesh=null;
+function buildBillboardVideo(url){
+  clearBillboardVideo();
+  if(!url)return;
+  const v=document.createElement('video');
+  v.crossOrigin='anonymous';v.muted=true;v.loop=true;v.playsInline=true;v.autoplay=true;
+  v.src=url;
+  v.play().catch(()=>{}); // autoplay can still be blocked pre-gesture; harmless if so, texture just stays black until it starts
+  const tex=new THREE3.VideoTexture(v);
+  tex.minFilter=THREE3.LinearFilter;tex.magFilter=THREE3.LinearFilter;
+  const W=8,H=6; // big enough to read from spawn, roughly 4:3
+  const mesh=new THREE3.Mesh(new THREE3.PlaneGeometry(W,H),new THREE3.MeshBasicMaterial({map:tex,side:THREE3.DoubleSide}));
+  // Straight ahead of spawn, facing back toward the player — same forward
+  // axis every other door uses (camera starts at look.h=0, facing -Z).
+  const fx=0,fz=SPAWN_OFFSET-14;
+  const g=raycastGround(fx,fz);
+  const gy=(g!==null?g:(camera3?camera3.position.y-EYE_H:0))+H/2;
+  mesh.position.set(fx,gy,fz);mesh.rotation.y=Math.PI;
+  billboardVideoEl=v;billboardVideoTex=tex;billboardVideoMesh=mesh;
+  scene3.add(mesh);
+}
+function clearBillboardVideo(){
+  if(billboardVideoMesh){scene3.remove(billboardVideoMesh);billboardVideoMesh=null;}
+  if(billboardVideoTex){billboardVideoTex.dispose();billboardVideoTex=null;}
+  if(billboardVideoEl){billboardVideoEl.pause();billboardVideoEl.removeAttribute('src');billboardVideoEl.load();billboardVideoEl=null;}
 }
 
 function ensureRenderer(){
@@ -287,9 +343,14 @@ function clearTiles(){
   if(tiles){scene3.remove(tiles.group);tiles.dispose();tiles=null;}
 }
 
-function raycastGround(){
+// x/z optional — omit to raycast straight down from the camera's own
+// current position (original behaviour). Pass explicit coords to find the
+// ground under any OTHER point (doorframes, portals) instead of reusing
+// whatever the player's ground height happens to be.
+function raycastGround(x,z){
   if(!tiles)return null;
-  const ray=new THREE3.Raycaster(new THREE3.Vector3(camera3.position.x,SPAWN_UP,camera3.position.z),new THREE3.Vector3(0,-1,0));
+  const px=x!==undefined?x:camera3.position.x,pz=z!==undefined?z:camera3.position.z;
+  const ray=new THREE3.Raycaster(new THREE3.Vector3(px,SPAWN_UP,pz),new THREE3.Vector3(0,-1,0));
   ray.far=SPAWN_UP+SPAWN_DOWN;
   const hits=ray.intersectObject(tiles.group,true);
   return hits.length?hits[0].point.y:null;
@@ -440,7 +501,14 @@ function loop(){
   if(move.l){mx-=rgt.x;mz-=rgt.z;}
   if(move.r){mx+=rgt.x;mz+=rgt.z;}
   const mag=Math.hypot(mx,mz);
-  const spd=move.run?RUN_SPEED:WALK_SPEED;
+  // Speed blend: 0..1 "how hard is the stick/key pushed toward run".
+  // Desktop keyboard has no analog value, so it's discrete — 0 (walk) or 1
+  // (Shift held). Mobile's joystick passes its own continuous deflection
+  // (move.mag, set from setMoveInput's touch-magnitude field) so pushing the
+  // stick only halfway sits between walk and run instead of snapping to one
+  // or the other — this is what replaced the on-screen RUN button.
+  const analogMag=(move.mag!=null)?move.mag:(move.run?1:0);
+  const spd=(WALK_SPEED+(RUN_SPEED-WALK_SPEED)*analogMag)*(superSpeedActive?SUPER_SPEED_MULT:1);
   if(mag>0.001){
     camera3.position.x+=(mx/mag)*spd*dt;
     camera3.position.z+=(mz/mag)*spd*dt;
@@ -499,9 +567,10 @@ requestAnimationFrame(loop);
 
 window.Tiles3D={
   enter(opts){
-    ensureRenderer();clearTiles();
+    ensureRenderer();clearTiles();clearBillboardVideo();
     running=true;ready=false;lastT=performance.now();
     look={h:0,p:0};move={f:0,b:0,l:0,r:0,run:false};
+    setSuperSpeed(false); // never carry super speed in from a previous session
     vel3Y=0;onGround3=true;jumpReq=false;skyT=0;skyTintHue=Math.random()<0.5?0.08:0.75;
     lastSafeX=0;lastSafeY=SPAWN_UP;lastSafeZ=SPAWN_OFFSET;noGroundFallTime=0;
     if(skyMatB)skyMatB.color.setHSL(skyTintHue,0.35,0.55);
@@ -546,6 +615,7 @@ window.Tiles3D={
             ready=true;
             document.getElementById('tilesLoading').style.display='none';
             buildReturnFrame(opts.frameColor);
+            if(opts.billboardVideoUrl)buildBillboardVideo(opts.billboardVideoUrl);
             if(opts.onReady)opts.onReady();
           }
           prevG=g;
@@ -565,17 +635,25 @@ window.Tiles3D={
     skyMode='cycle';fxMode='';fxGrain=0;applyLookDom();
     returnFrame3=null;returnFramePos=null;
     clearPyramidPortal();
+    clearBillboardVideo();
     clearTiles();
+    setSuperSpeed(false);
   },
   setLook(h,p){look.h=h;look.p=p;},
   // BUG FIX: this used to do move=m, which threw away move.run every single
   // frame (setMoveInput is called continuously from the main loop) — Shift
   // never actually stuck. Merge instead so run/fly state survives.
+  // `m` may also carry `mag` (0..1 analog stick deflection, mobile only) —
+  // that field rides along through the merge and is read in loop() above.
   setMoveInput(m){move=Object.assign({run:move.run},m);},
   setRun(r){move.run=!!r;},
   setFly(f){flyMode3=!!f;},
   jump(){jumpReq=true;},
   isReady(){return ready;},
+  // Google-Maps-walkthroughs-only super speed (see SUPER_SPEED_MULT above).
+  // Returns the new on/off state so the caller can toast it immediately.
+  toggleSuperSpeed(){setSuperSpeed(!superSpeedActive);return superSpeedActive;},
+  isSuperSpeedActive(){return superSpeedActive;},
   getLocalXZ(){return camera3?{x:camera3.position.x,z:camera3.position.z}:{x:0,z:0};},
   // Distance from the player to the return-frame, in metres, or null if
   // no frame has been placed for this session yet.
@@ -606,6 +684,8 @@ window.Tiles3D={
 </div>
 
 <div id="connect">
+  <video id="connectBgVideo" muted loop playsinline autoplay preload="auto"></video>
+  <div id="connectBgOverlay"></div>
   <div id="cp1">
     <div class="cs">A VEGAN BROS. SERIES</div>
     <div class="ct">GO DEAN!</div>
@@ -655,10 +735,6 @@ window.Tiles3D={
 <div id="mob">
   <div id="lj" class="jz"><div class="kn" id="lkn"></div></div>
   <div id="rj" class="jz"><div class="kn" id="rkn"></div></div>
-  <div id="btne" class="mbb">E</div>
-  <div id="btnj" class="mbb">J</div>
-  <div id="btnf" class="mbb locked">F</div>
-  <div id="btnrun" class="mbb" style="display:none">RUN</div>
 </div>
 
 <canvas id="mmap" width="110" height="110"></canvas>
@@ -671,6 +747,16 @@ const isMobile=/Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
 const GLB_URL='./procedural_city_66.glb';
 const HDR_URL='https://raw.githubusercontent.com/EarthlingOfficial/dean-withers.com/main/autumn_hill_view_8k.hdr';
 const STAGE11_URL='https://earthlingofficial.com/veganbrosstage11.html';
+// Loading-screen background, behind the #connect overlay (city-loading bar +
+// disclaimer). Streams via HTTP range requests like any <video> — the
+// browser only pulls what it needs to start playing, not the whole file
+// up front — but it's still a large multi-GB source, so on a slow
+// connection the very first second or two may show black before it starts.
+const CONNECT_BG_VIDEO_URL='https://archive.org/download/lucent-2014-full-documentary-720p/lucent_(2014)_-_full_documentary%20(720p).mp4';
+{
+  const v=document.getElementById('connectBgVideo');
+  if(v&&CONNECT_BG_VIDEO_URL){v.src=CONNECT_BG_VIDEO_URL;v.play().catch(()=>{});}
+}
 
 // ── DOOR DATA ─────────────────────────────────────────────────────────
 const DOORS=[
@@ -891,6 +977,7 @@ let scene,camera,renderer,css3d,clock;
 let postScene,postCamera,rt,postMat;
 let rig=null,started=false,ending=false;
 let flyMode=false,flyUnlocked=false,bbWatched=0;
+let lastSuperSpeedOn=false; // for detecting the 60s auto-depletion, see animate()
 const vel=new THREE.Vector3();
 let kW=0,kA=0,kS=0,kD=0,onGround=false;
 const SPEED=6,GRAV=22,JUMP_V=16,PLAYER_H=1.85;
@@ -1415,14 +1502,22 @@ function setupControls(){
     if(k==='s'||k==='arrowdown'){kS=1;e.preventDefault();}
     if(k==='a'||k==='arrowleft'){kA=1;e.preventDefault();}
     if(k==='d'||k==='arrowright'){kD=1;e.preventDefault();}
-    if(k==='e')interact();
-    if(k===' '){
-      if(doorState==='map'){if(window.Tiles3D)window.Tiles3D.jump();}
-      else doJump();
-      e.preventDefault();
-    }
+    // E only opens doors in the hub now — inside a map it used to also mean
+    // "exit", which is exactly the double-duty causing the jam. Escape is
+    // the one dedicated leave-key on PC now (unchanged, see below). Mobile
+    // keeps tap-to-exit via interact() since it has no Escape key at all.
+    if(k==='e'&&doorState!=='map')interact();
+    if(k===' '){jumpAction();e.preventDefault();}
     if(k==='shift'&&doorState==='map'&&window.Tiles3D)window.Tiles3D.setRun(true);
     if(k==='f'&&(flyUnlocked||doorState==='map')){flyMode=!flyMode;if(window.Tiles3D)window.Tiles3D.setFly(flyMode);toast(flyMode?'FLY ON':'FLY OFF');}
+    // Super speed (PC): Ctrl, maps only — Space stays jump and Shift stays
+    // run, so this is the one free key left. e.repeat guards against the
+    // browser firing keydown repeatedly while the key is held.
+    if(k==='control'&&!e.repeat&&doorState==='map'&&window.Tiles3D){
+      const on=window.Tiles3D.toggleSuperSpeed();
+      toast(on?'SUPER SPEED ON':'SUPER SPEED OFF');
+      if(on){sfxOpen();triggerHBSpike();}
+    }
     if(k==='escape'){closeFeed();exitMapFull();}
   });
   document.addEventListener('keyup',e=>{
@@ -1433,6 +1528,9 @@ function setupControls(){
   });
   document.addEventListener('click',()=>{
     if(!started||isMobile)return;
+    // Any click exits a map — no key to remember, matches mobile's
+    // any-tap-exits behaviour exactly.
+    if(doorState==='map'){exitMapFull();return;}
     if(document.pointerLockElement!==document.body){
       document.body.requestPointerLock().catch(()=>{});
     }
@@ -1468,34 +1566,75 @@ function setupTouch(){
   rj.addEventListener('touchstart',e=>ts(rj,td.r,rkn,e),{passive:true});
   document.addEventListener('touchmove',tm,{passive:true});
   document.addEventListener('touchend',te,{passive:true});
-  $('btnj').addEventListener('touchstart',e=>{e.preventDefault();doJump();},{passive:false});
-  $('btnf').addEventListener('touchstart',e=>{
-    e.preventDefault();
-    if(!flyUnlocked&&doorState!=='map'){toast('WATCH 2 BILLBOARDS TO UNLOCK FLY');return;}
-    flyMode=!flyMode;if(window.Tiles3D)window.Tiles3D.setFly(flyMode);toast(flyMode?'FLY ON':'FLY OFF');
-  },{passive:false});
-  $('btne').addEventListener('touchstart',e=>{e.preventDefault();interact();},{passive:false});
-  // Map-tiles walkthrough only: RUN is a toggle (holding a run button while
-  // also driving both joysticks isn't practical on a phone), and jump is a
-  // tap anywhere in free space rather than a dedicated button — the
-  // joystick zones and HUD buttons sit above the canvas so they intercept
-  // their own taps first and this never fires for them.
-  let mapRunOn=false;
-  $('btnrun').addEventListener('touchstart',e=>{
-    e.preventDefault();
-    mapRunOn=!mapRunOn;
-    $('btnrun').classList.toggle('active',mapRunOn);
-    if(window.Tiles3D)window.Tiles3D.setRun(mapRunOn);
-  },{passive:false});
-  const t3=document.getElementById('tiles3dCanvas');
-  if(t3)t3.addEventListener('touchstart',e=>{
-    if(doorState==='map'&&window.Tiles3D)window.Tiles3D.jump();
+  // BUG FIX ("joysticks lock together / do weird things"): touchend was the
+  // only cleanup path. iOS/Android routinely send touchcancel instead —
+  // interrupted by a notification, an OS edge-swipe gesture, a multi-touch
+  // reinterpretation — and without this, that finger's zone (td.l/td.r)
+  // stayed permanently "active" with a stale identifier, and its knob never
+  // released, which is exactly the stuck/tangled feeling being reported.
+  document.addEventListener('touchcancel',te,{passive:true});
+
+  // ── GLOBAL TAP/LONG-PRESS GESTURE (everywhere on screen EXCEPT the two
+  // joystick circles, which consume their own touches above) ─────────────
+  // 1 tap = interact (replaces the old E button)
+  // 2 taps = jump (replaces the old J button)
+  // 3 taps = fly toggle in the hub / super speed toggle in Google Maps
+  //          (replaces the old F button and RUN button respectively)
+  // long press (maps only) = fly toggle — the hub already has 3-tap for
+  // fly, but that gesture is taken by super speed inside maps, so maps get
+  // their own separate fly trigger instead of overloading triple-tap.
+  const LONG_PRESS_MS=550;
+  let tapCount=0,tapTimer=null;
+  let pressId=null,pressTimer=null,pressFired=false;
+  function touchIsOnJoystick(e){
+    const t=e.changedTouches[0];
+    const el=document.elementFromPoint(t.clientX,t.clientY);
+    return!!(el&&(el.closest('#lj')||el.closest('#rj')));
+  }
+  document.addEventListener('touchstart',e=>{
+    if(!started||ending)return;
+    if(touchIsOnJoystick(e))return;
+    const t=e.changedTouches[0];
+    pressId=t.identifier;pressFired=false;
+    clearTimeout(pressTimer);
+    pressTimer=setTimeout(()=>{
+      pressFired=true;
+      if(doorState==='map'&&window.Tiles3D){
+        flyMode=!flyMode;window.Tiles3D.setFly(flyMode);toast(flyMode?'FLY ON':'FLY OFF');
+      }
+    },LONG_PRESS_MS);
+  },{passive:true});
+  document.addEventListener('touchend',e=>{
+    if(!started||ending)return;
+    for(const t of e.changedTouches){
+      if(t.identifier!==pressId)continue;
+      clearTimeout(pressTimer);
+      if(!pressFired){
+        // Resolved before the long-press threshold — a genuine tap, feed
+        // the existing single/double/triple counter exactly as before.
+        tapCount++;
+        clearTimeout(tapTimer);
+        tapTimer=setTimeout(()=>{
+          primeAudio();
+          if(tapCount===1){sfxUI();interact();}
+          else if(tapCount===2){jumpAction();}
+          else{mobileTripleTap();}
+          tapCount=0;
+        },300);
+      }
+      pressId=null;
+    }
   },{passive:true});
 }
 
 function startGame(){
   if(started)return;primeAudio();started=true;
   $('connect').classList.add('fade');setTimeout(()=>$('connect').style.display='none',1900);
+  // Free the loading-screen video's bandwidth/decoding the moment the real
+  // game takes over — no point streaming a multi-GB file in the background
+  // once nobody's looking at it.
+  const cbv=$('connectBgVideo');
+  if(cbv){cbv.pause();cbv.removeAttribute('src');cbv.load();}
   startMusicCycle();setTimeout(radioInit,3000);
   if(!isMobile)document.body.requestPointerLock().catch(()=>{});
   showStmt();
@@ -1577,8 +1716,6 @@ function enterMapFull(dobj,d){
   doorwayArmed=false;
   if(dobj.cssObj)dobj.cssObj.visible=false;
   $('mapFull').style.display='block';
-  $('btnrun').style.display='flex';$('btnrun').classList.remove('active');
-  $('btnj').style.display='none';
   $('mapMsg').textContent='';
   svSeconds=60;
   svMission={narrative:d.narrative&&d.narrative.length?d.narrative:[d.overlay||''],idx:0,
@@ -1587,6 +1724,7 @@ function enterMapFull(dobj,d){
     lat:d.lat,lng:d.lng,elevM:d.elevM||0,apiKey:GMAPS_KEY,
     skyMode:d.skyMode||'cycle',fx:(dobj.doorIdx===2&&!d.isPyramidPortal)?'manhattan':'',
     frameColor:RETURN_FRAME_COLORS[dobj.doorIdx%RETURN_FRAME_COLORS.length],
+    billboardVideoUrl:d.billboardVideoUrl||null,
     onReady:()=>{if(doorState==='map'){mapUpdateDistance();startMapTimer();if(dobj.doorIdx===2&&!d.isPyramidPortal)buildPyramidPortal();else clearPyramidPortal();}},
     onFail:()=>{if(doorState==='map'){console.error('[Tiles3D] ground never settled for',d.label,'lat',d.lat,'lng',d.lng,'elevM',d.elevM,'— likely a bad elevM estimate, or Map Tiles API/billing if tiles never loaded at all.');toast('3D TILES FAILED TO LOAD — CHECK LOCATION DATA OR MAP TILES API/BILLING');exitMapFull();}}
   });
@@ -1599,7 +1737,12 @@ const RETURN_FRAME_COLORS=[0x4ade80,0xffb020,0x38bdf8,0xf472b6,0xa78bfa,0xfb7185
 // as every other map door, not the never-configured forest tileset. Real
 // coordinates: Preikestolen / Pulpit Rock, Norway — 604m sheer cliff with
 // a small flat summit, so spawning near the edge reads instantly.
+// billboardVideoUrl: a real 3D plane inside this session (see
+// buildBillboardVideo in the Tiles3D module) that autoplays the moment the
+// ground settles — streams via HTTP range requests like any <video>, so it
+// doesn't need the whole (very large) source file downloaded first.
 const DOOR1_MOUNTAIN={lat:58.98666,lng:6.18748,elevM:604,targetRadiusM:9999,
+  billboardVideoUrl:'https://archive.org/download/revenge-of-the-creature-3d/amarec(20250311-1702).ia.mp4',
   overlay:'You fell through a game to get here.\nHe never had to fall through anything.',
   narrative:['You fell through a game to get here.','He never had to fall through anything.']};
 
@@ -1683,7 +1826,6 @@ function exitMapFull(){
   // don't let that leak into the main hub if it wasn't actually earned there.
   if(!flyUnlocked&&flyMode){flyMode=false;if(window.Tiles3D)window.Tiles3D.setFly(false);}
   $('mapFull').style.display='none';
-  $('btnrun').style.display='none';$('btnj').style.display='flex';
   if(window.Tiles3D)window.Tiles3D.setRun(false);
   if(window.Tiles3D)window.Tiles3D.exit();
   svMission=null;
@@ -1726,7 +1868,7 @@ function activateBB(idx){
     bobj.cssObj.visible=true;
   }
   bbWatched++;
-  if(bbWatched>=2&&!flyUnlocked){flyUnlocked=true;$('btnf').classList.remove('locked');toast('FLY UNLOCKED — PRESS F');}
+  if(bbWatched>=2&&!flyUnlocked){flyUnlocked=true;toast(isMobile?'TRIPLE TAP TO FLY':'FLY UNLOCKED — PRESS F');}
   toast('▶ '+bb.label);sfxOpen();triggerHBSpike();
 }
 
@@ -1850,6 +1992,27 @@ function checkForestSecretEntry(){
 
 function doJump(){if(onGround&&!flyMode)vel.y=JUMP_V;}
 
+// Shared by Space (PC) and the mobile double-tap gesture — routes to
+// whichever jump actually applies for the current state.
+function jumpAction(){
+  if(doorState==='map'){if(window.Tiles3D)window.Tiles3D.jump();}
+  else doJump();
+}
+
+// Mobile triple-tap: fly toggle in the hub, super speed toggle in a Google
+// Maps walkthrough. Never both — super speed only ever exists in maps.
+function mobileTripleTap(){
+  if(doorState==='map'){
+    if(!window.Tiles3D)return;
+    const on=window.Tiles3D.toggleSuperSpeed();
+    toast(on?'SUPER SPEED ON':'SUPER SPEED OFF');
+    if(on){sfxOpen();triggerHBSpike();}
+  } else {
+    if(!flyUnlocked){toast('WATCH 2 BILLBOARDS TO UNLOCK FLY');return;}
+    flyMode=!flyMode;if(window.Tiles3D)window.Tiles3D.setFly(flyMode);toast(flyMode?'FLY ON':'FLY OFF');
+  }
+}
+
 function updateMovement(dt){
   if(!started)return;
   if(doorState==='map'){
@@ -1866,7 +2029,13 @@ function updateMovement(dt){
         f:kW||td.l.my<-0.1?1:0,
         b:kS||td.l.my>0.1?1:0,
         l:kA||td.l.mx<-0.1?1:0,
-        r:kD||td.l.mx>0.1?1:0
+        r:kD||td.l.mx>0.1?1:0,
+        // Analog stick deflection (0..1) replaces the old on-screen RUN
+        // toggle: push the joystick further to walk faster, full deflection
+        // = the old RUN_SPEED, exactly as asked. Keyboard has no analog
+        // value, so it stays discrete — omitted here (undefined) and the
+        // Tiles3D loop falls back to move.run (Shift) in that case.
+        mag:td.l.a?Math.min(1,Math.hypot(td.l.mx,td.l.my)):undefined
       });
       if(window.Tiles3D.isReady())mapUpdateDistance();
     }
@@ -2222,6 +2391,16 @@ function animate(){
     if(finalBBObj&&finalBBUnlocked){
       const pulse=1.5+Math.sin(t*2)*0.5;
       finalBBObj.glowM.emissiveIntensity=pulse;finalBBObj.pl.intensity=2.5+Math.sin(t*2)*1.5;
+    }
+    // Super speed auto-depletes after 60s with no button to watch — poll it
+    // here so the player gets a toast the instant it runs out instead of
+    // just quietly slowing back down and wondering why.
+    if(doorState==='map'&&window.Tiles3D){
+      const ssOn=window.Tiles3D.isSuperSpeedActive();
+      if(lastSuperSpeedOn&&!ssOn)toast('SUPER SPEED DEPLETED');
+      lastSuperSpeedOn=ssOn;
+    } else if(lastSuperSpeedOn){
+      lastSuperSpeedOn=false;
     }
   }
   const skyOn=_skyMat&&_skyMat.opacity>0.005;
