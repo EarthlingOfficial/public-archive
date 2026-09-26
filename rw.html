@@ -31,20 +31,28 @@ canvas{position:fixed;inset:0;width:100%;height:100%;z-index:0}
 #wen{padding:11px 40px;background:var(--gold-dim);border:1px solid rgba(200,184,106,.35);color:var(--gold);font-family:'Courier New',monospace;font-size:10px;letter-spacing:5px;cursor:pointer;transition:all .2s}
 #wen:hover{background:rgba(200,184,106,.25);border-color:var(--gold)}
 #wex{padding:11px 40px;background:rgba(40,8,8,.15);border:1px solid rgba(100,15,15,.25);color:#4a1818;font-family:'Courier New',monospace;font-size:10px;letter-spacing:5px;cursor:pointer}
-#connect{position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:100;transition:opacity 1.8s}
+#connect{position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:100;transition:opacity 1.8s;overflow:hidden}
 #connect.fade{opacity:0;pointer-events:none}
+#connectBgVideo{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:0}
+#connectBgOverlay{display:none}
+#cp1,#cp2{position:relative;z-index:2;text-shadow:0 2px 10px rgba(0,0,0,.9),0 0 24px rgba(0,0,0,.7)}
 #cp1{display:flex;flex-direction:column;align-items:center;text-align:center}
-.cs{color:#181610;font-size:9px;letter-spacing:7px;margin-bottom:14px}
+.cs{color:#fff;font-size:13px;letter-spacing:7px;margin-bottom:14px}
 .ct{color:var(--gold);font-size:clamp(26px,7vw,52px);letter-spacing:14px;margin-bottom:4px;font-weight:700}
-.cg{color:#201e14;font-size:clamp(8px,1.3vw,11px);letter-spacing:6px;margin-bottom:32px}
+.cg{color:#fff;font-size:clamp(12px,1.8vw,16px);letter-spacing:6px;margin-bottom:32px}
 #cbar{width:180px;height:2px;background:rgba(200,184,106,.08);border:1px solid rgba(200,184,106,.1);margin-bottom:10px;overflow:hidden}
 #cfill{height:100%;width:0%;background:var(--gold);transition:width .4s ease}
-#ctxt{color:#1c1a10;font-size:9px;letter-spacing:5px}
+#ctxt{color:#fff;font-size:13px;letter-spacing:5px}
 #cp2{display:none;flex-direction:column;align-items:center;text-align:center;padding:0 24px;max-width:560px}
-#cdisc{color:#161410;font-size:clamp(7px,1.1vw,9px);letter-spacing:1.4px;line-height:2.2;margin-bottom:24px;border-top:1px solid rgba(200,184,106,.06);border-bottom:1px solid rgba(200,184,106,.06);padding:14px 0;text-align:left}
-#cdisc b{color:#22200a;letter-spacing:2px}
+#cdisc{color:#fff;font-size:clamp(12px,1.6vw,15px);letter-spacing:1.4px;line-height:2.2;margin-bottom:24px;border-top:1px solid rgba(200,184,106,.2);border-bottom:1px solid rgba(200,184,106,.2);padding:14px 0;text-align:left;background:rgba(0,0,0,.45)}
+#cdisc b{color:var(--gold);letter-spacing:2px}
 #ctap{color:var(--gold);font-size:clamp(13px,3vw,20px);letter-spacing:8px;animation:pulse 2.6s ease-in-out infinite;cursor:pointer}
-#csub{color:#161410;font-size:9px;letter-spacing:3px;margin-top:10px}
+#csub{color:#fff;font-size:11px;letter-spacing:3px;margin-top:10px}
+#cchoices{display:flex;gap:16px;margin-top:8px;flex-wrap:wrap;justify-content:center}
+.cbtn{padding:12px 26px;background:rgba(0,0,0,.55);border:1px solid rgba(200,184,106,.5);color:var(--gold);font-family:'Courier New',monospace;font-size:12px;letter-spacing:4px;cursor:pointer;transition:all .2s;text-shadow:none}
+.cbtn:hover{background:rgba(200,184,106,.25);border-color:var(--gold)}
+#enterBox{display:none;position:fixed;left:20px;bottom:20px;z-index:101;background:rgba(0,0,0,.6);border:1px solid rgba(200,184,106,.5);padding:10px 18px;color:var(--gold);font-family:'Courier New',monospace;font-size:12px;letter-spacing:3px;cursor:pointer;text-shadow:none}
+#enterBox:hover{background:rgba(200,184,106,.25)}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.2}}
 #hud{position:fixed;bottom:0;left:0;right:0;z-index:10;pointer-events:none;padding:0 16px 14px;display:flex;justify-content:space-between;align-items:flex-end}
 #hbwrap{width:80px;height:20px}
@@ -76,8 +84,17 @@ canvas{position:fixed;inset:0;width:100%;height:100%;z-index:0}
 #tilesGrain{position:absolute;inset:0;z-index:1;pointer-events:none;opacity:0;transition:opacity 2s linear;mix-blend-mode:overlay;
   background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
   background-size:180px 180px}
+#fxBlur{position:absolute;inset:0;z-index:1;pointer-events:none;opacity:0;display:none;-webkit-backdrop-filter:blur(7px);backdrop-filter:blur(7px);-webkit-mask-image:radial-gradient(ellipse at center,transparent 22%,#000 82%);mask-image:radial-gradient(ellipse at center,transparent 22%,#000 82%)}
+#tilesDarken{position:absolute;inset:0;z-index:1;pointer-events:none;background:#000;opacity:0;transition:opacity 2s linear}
+#fxVig{position:absolute;inset:0;z-index:1;pointer-events:none;opacity:0;display:none;background:radial-gradient(ellipse at center,rgba(0,0,0,0) 30%,rgba(0,0,0,.5) 68%,rgba(0,0,0,.96) 100%)}
+@media(pointer:coarse){#fxBlur{-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px)}}
+#ssBlur{position:absolute;inset:0;z-index:1;pointer-events:none;opacity:0;display:none;-webkit-backdrop-filter:blur(9px);backdrop-filter:blur(9px);-webkit-mask-image:radial-gradient(ellipse at center,transparent 12%,#000 70%);mask-image:radial-gradient(ellipse at center,transparent 12%,#000 70%)}
+#ssColor{position:absolute;inset:0;z-index:1;pointer-events:none;opacity:0;display:none;background:conic-gradient(from 0deg,#ff8a3d,#e14be8,#3dc7ff,#7cff8a,#ff8a3d);mix-blend-mode:color-dodge}
 #tilesLoading{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:82;pointer-events:none;color:rgba(200,184,106,0.6);font-size:10px;letter-spacing:5px;text-align:center}
 #mapMsg{position:fixed;top:9%;left:50%;transform:translateX(-50%);z-index:81;pointer-events:none;text-align:center;max-width:78%;color:#ff3b30;font-family:Georgia,serif;font-style:italic;letter-spacing:.03em;font-size:clamp(11px,1.6vw,15px);line-height:1.6;text-shadow:0 2px 30px rgba(0,0,0,1),0 0 24px rgba(255,20,20,.3)}
+#tvHint{position:fixed;bottom:13%;left:50%;transform:translateX(-50%);z-index:83;display:none;pointer-events:none;color:#fff;font-family:Georgia,serif;letter-spacing:.08em;font-size:14px;text-shadow:0 2px 12px rgba(0,0,0,.9)}
+#tvTap{position:fixed;bottom:13%;left:50%;transform:translateX(-50%);z-index:83;display:none}
+#tvTapBtn{pointer-events:auto;cursor:pointer;padding:11px 26px;border:2px solid rgba(255,255,255,.85);border-radius:30px;background:rgba(0,0,0,.55);color:#fff;font-family:Georgia,serif;letter-spacing:.08em;font-size:14px}
 /* Resume hint — only shown when NOT in a feed */
 /* Resume hint removed — mouse silently re-locks on next click instead of nagging */
 #bbunlock{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:30;pointer-events:none;opacity:0;transition:opacity .5s;text-align:center}
@@ -100,22 +117,19 @@ canvas{position:fixed;inset:0;width:100%;height:100%;z-index:0}
 #voidsub{color:rgba(200,184,106,0.16);font-size:8px;letter-spacing:4px;margin-top:18px}
 #strobe{position:fixed;inset:0;background:#fff;pointer-events:none;z-index:12;opacity:0}
 #mob{display:none;position:fixed;bottom:0;left:0;right:0;height:200px;z-index:90;pointer-events:none}
-#btnrun{left:50%;margin-left:-52px}
-#btnrun.active{background:rgba(200,184,106,.35);color:#07090c}
 .jz{position:absolute;bottom:24px;width:90px;height:90px;border-radius:50%;background:rgba(255,255,255,.02);border:1px solid rgba(200,184,106,.1);touch-action:none;pointer-events:all}
 #lj{left:18px}#rj{right:18px}
 .kn{position:absolute;top:50%;left:50%;width:32px;height:32px;margin:-16px 0 0 -16px;background:rgba(200,184,106,.2);border-radius:50%;pointer-events:none}
-.mbb{position:absolute;bottom:44px;width:46px;height:46px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;letter-spacing:2px;border:1px solid rgba(200,184,106,.22);background:rgba(200,184,106,.07);color:var(--gold);pointer-events:all;touch-action:none;cursor:pointer}
-#btnj{left:50%;margin-left:-52px}
-#btnf{left:50%;margin-left:6px}
-#btnf.locked{color:rgba(200,184,106,.18);border-color:rgba(200,184,106,.06)}
-#btne{left:50%;margin-left:-98px}
+/* On-screen E/F/J/RUN buttons removed — mobile now uses tap (interact),
+   double-tap (jump), triple-tap (fly in hub / super speed in maps) instead,
+   detected globally outside the two joystick zones. See onScreenTap(). */
 @media(pointer:coarse){#mob{display:block}#hint{display:none!important}}
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://unpkg.com/three@0.128.0/examples/js/renderers/CSS3DRenderer.js"></script>
 <script src="https://unpkg.com/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
 <script src="https://unpkg.com/three@0.128.0/examples/js/loaders/RGBELoader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.13/dist/hls.min.js"></script>
 <!-- Photorealistic 3D Tiles — raw Google 3D geometry, rendered directly by
      us (no iframe, no Street View panorama). This needs the separate "Map
      Tiles API" product enabled + billed on the API key in Cloud Console —
@@ -166,26 +180,253 @@ let running3Flag=false,vel3Y=0,onGround3=true,jumpReq=false,flyMode3=false;
 // if we free-fall too long or too far below it with no ground found, snap
 // back there instead of falling through the world.
 let lastSafeX=0,lastSafeY=0,lastSafeZ=0,noGroundFallTime=0;
-// Return doorframe: a plain colored frame placed 10m from spawn in every
-// Google Maps space. Walking through it (checked from the classic script
-// via getFrameDist()) exits back to the main build — no E needed. This is
-// in addition to E, not instead of it.
-let returnFrame3=null,returnFramePos=null;
-function buildReturnFrame(colorHex){
-  if(returnFrame3){scene3.remove(returnFrame3);returnFrame3=null;}
-  const w=2.4,h=3.2,th=0.18,mat=new THREE3.MeshBasicMaterial({color:colorHex||0x4ade80});
+
+// ── SUPER SPEED (Google-Maps-walkthroughs only, never the main city) ──
+// 11x whatever the current walk/run blend would otherwise be. Auto-expires
+// after 60s; can also be cancelled early by toggling again (PC: Ctrl,
+// mobile: triple-tap — see the classic script's mobileTripleTap()).
+const SUPER_SPEED_MULT=11,SUPER_SPEED_MS=60000;
+let superSpeedActive=false,superSpeedTimer=null;
+function setSuperSpeed(on){
+  // Turning plain super speed on while super-SUPER speed is active would
+  // otherwise leave both flags set — the speed formula below only ever
+  // reads the higher tier, so this alone wouldn't be harmful, but cancel it
+  // for clarity/toasts anyway.
+  if(on)setSuperSuper(false);
+  superSpeedActive=!!on;
+  if(superSpeedTimer){clearTimeout(superSpeedTimer);superSpeedTimer=null;}
+  if(superSpeedActive)superSpeedTimer=setTimeout(()=>{superSpeedActive=false;superSpeedTimer=null;},SUPER_SPEED_MS);
+}
+// T-key "super SUPER speed": 10x whatever super speed already was (so
+// ~110x base walk speed), 60s duration, same shape as super speed above,
+// just one tier up. Motion blur + a faint hue-drifting "oily" screen
+// overlay ramp in with it (see #ssBlur/#ssColor + updateSuperFx below) —
+// purely cosmetic, doesn't touch the actual movement math beyond speed.
+const SUPER_SUPER_MULT=SUPER_SPEED_MULT*10,SUPER_SUPER_MS=60000;
+let superSuperActive=false,superSuperTimer=null,ssHue=0;
+function setSuperSuper(on){
+  if(on){superSpeedActive=false;if(superSpeedTimer){clearTimeout(superSpeedTimer);superSpeedTimer=null;}}
+  superSuperActive=!!on;
+  if(superSuperTimer){clearTimeout(superSuperTimer);superSuperTimer=null;}
+  if(superSuperActive)superSuperTimer=setTimeout(()=>{superSuperActive=false;superSuperTimer=null;},SUPER_SUPER_MS);
+}
+
+// ── PER-SESSION LOOK (set from enter() opts) ─────────────────────────
+// skyMode 'cycle'  = normal 6-stage day/evening/night loop (default).
+// skyMode 'amazon' = one skybox, near-black tint, dimmed lights, heavy grain, screen darken.
+// fx 'manhattan'   = door 3 only: screen-space vignette + blur + grain that ramp up while
+//                    moving (masks tile pop-in), hold FX_HOLD_S after stopping, then fade clear.
+// Tuning knobs:
+const FX_VIG_BASE=0.18,FX_GRAIN_BASE=0.04,FX_GRAIN_MOVE=0.14,FX_HOLD_S=1.5,FX_FADE_RATE=0.4;
+const AMAZON_SKY=[0.07,0.08,0.11],AMAZON_LIGHT=0.35,AMAZON_GRAIN=0.2,AMAZON_DARKEN=0.25;
+let skyMode='cycle',fxMode='',fxMotion=0,fxHold=0,fxGrain=0,hoverT=0,hoverAmt=0;
+function applyLookDom(){
+  const b=document.getElementById('fxBlur'),v=document.getElementById('fxVig'),
+        d=document.getElementById('tilesDarken'),g=document.getElementById('tilesGrain');
+  const on=fxMode==='manhattan';
+  if(b){b.style.display=on?'block':'none';b.style.opacity='0';}
+  if(v){v.style.display=on?'block':'none';v.style.opacity=on?String(FX_VIG_BASE):'0';}
+  if(d)d.style.opacity=skyMode==='amazon'?String(AMAZON_DARKEN):'0';
+  if(g){g.style.mixBlendMode=skyMode==='amazon'?'screen':'';g.style.transition=on?'opacity .3s linear':'';}
+}
+function updateFx(dt){
+  if(fxMode!=='manhattan'){fxGrain=0;return;}
+  const moving=!!(move.f||move.b||move.l||move.r)||(flyMode3&&Math.abs(vel3Y)>0.6);
+  if(moving){fxHold=FX_HOLD_S;fxMotion+=((move.run?1:0.75)-fxMotion)*Math.min(1,dt*6);}
+  else if(fxHold>0)fxHold-=dt;
+  else fxMotion=Math.max(0,fxMotion-dt*FX_FADE_RATE);
+  const k=fxMotion*fxMotion*(3-2*fxMotion);
+  const b=document.getElementById('fxBlur'),v=document.getElementById('fxVig');
+  if(b)b.style.opacity=k.toFixed(3);
+  if(v)v.style.opacity=(FX_VIG_BASE+(1-FX_VIG_BASE)*k).toFixed(3);
+  fxGrain=FX_GRAIN_BASE+FX_GRAIN_MOVE*k;
+}
+// Super-SUPER speed screen FX: a directional-feeling motion blur (backdrop
+// blur, same trick as #fxBlur but stronger) plus a very faint, slowly
+// hue-rotating "oily" wash on distant scenery. Ramps in/out over ~0.4s so
+// it doesn't slam on/off with the toggle.
+let ssFxK=0;
+function updateSuperFx(dt){
+  const b=document.getElementById('ssBlur'),c=document.getElementById('ssColor');
+  if(!b||!c)return;
+  ssFxK+=((superSuperActive?1:0)-ssFxK)*Math.min(1,dt*2.5);
+  if(ssFxK>0.003){
+    b.style.display='block';c.style.display='block';
+    b.style.opacity=(ssFxK*0.6).toFixed(3);
+    c.style.opacity=(ssFxK*0.1).toFixed(3);
+    ssHue=(ssHue+dt*35)%360;
+    c.style.filter='blur(46px) saturate(180%) hue-rotate('+ssHue.toFixed(0)+'deg)';
+  } else {
+    b.style.display='none';c.style.display='none';
+  }
+}
+// ── PORTALS (circular, glowing, pulsing) ──────────────────────────────
+// Both the blue return-portal and the gold destination-portal are built by
+// this one shared helper now — no more box door-frames, and critically no
+// more ground-raycast placement. raycastGround() at an arbitrary (fx,fz)
+// was the source of the "duplicates everywhere / buried under buildings"
+// problem: Photorealistic 3D Tiles streams in multiple LODs as you move,
+// so a raycast fired the instant a portal is built can hit a half-loaded
+// low tile, a rooftop, or the true street — different every session, and
+// under dense meshes like Rockefeller Plaza often UNDER the visible
+// ground. Fix: anchor purely off the session's own settled spawn height
+// (spawnGroundY, captured once, right when the ground-poll confirms it's
+// stable — see enter() below) and go straight up into open sky instead of
+// trusting tile geometry at all. Offset is sideways-only (never forward/
+// back) so the portal is always an easy strafe-and-look-up target.
+const PORTAL_SIDE_OFFSET=20;       // metres left/right of spawn's own X
+const PORTAL_HEIGHT_DEFAULT=100;   // metres above settled ground
+const PORTAL_HEIGHT_MANHATTAN=280; // Midtown towers run 200-300m+; 120m was still down among rooftops
+let spawnGroundY=0; // set once per session the instant spawn settles
+
+function buildPortalGroup(colorHex,label){
+  const R=1.6,TUBE=0.16;
   const grp=new THREE3.Group();
-  const top=new THREE3.Mesh(new THREE3.BoxGeometry(w+th*2,th,th*2),mat);top.position.y=h;
-  const l=new THREE3.Mesh(new THREE3.BoxGeometry(th,h,th*2),mat);l.position.set(-w/2,h/2,0);
-  const r=new THREE3.Mesh(new THREE3.BoxGeometry(th,h,th*2),mat);r.position.set(w/2,h/2,0);
-  grp.add(top,l,r);
-  // 10m from spawn — spawn sits at local (0, SPAWN_OFFSET) once settled.
-  const ang=Math.random()*Math.PI*2;
-  const fx=Math.sin(ang)*10,fz=SPAWN_OFFSET+Math.cos(ang)*10;
-  const gy=(camera3?camera3.position.y-EYE_H:0);
-  grp.position.set(fx,gy,fz);
-  returnFrame3=grp;returnFramePos={x:fx,z:fz};
-  scene3.add(grp);
+  const ringMat=new THREE3.MeshBasicMaterial({color:colorHex});
+  const ring=new THREE3.Mesh(new THREE3.TorusGeometry(R,TUBE,20,56),ringMat);
+  grp.add(ring);
+  // Inner shimmering "event horizon" disc — the pulsing glow you actually
+  // see when looking straight at the portal, not just its rim.
+  const discMat=new THREE3.MeshBasicMaterial({color:colorHex,transparent:true,opacity:0.35,side:THREE3.DoubleSide,depthWrite:false,blending:THREE3.AdditiveBlending});
+  const disc=new THREE3.Mesh(new THREE3.CircleGeometry(R*0.94,48),discMat);
+  grp.add(disc);
+  // Soft radial-gradient halo sprite behind it — a cheap stand-in for a
+  // real bloom pass, gives the "glowing" read from a distance.
+  const hex='#'+colorHex.toString(16).padStart(6,'0');
+  const cv=document.createElement('canvas');cv.width=256;cv.height=256;
+  const cx=cv.getContext('2d');
+  const grad=cx.createRadialGradient(128,128,0,128,128,128);
+  grad.addColorStop(0,hex);grad.addColorStop(0.5,hex);grad.addColorStop(1,'rgba(0,0,0,0)');
+  cx.fillStyle=grad;cx.fillRect(0,0,256,256);
+  const haloMat=new THREE3.SpriteMaterial({map:new THREE3.CanvasTexture(cv),transparent:true,opacity:0.35,depthWrite:false,blending:THREE3.AdditiveBlending});
+  const halo=new THREE3.Sprite(haloMat);halo.scale.set(R*4.2,R*4.2,1);
+  grp.add(halo);
+  const pl=new THREE3.PointLight(colorHex,3,18);grp.add(pl);
+  if(label){
+    const lc=document.createElement('canvas');lc.width=512;lc.height=64;
+    const lx=lc.getContext('2d');lx.fillStyle=hex;lx.font='28px "Courier New",monospace';
+    lx.textAlign='center';lx.textBaseline='middle';lx.fillText(label,256,32);
+    const labelSpr=new THREE3.Sprite(new THREE3.SpriteMaterial({map:new THREE3.CanvasTexture(lc),transparent:true,depthWrite:false}));
+    labelSpr.scale.set(3,0.38,1);labelSpr.position.set(0,R+0.7,0);grp.add(labelSpr);
+  }
+  return{grp,ringMat,discMat,haloMat,pl};
+}
+
+// Blue return portal: one per map, always. Walking into it (checked from
+// the classic script via getFrameDist()) exits back to the main build — no
+// E needed. This is in addition to E, not instead of it.
+let returnFrame3=null,returnFramePos=null,returnPortal=null,lastPortalSide=1;
+function buildReturnFrame(colorHex,tall){
+  if(returnFrame3){scene3.remove(returnFrame3);returnFrame3=null;returnPortal=null;}
+  const p=buildPortalGroup(colorHex||0x2dd4ff,null);
+  const side=(Math.random()<0.5?-1:1)*PORTAL_SIDE_OFFSET;
+  lastPortalSide=side;
+  const fx=side,fz=SPAWN_OFFSET;
+  const fy=spawnGroundY+(tall?PORTAL_HEIGHT_MANHATTAN:PORTAL_HEIGHT_DEFAULT);
+  p.grp.position.set(fx,fy,fz);
+  returnFrame3=p.grp;returnFramePos={x:fx,y:fy,z:fz};returnPortal=p;
+  scene3.add(returnFrame3);
+}
+
+// Gold destination portal — ONLY built inside door 3 (Rockefeller Plaza),
+// on the opposite side from the blue portal so the two never overlap.
+// Walking through it hot-swaps the tileset straight to the Amazon without
+// returning to the main hub first — same enter()/settle pipeline every
+// other door already uses, just re-entered while already inside a map
+// (see enterMapFull's onReady and AMAZON_DEST below).
+let pyramidPortal3=null,pyramidPortalPos=null,goldPortal=null;
+function buildPyramidPortal(){
+  clearPyramidPortal();
+  const p=buildPortalGroup(0xd4af37,'→ AMAZON');
+  const side=-lastPortalSide;
+  const fx=side,fz=SPAWN_OFFSET;
+  const fy=spawnGroundY+PORTAL_HEIGHT_MANHATTAN;
+  p.grp.position.set(fx,fy,fz);
+  pyramidPortal3=p.grp;pyramidPortalPos={x:fx,y:fy,z:fz};goldPortal=p;
+  scene3.add(pyramidPortal3);
+}
+function clearPyramidPortal(){
+  if(pyramidPortal3){scene3.remove(pyramidPortal3);pyramidPortal3=null;pyramidPortalPos=null;goldPortal=null;}
+}
+// Slow spin + breathing pulse on both portals' glow — called every frame
+// from loop() once the session is ready. Purely cosmetic, no gameplay tie.
+let portalT=0;
+function updatePortals(dt){
+  portalT+=dt;
+  const spin=portalT*0.6;
+  if(returnPortal){
+    const pulse=0.6+Math.sin(portalT*2.4)*0.4;
+    returnPortal.discMat.opacity=0.25+pulse*0.3;
+    returnPortal.haloMat.opacity=0.25+pulse*0.3;
+    returnPortal.pl.intensity=2+pulse*3;
+    returnFrame3.rotation.z=spin;
+  }
+  if(goldPortal){
+    const pulse=0.6+Math.sin(portalT*2.4+1.4)*0.4;
+    goldPortal.discMat.opacity=0.25+pulse*0.3;
+    goldPortal.haloMat.opacity=0.25+pulse*0.3;
+    goldPortal.pl.intensity=2+pulse*3;
+    pyramidPortal3.rotation.z=-spin;
+  }
+}
+
+// ── BILLBOARD VIDEO (Norway mountain destination only) ──────────────────
+// A real 3D plane with a THREE.VideoTexture, not an iframe/CSS3D overlay —
+// this scene has its own isolated renderer with no CSS3DRenderer of its
+// own, so a video texture on a mesh is the natural fit, same idea as the
+// canvas-texture sprites already used elsewhere (mkHieroglyphTexture etc.)
+// Streams via HTTP range requests like any <video>; muted+playsInline is
+// required for autoplay to actually fire on mobile browsers.
+let billboardVideoEl=null,billboardVideoTex=null,billboardVideoMesh=null;
+function buildBillboardVideo(url){
+  clearBillboardVideo();
+  if(!url)return;
+  const v=document.createElement('video');
+  // By the time a player reaches this TV they've already clicked the age
+  // gate and clicked/tapped into the game itself — real gestures already
+  // happened on this page, so audio is unmuted straight away instead of
+  // requiring yet another click just to hear it.
+  v.crossOrigin='anonymous';v.muted=false;v.loop=true;v.playsInline=true;v.autoplay=true;
+  v.src=url;
+  v.play().catch(()=>{
+    // Only if a browser still blocks it: fall back to muted-autoplay so the
+    // picture isn't stuck black, and let toggleBillboardVideo() (V key / tap)
+    // unmute it on demand.
+    v.muted=true;v.play().catch(()=>{});
+  });
+  const tex=new THREE3.VideoTexture(v);
+  tex.minFilter=THREE3.LinearFilter;tex.magFilter=THREE3.LinearFilter;
+  const W=160,H=120; // 20x the original 8x6
+  const mesh=new THREE3.Mesh(new THREE3.PlaneGeometry(W,H),new THREE3.MeshBasicMaterial({map:tex,side:THREE3.DoubleSide}));
+  // Straight ahead of spawn, facing back toward the player — same forward
+  // axis every other door uses (camera starts at look.h=0, facing -Z).
+  // Was 14m out; now 50m further (64m total) — plenty of room on this
+  // stretch of cliff/water.
+  const fx=0,fz=SPAWN_OFFSET-64;
+  // Anchored off the settled spawn height (see spawnGroundY, set in
+  // enter()) instead of its own raycast — same fix as the portals above,
+  // and lifted an extra 60m per request.
+  const gy=spawnGroundY+60+H/2;
+  mesh.position.set(fx,gy,fz);mesh.rotation.y=Math.PI;
+  billboardVideoEl=v;billboardVideoTex=tex;billboardVideoMesh=mesh;
+  scene3.add(mesh);
+}
+function clearBillboardVideo(){
+  if(billboardVideoMesh){scene3.remove(billboardVideoMesh);billboardVideoMesh=null;}
+  if(billboardVideoTex){billboardVideoTex.dispose();billboardVideoTex=null;}
+  if(billboardVideoEl){billboardVideoEl.pause();billboardVideoEl.removeAttribute('src');billboardVideoEl.load();billboardVideoEl=null;}
+}
+// V key (PC) / tap (mobile) toggle — pauses it, or unmutes+resumes it if it
+// was ever silently muted-fallback-autoplaying. Not required for normal
+// playback (it's already on with sound by default) — just a manual override.
+function toggleBillboardVideo(){
+  if(!billboardVideoEl)return null;
+  if(billboardVideoEl.paused||billboardVideoEl.muted){
+    billboardVideoEl.muted=false;billboardVideoEl.play().catch(()=>{});
+    return true;
+  }
+  billboardVideoEl.pause();
+  return false;
 }
 
 function ensureRenderer(){
@@ -199,7 +440,10 @@ function ensureRenderer(){
   // "big mountain cutting the map off" look) by fading distant real
   // geometry toward a sky-ish colour. The sky dome itself ignores fog
   // (fog:false on its materials) so this only touches actual terrain/tiles.
-  scene3.fog=new THREE3.FogExp2(0xaeb8c2,0.00045);
+  // Density near-zero on purpose: the two skyboxes already hide the far
+  // horizon/pop-in, so this fog is now pure mood, not distance-masking —
+  // color is animated slowly toward a dark "oil slick" tint in updateSky3().
+  scene3.fog=new THREE3.FogExp2(0x0a0b14,0.00006);
   camera3=new THREE3.PerspectiveCamera(65,innerWidth/innerHeight,0.1,20000);
   camera3.rotation.order='YXZ';
   scene3.add(camera3);
@@ -216,9 +460,14 @@ function clearTiles(){
   if(tiles){scene3.remove(tiles.group);tiles.dispose();tiles=null;}
 }
 
-function raycastGround(){
+// x/z optional — omit to raycast straight down from the camera's own
+// current position (original behaviour). Pass explicit coords to find the
+// ground under any OTHER point (doorframes, portals) instead of reusing
+// whatever the player's ground height happens to be.
+function raycastGround(x,z){
   if(!tiles)return null;
-  const ray=new THREE3.Raycaster(new THREE3.Vector3(camera3.position.x,SPAWN_UP,camera3.position.z),new THREE3.Vector3(0,-1,0));
+  const px=x!==undefined?x:camera3.position.x,pz=z!==undefined?z:camera3.position.z;
+  const ray=new THREE3.Raycaster(new THREE3.Vector3(px,SPAWN_UP,pz),new THREE3.Vector3(0,-1,0));
   ray.far=SPAWN_UP+SPAWN_DOWN;
   const hits=ray.intersectObject(tiles.group,true);
   return hits.length?hits[0].point.y:null;
@@ -242,7 +491,7 @@ const TILES_HDR_URL='https://raw.githubusercontent.com/EarthlingOfficial/dean-wi
 // then we simulate the evening look by reusing the day texture with a warm
 // tint + darker exposure, so you never see a flat dome instead.
 const ARCHIVE_HDR_URL='';
-const SKY_PHASE_SEC=45; // time spent in each of the 3 phases per session
+const SKY_PHASE_SEC=120; // time spent in each of the 6 stages per cycle (halved speed from 60s)
 let skySphere3=null,skyMatA=null,skyMatB=null,nightOverlay=null,skyT=0,skyTintHue=Math.random()<0.5?0.08:0.75; // subtle per-session orange/purple bias
 
 function makeSkySphere(mat,radius){
@@ -254,7 +503,10 @@ function makeSkySphere(mat,radius){
 function initSky3(){
   try{
     const loader=new RGBELoader();
-    skyMatA=new THREE3.MeshBasicMaterial({color:0x666666,side:THREE3.BackSide,fog:false,depthWrite:false});
+    // Both spheres are transparent+opacity-driven now (A used to always sit
+    // fully opaque underneath B) so the cycle can actually take A all the way
+    // to 0 and remove it from view, instead of just covering it with B.
+    skyMatA=new THREE3.MeshBasicMaterial({color:0x666666,side:THREE3.BackSide,transparent:true,opacity:1,fog:false,depthWrite:false});
     skyMatB=new THREE3.MeshBasicMaterial({color:0x000000,side:THREE3.BackSide,transparent:true,opacity:0,fog:false,depthWrite:false});
     // Two DIFFERENT radii, not the same one — that was the bug behind the
     // sunburst/striping in your screenshots. Both spheres were exactly
@@ -291,28 +543,59 @@ function initSky3(){
 function updateSky3(dt){
   if(!skySphere3)return;
   skyT+=dt;
-  skySphere3.rotation.y+=dt*0.0015; // super subtle drift, not a spin — only the SKY rotates, never the tiles/terrain (that's a separate object, untouched by this)
+  skySphere3.rotation.y+=dt*0.000375; // super subtle drift, not a spin — halved again per request — only the SKY rotates, never the tiles/terrain (that's a separate object, untouched by this)
   // Lock the sky's centre to the player so a huge-radius sphere never looks
   // like it's sliding away as you walk/fly far from the spawn point.
   if(camera3)skySphere3.position.set(camera3.position.x,0,camera3.position.z);
-  // 4 equal phases so the loop is smooth in both directions:
-  //  1) day                              2) day -> evening crossfade
-  //  3) evening -> night (darken+grain)  4) night -> day fade-back
-  // Phase 4 mirrors phase 2/3 in reverse so wrapping back to phase 1 is
-  // seamless — the old 3-phase version snapped straight from full night
-  // back to full day with no transition at all.
-  const cyc=SKY_PHASE_SEC*4;
+  if(skyMode==='amazon'){
+    // Single skybox (A), no cycle. Sky tinted near-black; lights dimmed; heavy grain.
+    if(skyMatA){skyMatA.opacity=1;skyMatA.color.setRGB(AMAZON_SKY[0],AMAZON_SKY[1],AMAZON_SKY[2]);}
+    if(skyMatB)skyMatB.opacity=0;
+    if(nightOverlay)nightOverlay.style.opacity=AMAZON_GRAIN.toFixed(3);
+    if(scene3.fog)scene3.fog.color.setRGB(0.02,0.025,0.035);
+    scene3.children.forEach(o=>{if(o.isHemisphereLight)o.intensity=1.2*AMAZON_LIGHT;if(o.isDirectionalLight)o.intensity=1.6*AMAZON_LIGHT;});
+    return;
+  }
+  // 6 equal stages, alternating which skybox is "up" so A and B are never
+  // both visible at once and never crossfade into each other directly —
+  // every swap passes through a true pitch-black instant (both opacities at
+  // 0, so the renderer's own black clear colour shows through) with the
+  // grain overlay covering the swap:
+  //   0: A steady (original city skybox)
+  //   1: A fades out -> black, grain fades in           (fade to night)
+  //   2: grain fades out, B fades in from black          (archive skybox appears)
+  //   3: B steady
+  //   4: B fades out -> black, grain fades in            (fade to night again)
+  //   5: grain fades out, A fades back in from black
+  //  -> loop back to 0
+  const P=SKY_PHASE_SEC,cyc=P*6;
   const t=skyT%cyc;
-  let phaseB=0,night=0; // phaseB: 0->1 crossfade original->archive; night: 0->1 darken+grain
-  if(t<SKY_PHASE_SEC){phaseB=0;night=0;} // 1: day
-  else if(t<SKY_PHASE_SEC*2){phaseB=(t-SKY_PHASE_SEC)/SKY_PHASE_SEC;night=0;} // 2: day -> evening
-  else if(t<SKY_PHASE_SEC*3){phaseB=1;night=(t-SKY_PHASE_SEC*2)/SKY_PHASE_SEC;} // 3: evening -> night
-  else{const f=(t-SKY_PHASE_SEC*3)/SKY_PHASE_SEC;phaseB=1-f;night=1-f;} // 4: night -> day (fade back)
-  if(skyMatB)skyMatB.opacity=phaseB;
-  if(nightOverlay)nightOverlay.style.opacity=(0.05+night*0.22).toFixed(3);
-  const dark=1-night*0.82;
+  const stage=Math.floor(t/P);
+  const f=(t-stage*P)/P; // 0->1 progress through the current stage
+  let aOp=0,bOp=0,night=0;
+  switch(stage){
+    case 0: aOp=1;bOp=0;night=0;break;
+    case 1: aOp=1-f;bOp=0;night=f;break;
+    case 2: aOp=0;bOp=f;night=1-f;break;
+    case 3: aOp=0;bOp=1;night=0;break;
+    case 4: aOp=0;bOp=1-f;night=f;break;
+    default: aOp=f;bOp=0;night=1-f;break; // case 5
+  }
+  if(skyMatA)skyMatA.opacity=aOp;
+  if(skyMatB)skyMatB.opacity=bOp;
+  if(nightOverlay)nightOverlay.style.opacity=(0.05+night*0.22+fxGrain).toFixed(3);
+  // Slow "oil slick" hue drift on the fog — a single color at any instant,
+  // but it creeps through deep jewel tones over several minutes so it never
+  // reads as a flat, static tint. Kept dark/low-saturation to stay subtle,
+  // and dips a touch darker still at full night for cohesion with the swap.
+  if(scene3.fog){
+    const fogHue=(skyT/240)%1;
+    const fogL=0.05-night*0.02;
+    scene3.fog.color.setHSL(fogHue,0.45,Math.max(0.02,fogL));
+  }
+  const dark=1-night*0.92; // near-fully-off lights at peak night, to match the "pitch black" swap
   scene3.children.forEach(o=>{if(o.isHemisphereLight)o.intensity=1.2*dark;if(o.isDirectionalLight)o.intensity=1.6*dark;});
-  if(renderer3)renderer3.toneMappingExposure=1-night*0.35;
+  if(renderer3)renderer3.toneMappingExposure=1-night*0.4;
 }
 
 function loop(){
@@ -324,7 +607,10 @@ function loop(){
   // could only become true after tiles had been updated and loaded.
   tiles.update();
   if(!ready){renderer3.render(scene3,camera3);return;}
+  updateFx(dt);
   updateSky3(dt);
+  updatePortals(dt);
+  updateSuperFx(dt);
   camera3.rotation.y=look.h;camera3.rotation.x=look.p;
   const fwd=new THREE3.Vector3(-Math.sin(look.h),0,-Math.cos(look.h));
   const rgt=new THREE3.Vector3(Math.cos(look.h),0,-Math.sin(look.h));
@@ -334,7 +620,15 @@ function loop(){
   if(move.l){mx-=rgt.x;mz-=rgt.z;}
   if(move.r){mx+=rgt.x;mz+=rgt.z;}
   const mag=Math.hypot(mx,mz);
-  const spd=move.run?RUN_SPEED:WALK_SPEED;
+  // Speed blend: 0..1 "how hard is the stick/key pushed toward run".
+  // Desktop keyboard has no analog value, so it's discrete — 0 (walk) or 1
+  // (Shift held). Mobile's joystick passes its own continuous deflection
+  // (move.mag, set from setMoveInput's touch-magnitude field) so pushing the
+  // stick only halfway sits between walk and run instead of snapping to one
+  // or the other — this is what replaced the on-screen RUN button.
+  const analogMag=(move.mag!=null)?move.mag:(move.run?1:0);
+  const speedMult=superSuperActive?SUPER_SUPER_MULT:(superSpeedActive?SUPER_SPEED_MULT:1);
+  const spd=(WALK_SPEED+(RUN_SPEED-WALK_SPEED)*analogMag)*speedMult;
   if(mag>0.001){
     camera3.position.x+=(mx/mag)*spd*dt;
     camera3.position.z+=(mz/mag)*spd*dt;
@@ -343,11 +637,17 @@ function loop(){
     // Same feel as the main build's fly: forward pitch drives vertical,
     // S/back bleeds it off, no gravity, no ground snap.
     // (was `-Math.sin(look.p)` — inverted, made looking up dive down)
+    hoverT+=dt;
+    const idleFly=!move.f&&!move.b&&mag<0.001;
     if(move.f)vel3Y=spd*Math.sin(look.p);
+    else if(idleFly)vel3Y+=(Math.cos(hoverT*1.1)*0.09-vel3Y)*Math.min(1,dt*9); // idle hover bob (~8cm)
     else if(!move.b)vel3Y*=0.85;
+    hoverAmt+=((idleFly?1:0)-hoverAmt)*Math.min(1,dt*2);
+    camera3.rotation.z=Math.sin(hoverT*0.7)*0.006*hoverAmt; // faint sway
     camera3.position.y+=vel3Y*dt;
     onGround3=false;jumpReq=false;noGroundFallTime=0;
   } else {
+    camera3.rotation.z*=0.9;hoverAmt=0;
     if(jumpReq&&onGround3){vel3Y=JUMP_V;onGround3=false;jumpReq=false;}
     jumpReq=false;
     const g=raycastGround();
@@ -359,7 +659,8 @@ function loop(){
         noGroundFallTime=0;
       }
     } else {
-      vel3Y-=(vel3Y>0?GRAV_UP:GRAV_DOWN)*dt;
+      vel3Y-=(vel3Y>0?GRAV_UP:GRAV_DOWN)*(Math.abs(vel3Y)<1.6?0.5:1)*dt; // half gravity near apex = slight hang
+      if(vel3Y<-55)vel3Y=-55; // terminal velocity cap — matters now that map entry is a real ~200m fall, not a teleport
       camera3.position.y+=vel3Y*dt;
       if(g!==null&&camera3.position.y<=g+EYE_H&&vel3Y<=0){
         camera3.position.y=g+EYE_H;vel3Y=0;onGround3=true;
@@ -385,14 +686,89 @@ function loop(){
 }
 requestAnimationFrame(loop);
 
+// ── HUB DOOR DOLLY-CAM PREVIEW ────────────────────────────────────────
+// Live "peek through the door before you open it" effect for the main
+// hub. Only ever ONE of these tiny sessions is alive at a time — the
+// classic hub script only calls armDoorPreview() for whichever single
+// door the player is currently within 5m of (see updateDoorPreviewArm()
+// in the classic script), and disarms it the instant they step away.
+// That's deliberate: running all 18 doors' tile sessions live
+// simultaneously would mean 18x the tile downloads/GPU memory/Maps API
+// billing, running constantly whether anyone's looking or not.
+//
+// mountEl is a plain empty <div> the hub script already embedded in its
+// OWN 3D scene via its own (older, r128) THREE.CSS3DObject, sitting right
+// on the door's panel — passed in here as a function argument, so there's
+// no cross-script global-scope issue (module scripts don't share
+// top-level const/let with classic scripts, but a DOM element handed
+// across a function call is just a value). This module's tiny canvas gets
+// appended straight into that div, so it inherits the div's real 3D
+// position/rotation/perspective for free.
+let dpMountEl=null,dpCanvas=null,dpRenderer=null,dpScene=null,dpCamera=null,dpTiles=null,dpHeight=200;
+function armDoorPreview(mountEl,lat,lng,elevM,apiKey,dollyHeight){
+  if(dpMountEl===mountEl)return; // already armed on this exact door
+  disarmDoorPreview();
+  dpMountEl=mountEl;
+  dpHeight=dollyHeight||200;
+  dpCanvas=document.createElement('canvas');
+  dpCanvas.style.cssText='width:100%;height:100%;display:block;';
+  dpCanvas.width=200;dpCanvas.height=440; // modest res — it's a small peek window, not the main view
+  dpRenderer=new THREE3.WebGLRenderer({canvas:dpCanvas,antialias:false});
+  dpRenderer.setPixelRatio(1);dpRenderer.outputColorSpace=THREE3.SRGBColorSpace;
+  dpRenderer.setSize(200,440,false);
+  dpScene=new THREE3.Scene();
+  dpScene.add(new THREE3.HemisphereLight(0xffffff,0x445566,2.2));
+  dpCamera=new THREE3.PerspectiveCamera(55,200/440,1,3000);
+  // dpHeight up, facing straight down — matches this door's own
+  // fallHeight (see DOORS), so the preview is a genuine preview of the
+  // exact view you're about to fall through once you actually open it.
+  dpCamera.position.set(0,dpHeight,0);
+  dpCamera.rotation.set(-Math.PI/2,0,0);
+  dpTiles=new TilesRenderer(GOOGLE_3D_TILES_ROOT);
+  dpTiles.registerPlugin(new GoogleCloudAuthPlugin({apiToken:apiKey}));
+  dpTiles.registerPlugin(new ReorientationPlugin({lat:lat*Math.PI/180,lon:lng*Math.PI/180,height:elevM||0}));
+  dpTiles.registerPlugin(new TileCompressionPlugin());
+  dpTiles.setCamera(dpCamera);
+  dpTiles.setResolutionFromRenderer(dpCamera,dpRenderer);
+  dpScene.add(dpTiles.group);
+  mountEl.appendChild(dpCanvas);
+}
+function disarmDoorPreview(){
+  if(dpTiles){dpTiles.dispose();dpTiles=null;}
+  if(dpRenderer){dpRenderer.dispose();dpRenderer=null;}
+  if(dpCanvas&&dpCanvas.parentNode)dpCanvas.parentNode.removeChild(dpCanvas);
+  dpCanvas=null;dpScene=null;dpCamera=null;dpMountEl=null;dpHeight=200;
+}
+// Called every hub frame while a door is armed. localX/localZ are the
+// player's position relative to the door, in the door's own local space
+// (see updateDoorPreviewArm in the classic script) — used only for a
+// small look-direction parallax nudge, so stepping side to side in front
+// of the door genuinely shifts what you see through it, full directional
+// parallax like looking through a real window rather than a flat photo.
+function updateDoorPreview(localX,localZ){
+  if(!dpTiles||!dpRenderer)return;
+  dpTiles.update();
+  const px=Math.max(-1,Math.min(1,localX/3)),pz=Math.max(-1,Math.min(1,localZ/4));
+  dpCamera.position.set(px*10,dpHeight,pz*10);
+  dpCamera.rotation.set(-Math.PI/2+pz*0.12,0,-px*0.12);
+  dpRenderer.render(dpScene,dpCamera);
+}
+
 window.Tiles3D={
   enter(opts){
-    ensureRenderer();clearTiles();
+    ensureRenderer();clearTiles();clearBillboardVideo();
     running=true;ready=false;lastT=performance.now();
     look={h:0,p:0};move={f:0,b:0,l:0,r:0,run:false};
+    setSuperSpeed(false); // never carry super speed in from a previous session
+    setSuperSuper(false);
     vel3Y=0;onGround3=true;jumpReq=false;skyT=0;skyTintHue=Math.random()<0.5?0.08:0.75;
     lastSafeX=0;lastSafeY=SPAWN_UP;lastSafeZ=SPAWN_OFFSET;noGroundFallTime=0;
     if(skyMatB)skyMatB.color.setHSL(skyTintHue,0.35,0.55);
+    skyMode=opts.skyMode||'cycle';fxMode=opts.fx||'';fxMotion=0;fxHold=0;fxGrain=0;hoverT=0;hoverAmt=0;
+    camera3.rotation.z=0;
+    if(skyMatA){skyMatA.opacity=1;if(skyMode==='amazon')skyMatA.color.setRGB(AMAZON_SKY[0],AMAZON_SKY[1],AMAZON_SKY[2]);else skyMatA.color.set(skyMatA.map?0xffffff:0x666666);}
+    if(skyMatB)skyMatB.opacity=0;
+    applyLookDom();
     canvas3.style.display='block';
     document.getElementById('tilesLoading').style.display='block';
     // 3d-tiles-renderer 0.5 uses the supported Google Cloud auth plugin.
@@ -425,10 +801,23 @@ window.Tiles3D={
         if(g!==null){
           if(prevG!==null&&Math.abs(g-prevG)<2){
             settled=true;
-            camera3.position.set(0,g+EYE_H,SPAWN_OFFSET);
+            spawnGroundY=g;
+            // Used to teleport straight to g+EYE_H here. Now it drops the
+            // player from up high instead (200m by default, or a taller
+            // opts.fallHeight for maps with skyscrapers/tall landmarks —
+            // see DOORS' fallHeight/dollyHeight, e.g. Manhattan/Giza) — the
+            // same height the hub's door dolly-cam preview parks its camera
+            // at for that door, so walking through visibly falls from
+            // roughly where you were just peeking from, through open sky,
+            // past the portals (which sit a bit lower) and down onto the
+            // actual ground. The normal per-frame gravity/ground-snap code
+            // below (in loop()) does the rest — nothing else has to change.
+            camera3.position.set(0,g+(opts.fallHeight||200),SPAWN_OFFSET);
+            onGround3=false;vel3Y=0;
             ready=true;
             document.getElementById('tilesLoading').style.display='none';
-            buildReturnFrame(opts.frameColor);
+            buildReturnFrame(opts.frameColor,!!opts.manhattan);
+            if(opts.billboardVideoUrl)buildBillboardVideo(opts.billboardVideoUrl);
             if(opts.onReady)opts.onReady();
           }
           prevG=g;
@@ -445,25 +834,66 @@ window.Tiles3D={
     if(canvas3)canvas3.style.display='none';
     document.getElementById('tilesLoading').style.display='none';
     if(nightOverlay)nightOverlay.style.opacity='0';
-    returnFrame3=null;returnFramePos=null;
+    skyMode='cycle';fxMode='';fxGrain=0;applyLookDom();
+    // BUG FIX: this used to just null the variables without ever calling
+    // scene3.remove() on the return portal — buildReturnFrame()'s own
+    // cleanup only knows how to remove *its own* returnFrame3 reference, so
+    // once that reference was wiped here it could never find the old mesh
+    // again. Every map exit was leaving the PREVIOUS session's blue portal
+    // orphaned in scene3 forever, invisibly stacking up call after call —
+    // almost certainly the real source of the "4 or more duplicates"
+    // reported under various maps. Remove it from the scene properly first.
+    if(returnFrame3){scene3.remove(returnFrame3);returnFrame3=null;}
+    returnFramePos=null;returnPortal=null;
+    clearPyramidPortal();
+    clearBillboardVideo();
     clearTiles();
+    setSuperSpeed(false);
+    setSuperSuper(false);
   },
   setLook(h,p){look.h=h;look.p=p;},
   // BUG FIX: this used to do move=m, which threw away move.run every single
   // frame (setMoveInput is called continuously from the main loop) — Shift
   // never actually stuck. Merge instead so run/fly state survives.
+  // `m` may also carry `mag` (0..1 analog stick deflection, mobile only) —
+  // that field rides along through the merge and is read in loop() above.
   setMoveInput(m){move=Object.assign({run:move.run},m);},
   setRun(r){move.run=!!r;},
   setFly(f){flyMode3=!!f;},
   jump(){jumpReq=true;},
   isReady(){return ready;},
+  // Google-Maps-walkthroughs-only super speed (see SUPER_SPEED_MULT above).
+  // Returns the new on/off state so the caller can toast it immediately.
+  toggleSuperSpeed(){setSuperSpeed(!superSpeedActive);return superSpeedActive;},
+  isSuperSpeedActive(){return superSpeedActive;},
+  // T-key "super SUPER speed" — 10x whatever super speed already was.
+  // Mutually exclusive with plain super speed (turning this on cancels
+  // that one instead of stacking, so the multiplier is always exactly
+  // SUPER_SUPER_MULT rather than compounding by accident).
+  toggleSuperSuper(){setSuperSuper(!superSuperActive);return superSuperActive;},
+  isSuperSuperActive(){return superSuperActive;},
   getLocalXZ(){return camera3?{x:camera3.position.x,z:camera3.position.z}:{x:0,z:0};},
-  // Distance from the player to the return-frame, in metres, or null if
-  // no frame has been placed for this session yet.
+  // Distance from the player to the return-portal, in metres, or null if
+  // no portal has been placed for this session yet. Full 3D distance now
+  // that the portal lives up in the sky rather than at ground height.
   getFrameDist(){
     if(!camera3||!returnFramePos)return null;
-    return Math.hypot(camera3.position.x-returnFramePos.x,camera3.position.z-returnFramePos.z);
-  }
+    return Math.hypot(camera3.position.x-returnFramePos.x,camera3.position.y-returnFramePos.y,camera3.position.z-returnFramePos.z);
+  },
+  // Distance from the player to the gold destination portal (door 3 only),
+  // or null if that portal doesn't exist in the current session.
+  getPyramidPortalDist(){
+    if(!camera3||!pyramidPortalPos)return null;
+    return Math.hypot(camera3.position.x-pyramidPortalPos.x,camera3.position.y-pyramidPortalPos.y,camera3.position.z-pyramidPortalPos.z);
+  },
+  // Distance from the player to the billboard TV, in metres, or null if
+  // this session has no TV (only the Pulpit Rock/Norway door does).
+  getBillboardDist(){
+    if(!camera3||!billboardVideoMesh)return null;
+    return camera3.position.distanceTo(billboardVideoMesh.position);
+  },
+  armDoorPreview,disarmDoorPreview,updateDoorPreview,
+  toggleBillboardVideo
 };
 </script>
 
@@ -481,6 +911,8 @@ window.Tiles3D={
 </div>
 
 <div id="connect">
+  <video id="connectBgVideo" muted loop playsinline autoplay preload="auto"></video>
+  <div id="connectBgOverlay"></div>
   <div id="cp1">
     <div class="cs">A VEGAN BROS. SERIES</div>
     <div class="ct">GO DEAN!</div>
@@ -493,14 +925,18 @@ window.Tiles3D={
     <div class="ct">GO DEAN!</div>
     <div class="cg">STAGE 10 — THE OUTSIDE WORLD</div>
     <div id="cdisc"><b>NOTICE &amp; DISCLAIMER</b><br><br>Go Dean! is a non-profit work of parody and satire by @earthling_official / earthlingofficial.com.<br><br>Stage 10 integrates live public feeds and real coordinates of documented animal agriculture facilities.<br><br>All Dean quotes are direct and verified. The archive does not forget.<br><br><b>IT EXISTS FOR THE ANIMALS.</b></div>
-    <div id="ctap">TAP TO ENTER THE OUTSIDE WORLD</div>
+    <div id="cchoices">
+      <div class="cbtn" id="cWatch">WATCH MOVIE</div>
+      <div class="cbtn" id="cEnter">ENTER REAL WORLD</div>
+    </div>
     <div id="csub">earthlingofficial.com</div>
   </div>
 </div>
+<div id="enterBox">ENTER THE REAL WORLD</div>
 
 <div id="hud">
   <div id="hbwrap"><svg id="hbsvg" viewBox="0 0 80 20" fill="none"><polyline id="hbline" points="0,10 12,10 16,3 20,17 24,10 34,10 36,6 38,14 40,10 80,10" stroke="rgba(200,184,106,0.4)" stroke-width="1.1" fill="none"/></svg></div>
-  <div id="dcount">0 / 15</div>
+  <div id="dcount">0 / 18</div>
 </div>
 
 <div id="tod"></div>
@@ -513,8 +949,15 @@ window.Tiles3D={
 
 <div id="mapFull">
   <canvas id="tiles3dCanvas"></canvas>
+  <div id="fxBlur"></div>
+  <div id="ssBlur"></div>
+  <div id="ssColor"></div>
+  <div id="tilesDarken"></div>
   <div id="tilesGrain"></div>
+  <div id="fxVig"></div>
   <div id="tilesLoading">LOADING TERRAIN…</div>
+  <div id="tvHint">[ V ] TOGGLE TV</div>
+  <div id="tvTap"><div id="tvTapBtn">▶ TAP TO WATCH</div></div>
   <div id="mapMsg"></div>
 </div>
 
@@ -527,10 +970,6 @@ window.Tiles3D={
 <div id="mob">
   <div id="lj" class="jz"><div class="kn" id="lkn"></div></div>
   <div id="rj" class="jz"><div class="kn" id="rkn"></div></div>
-  <div id="btne" class="mbb">E</div>
-  <div id="btnj" class="mbb">J</div>
-  <div id="btnf" class="mbb locked">F</div>
-  <div id="btnrun" class="mbb" style="display:none">RUN</div>
 </div>
 
 <canvas id="mmap" width="110" height="110"></canvas>
@@ -543,6 +982,16 @@ const isMobile=/Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
 const GLB_URL='./procedural_city_66.glb';
 const HDR_URL='https://raw.githubusercontent.com/EarthlingOfficial/dean-withers.com/main/autumn_hill_view_8k.hdr';
 const STAGE11_URL='https://earthlingofficial.com/veganbrosstage11.html';
+// Loading-screen background, behind the #connect overlay (city-loading bar +
+// disclaimer). Streams via HTTP range requests like any <video> — the
+// browser only pulls what it needs to start playing, not the whole file
+// up front — but it's still a large multi-GB source, so on a slow
+// connection the very first second or two may show black before it starts.
+const CONNECT_BG_VIDEO_URL='https://archive.org/download/lucent-2014-full-documentary-720p/lucent_(2014)_-_full_documentary%20(720p).mp4';
+{
+  const v=document.getElementById('connectBgVideo');
+  if(v&&CONNECT_BG_VIDEO_URL){v.src=CONNECT_BG_VIDEO_URL;v.play().catch(()=>{});}
+}
 
 // ── DOOR DATA ─────────────────────────────────────────────────────────
 const DOORS=[
@@ -562,6 +1011,11 @@ const DOORS=[
    overlay:'JBS Dinmore processes 1.4 million cattle annually.\nMore animals than the population of Adelaide.\nThis is legal. This is Tuesday.',
    narrative:['JBS Dinmore processes 1.4 million cattle annually.','More animals than the population of Adelaide.','This is legal. This is Tuesday.']},
   {type:'streetview',label:'ROCKEFELLER PLAZA — NEW YORK CITY',lat:40.75874,lng:-73.97812,elevM:15,targetRadiusM:60,
+   // Midtown towers near here run 200–300m+ (30 Rock alone is ~260m) — the
+   // default 200m fall/preview height was still down among the rooftops,
+   // which is why the gold portal (anchored off this same height) kept
+   // getting lost against building geometry. Bumped well above the skyline.
+   fallHeight:380,dollyHeight:380,
    overlay:"This is the world people walk through, unaware.\nA century ago this part of Manhattan was lined with slaughterhouses — that's the whole reason the Meatpacking District has that name.\nThe trade didn't end. It just moved out of sight.",
    narrative:["This is the world people walk through, unaware.","A century ago this part of Manhattan was lined with slaughterhouses.","That's the whole reason the Meatpacking District has that name.","The trade didn't end. It just moved out of sight."]},
   {type:'streetview',label:'MARINA BAY — SINGAPORE',lat:1.283786,lng:103.860624,elevM:8,targetRadiusM:60,
@@ -592,6 +1046,23 @@ const DOORS=[
   {type:'streetview',label:'JBS GREELEY — COLORADO, USA',lat:40.44391898,lng:-104.691428,elevM:1420,targetRadiusM:60,
    overlay:"Dean's own backyard.\nI asked him about it directly. He had no answer.",
    narrative:["JBS Greeley — Weld County, Colorado.","One of the largest beef slaughter plants in the United States.","This is Dean's own backyard.","I asked him about it directly. He had no answer."]},
+  {type:'streetview',label:'GREAT PYRAMID — GIZA, EGYPT',lat:29.9792,lng:31.1342,elevM:61,targetRadiusM:9999,
+   fallHeight:260,dollyHeight:260,
+   overlay:'The Great Pyramid of Giza.',
+   narrative:['The Great Pyramid of Giza.']},
+  {type:'streetview',label:'AMAZON RAINFOREST — MANAUS, BRAZIL',lat:-3.13,lng:-59.90,elevM:30,targetRadiusM:9999,skyMode:'amazon',
+   overlay:'The Amazon Rainforest.\n80% of its deforestation is animal agriculture.',
+   narrative:['The Amazon Rainforest.','80% of its deforestation is animal agriculture.']},
+  // NEW DOOR — placed in front of the in-city "GO DEAN" sign. Auto-placed by
+  // findDoorSpot() like every other hub door for now, since the sign itself
+  // is a prop baked into procedural_city_66.glb and this script has no way
+  // to read its coordinates. Once you've got the sign's actual x/z position
+  // (Blender, or eyeballing it in-engine), give buildDoors() a hardcoded
+  // override for this doorIdx the same way DOOR1_MOUNTAIN etc. override
+  // their own placement — happy to wire that in once you have the numbers.
+  {type:'streetview',label:'GODEAN — YOGYAKARTA, INDONESIA',lat:-7.76972,lng:110.29389,elevM:121,targetRadiusM:9999,
+   overlay:'Godean, Yogyakarta, Indonesia.\nThe real place behind the name.',
+   narrative:['Godean, Yogyakarta, Indonesia.','The real place behind the name.']},
   {type:'youtube',label:'THE ARCHIVE — DEAN, ON RECORD',youtubeId:'ce4DJh-L7Ys',live:false,
    overlay:"I asked Dean: can you claim to oppose the patriarchy while funding an industry built on exploiting the reproductive systems of female animals?\nHe had no answer.\nDays later he bragged live about a Hello Fresh sponsorship — one he didn't have. Just an email sent, hoping.\nI called it out: that supply chain runs on cheap POC and migrant labour.\nThe irony: he'd once accused me of exploiting POC myself — for raising awareness of PITS, the trauma inflicted on slaughterhouse workers.\nThis is the record. It doesn't forget.",
    sequence:[
@@ -710,49 +1181,36 @@ const VOIDMSGS=[
   "You found the edge.\nThey were never given one."
 ];
 
-const RADIO=[
-  {url:"https://live-radio01.mediahubaustralia.com/2TJW/aac/",name:"TRIPLE J",weight:1.4,genre:'rock'},
-  {url:"https://live-radio01.mediahubaustralia.com/3MMW/mp3/",name:"TRIPLE M",weight:2.2,genre:'rock'},
-  {url:"https://live-radio01.mediahubaustralia.com/NOVAAAC/aac/",name:"NOVA 96.9",weight:2.2,genre:'pop'},
-  {url:"https://live-radio01.mediahubaustralia.com/2RNW/aac/",name:"ABC RN",weight:1},
-  {url:"https://live-radio02.mediahubaustralia.com/ABCCLASSIC/mp3",name:"ABC CLASSIC",weight:1},
-  {url:"https://stream.live.vc.bbcmedia.co.uk/bbc_radio_one",name:"BBC RADIO 1",weight:2.2,genre:'pop'},
-  {url:"https://stream.live.vc.bbcmedia.co.uk/bbc_radio_two",name:"BBC RADIO 2",weight:1.8,genre:'oldies'},
-  {url:"https://media-ice.musicradio.com/VirginRadioUKAAC",name:"VIRGIN RADIO UK",weight:1.6,genre:'pop'},
-  {url:"https://media-ice.musicradio.com/RadioXLondon",name:"RADIO X",weight:2.2,genre:'rock'},
-  {url:"https://media-ice.musicradio.com/HeartLondonMP3",name:"HEART",weight:2.2,genre:'pop'},
-  {url:"https://icecast.walmradio.com:8443/bbcworld",name:"BBC WORLD SERVICE",weight:1},
-  {url:"https://npr-ice.streamguys1.com/live.mp3",name:"NPR",weight:1},
-  {url:"https://stream.srg-ssr.ch/m/rsj/aacp_96",name:"SRF VIRUS",weight:1},
-  // SomaFM: independent, free, and built specifically for open/hotlinked
-  // embedding — none of the iHeart/Audacy-style referer blocking that was
-  // very likely the actual cause of "radio silence" on the streams below
-  // that got removed (playerservices.streamtheworld.com, stream.rcs.revma.com).
-  {url:"https://ice1.somafm.com/seventies-128-mp3",name:"LEFT COAST 70s",weight:2,genre:'70s'},
-  {url:"https://ice1.somafm.com/u80s-128-mp3",name:"UNDERGROUND 80s",weight:2.2,genre:'80s'},
-  {url:"https://ice1.somafm.com/poptron-128-mp3",name:"POPTRON",weight:2,genre:'pop'},
-  {url:"https://ice1.somafm.com/doomed-128-mp3",name:"DOOMED — METAL",weight:1.8,genre:'metal'},
-  {url:"https://ice1.somafm.com/indiepop-128-mp3",name:"INDIE POP ROCKS",weight:1.8,genre:'rock'},
-  {url:"https://ice1.somafm.com/illstreet-128-mp3",name:"ILLINOIS ST. LOUNGE",weight:1.4,genre:'60s'},
-  {url:"https://ice1.somafm.com/groovesalad-128-mp3",name:"GROOVE SALAD",weight:1},
-  {url:"https://ice1.somafm.com/lush-128-mp3",name:"LUSH",weight:1},
-  {url:"https://ice1.somafm.com/secretagent-128-mp3",name:"SECRET AGENT",weight:1},
-  {url:"https://ice1.somafm.com/scanner-128-mp3",name:"SCANNER FM",weight:2.6,genre:'emergency'},
-  {url:"https://ice1.somafm.com/defcon-128-mp3",name:"DEF CON",weight:1.4,genre:'emergency'},
+const SCANNER_CITIES=["CHICAGO","LOS ANGELES","NEW YORK","MIAMI","HOUSTON","DETROIT","PHOENIX","PHILADELPHIA","DALLAS","MEMPHIS","ATLANTA","SEATTLE","DENVER","PORTLAND","NASHVILLE","ST. LOUIS","NEW ORLEANS"];
+
+// ── RADIO STATIONS ── ported from the Vegan Bros / Go Dean stage's radio
+// setup — same station list and playback behaviour used everywhere (city
+// hub and Google Maps spaces both run this one system, nothing zone-specific).
+const RADIO_STATIONS=[
+  {url:"https://wz3drp.scahw.com.au/live/3mmm_32.stream/playlist.m3u8",hls:true,scanner:false,name:"TRIPLE M"},
+  {url:"https://wz2liw.scahw.com.au/live/2classicrock_128.stream/playlist.m3u8",hls:true,scanner:false,name:"2MMM CLASSIC ROCK"},
+  {url:"https://live-radio01.mediahubaustralia.com/2TJW/aac/",hls:false,scanner:false,name:"TRIPLE J"},
+  {url:"https://live-radio01.mediahubaustralia.com/2RNW/aac/",hls:false,scanner:false,name:"ABC RADIO NATIONAL"},
+  {url:"https://stream.rfm.fr/rfm-wr10.aac",hls:false,scanner:false,name:"RFM PARIS"},
+  {url:"https://icecast.radiofrance.fr/franceinter-midfi.mp3",hls:false,scanner:false,name:"FRANCE INTER"},
+  {url:"https://media-ssl.musicradio.com/Heart80sMP3",hls:false,scanner:false,name:"HEART 80S"},
+  {url:"https://s1-webradio.oldie-antenne.de/oldie-antenne?",hls:false,scanner:false,name:"OLDIE ANTENNE"},
+  {url:"https://centova.radioservers.biz/proxy/progrock/stream",hls:false,scanner:false,name:"PROG ROCK"},
+  {url:"https://pub0201.101.ru/stream/trust/mp3/128/24?",hls:false,scanner:false,name:"101.RU TRUST"},
+  {url:"https://kea.cdnstream.com/1893_128",hls:false,scanner:false,name:"UNKNOWN SIGNAL"},
+  {url:"https://stream.revma.ihrhls.com/zc185",hls:false,scanner:false,name:"IHEART RADIO"},
+  {url:"https://kathy.torontocast.com:2800/;",hls:false,scanner:false,name:"TORONTO CAST"},
+  {url:"https://ice1.somafm.com/scanner-128-mp3",hls:false,scanner:true,name:"POLICE SCANNER"},
+  {url:"https://ice2.somafm.com/scanner-128-mp3",hls:false,scanner:true,name:"POLICE SCANNER"},
+  {url:"https://ice4.somafm.com/scanner-128-mp3",hls:false,scanner:true,name:"POLICE SCANNER"},
+  {url:"https://ice6.somafm.com/scanner-128-mp3",hls:false,scanner:true,name:"POLICE SCANNER"},
+  {url:"https://ice1.somafm.com/metal-128-mp3",hls:false,scanner:false,name:"UNDERGROUND METAL"},
+  {url:"https://ice1.somafm.com/secretagent-128-mp3",hls:false,scanner:false,name:"SECRET AGENT"},
+  {url:"https://ice1.somafm.com/defcon-128-mp3",hls:false,scanner:false,name:"DEF CON RADIO"},
+  {url:"https://ice6.somafm.com/thetrip-128-mp3",hls:false,scanner:false,name:"THE TRIP"},
+  {url:"https://ice1.somafm.com/7soul-128-mp3",hls:false,scanner:false,name:"7TH STREET SOUL"},
+  {url:"https://npr-ice.streamguys1.com/live.mp3",hls:false,scanner:false,name:"NPR NEWS"},
 ];
-// B (Google Maps spaces) should hear the radio far more often than A —
-// shorter gaps between stations, and the emergency/scanner-style station
-// weighted up. A's own frequency/behaviour is untouched.
-function inB(){return doorState==='map';}
-function radioGapMul(){return inB()?0.22:1;}
-function weightedRadioIdx(exclude){
-  let total=0;
-  const emBoost=inB()?1.8:1;
-  const w=RADIO.map((s,i)=>{const v=(exclude&&exclude.has(i))?0:(s.weight||1)*(s.genre==='emergency'?emBoost:1);total+=v;return v;});
-  let r=Math.random()*total;
-  for(let i=0;i<RADIO.length;i++){r-=w[i];if(r<=0)return i;}
-  return Math.floor(Math.random()*RADIO.length);
-}
 
 const MUSIC=[
   'https://earthlingofficial.com/srsstudio-life-is-just-nothing-else-pioggia-liminal-tranquillo-328126.mp3',
@@ -762,7 +1220,7 @@ const MUSIC=[
 const DOOR_COLORS=[
   0x00ffcc,0xff00aa,0x00ff44,0xff6600,0xaa00ff,
   0x00ccff,0xff0066,0x88ff00,0xff8800,0x0044ff,
-  0xff00ff,0x00ffaa,0xff3300,0xffff00,0x44ff88
+  0xff00ff,0x00ffaa,0xff3300,0xffff00,0x44ff88,0xff44aa,0x66ccff,0x33dd77
 ];
 
 // ── ENGINE ────────────────────────────────────────────────────────────
@@ -770,6 +1228,8 @@ let scene,camera,renderer,css3d,clock;
 let postScene,postCamera,rt,postMat;
 let rig=null,started=false,ending=false;
 let flyMode=false,flyUnlocked=false,bbWatched=0;
+let lastSuperSpeedOn=false; // for detecting the 60s auto-depletion, see animate()
+let lastSuperSuperOn=false;
 const vel=new THREE.Vector3();
 let kW=0,kA=0,kS=0,kD=0,onGround=false;
 const SPEED=6,GRAV=22,JUMP_V=16,PLAYER_H=1.85;
@@ -784,6 +1244,7 @@ let activeDoorIdx=-1,doorState='closed',doorwayArmed=false,forestArmed=false;
 let svTimer=null,svSeconds=60,svMission=null;
 const GMAPS_KEY='AIzaSyDkv5cMLdPRV0qGF1kwtjb2h6WaVEe4ud8'; // needs Map Tiles API enabled + billed in Cloud Console
 const doorObjs=[],bbObjs=[];
+let armedPreviewIdx=-1; // which hub door (if any) currently has a live dolly-cam preview
 let finalBBObj=null,stoneObj=null;
 let finalBBUnlocked=false,stoneVisible=false;
 let cityMeshes=[],cityBounds={minX:-60,maxX:60,minZ:-60,maxZ:60};
@@ -792,7 +1253,9 @@ const rayFwd=new THREE.Raycaster(new THREE.Vector3(),new THREE.Vector3(),0,0.7);
 let musicEls=[],musicActive=null,musicVol=0,musicTarget=0;
 const MCEIL=0.22,MFADE=2.5;
 let _primed=false,_musicStart=false;
-let rEl=null,rPlay=false,rIdx=0,rFail=0,rTimer=null,rDistorting=false;
+let radioCtx=null,radioGain=null,radioFilter=null,radioSrc=null;
+let radioEl=null,radioHls=null,radioPlaying=false,radioTimer=null;
+let radioStIdx=0,radioFailCount=0,radioBehavior="long",radioScanHops=0;
 let stmtQ=[...STMTS].sort(()=>Math.random()-0.5),stmtIdx=0,stmtT=18;
 let voidCD=0;
 const DAY_CYCLE=720;
@@ -845,6 +1308,11 @@ function loadHDR(){
 $('wen').addEventListener('click',()=>{
   $('warning').style.opacity='0';$('warning').style.transition='opacity .8s';
   setTimeout(()=>$('warning').style.display='none',800);init();
+  // This click is a real user gesture, so unmuting here (unlike the initial
+  // page-load autoplay, which browsers force muted with no exceptions) is
+  // enough to make audio actually play.
+  const cbv=$('connectBgVideo');
+  if(cbv){cbv.muted=false;cbv.play().catch(()=>{});}
 });
 
 function init(){
@@ -877,8 +1345,7 @@ function init(){
   const gnd=new THREE.Mesh(new THREE.PlaneGeometry(600,600),new THREE.MeshStandardMaterial({color:0x0e1016,roughness:1}));
   gnd.rotation.x=-Math.PI/2;gnd.position.y=-0.05;gnd.receiveShadow=true;scene.add(gnd);
   loadHDR();setupPost();setupControls();setupTouch();buildMusic();
-  $('connect').addEventListener('click',startGame,{once:true});
-  $('connect').addEventListener('touchstart',startGame,{passive:true,once:true});
+  setupConnectChoices();
   addEventListener('resize',onResize);
   renderer.setAnimationLoop(animate);
   loadCity();
@@ -1076,7 +1543,7 @@ function mkHieroglyphTexture(){
 // ── BUILD: DOORS ──────────────────────────────────────────────────────
 function buildDoors(){
   const DW=DOOR_DW,DH=DOOR_DH;
-  for(let i=0;i<15;i++){
+  for(let i=0;i<18;i++){ // 18 hub doors (0–17); the last DOORS entry (Archive) is not built in the hub
     const d=DOORS[i];
     const spot=findDoorSpot(i);
     const neonColor=DOOR_COLORS[i];
@@ -1105,7 +1572,7 @@ function buildDoors(){
     const gl=new THREE.PointLight(neonColor,0.3,5);gl.position.set(0,DH/2,0.6);grp.add(gl);
     const glow=new THREE.PointLight(neonColor,0.4,3);glow.position.set(0,0.3,0.8);grp.add(glow);
     scene.add(grp);
-    let cssObj=null,iframe=null,svEl=null;
+    let cssObj=null,iframe=null,svEl=null,pvMount=null,pvCss=null;
     if(css3d&&typeof THREE.CSS3DObject==='function'){
       const PW=Math.round(DW*IFRAME_MULT),PH=Math.round(DH*IFRAME_MULT);
       let mountEl;
@@ -1145,8 +1612,24 @@ function buildDoors(){
       cssObj.position.set(spot.x+nx,spot.y+DH/2,spot.z+nz);
       cssObj.rotation.y=spot.ry;cssObj.visible=false;
       scene.add(cssObj);
+      // Dolly-cam preview mount: an empty div, embedded in 3D exactly over
+      // this door's panel, same as cssObj above. It stays empty (and
+      // invisible) until the player walks within 5m of this specific
+      // UNOPENED door — at which point the module script's isolated
+      // Tiles3D engine appends its own tiny live-rendering canvas into it
+      // (see armDoorPreview/updateDoorPreviewArm). Only ever one of these
+      // has anything in it at a time.
+      if(d.type==='streetview'){
+        pvMount=document.createElement('div');
+        pvMount.style.cssText=`width:${PW}px;height:${PH}px;overflow:hidden;background:#000;`;
+        pvCss=new THREE.CSS3DObject(pvMount);
+        pvCss.scale.setScalar(1/IFRAME_MULT);
+        pvCss.position.set(spot.x+nx*1.4,spot.y+DH/2,spot.z+nz*1.4);
+        pvCss.rotation.y=spot.ry;pvCss.visible=false;
+        scene.add(pvCss);
+      }
     }
-    doorObjs.push({grp,fill,handle,gl,glow,pos:{x:spot.x,y:spot.y,z:spot.z},ry:spot.ry,doorIdx:i,opened:false,cssObj,iframe,svEl,_px:0,_py:0});
+    doorObjs.push({grp,fill,handle,gl,glow,pos:{x:spot.x,y:spot.y,z:spot.z},ry:spot.ry,doorIdx:i,opened:false,cssObj,iframe,svEl,pvMount,pvCss,_px:0,_py:0});
   }
 }
 
@@ -1292,14 +1775,37 @@ function setupControls(){
     if(k==='s'||k==='arrowdown'){kS=1;e.preventDefault();}
     if(k==='a'||k==='arrowleft'){kA=1;e.preventDefault();}
     if(k==='d'||k==='arrowright'){kD=1;e.preventDefault();}
-    if(k==='e')interact();
-    if(k===' '){
-      if(doorState==='map'){if(window.Tiles3D)window.Tiles3D.jump();}
-      else doJump();
-      e.preventDefault();
+    // E: hub = interact (open doors etc). Inside a map = exit, same as
+    // Escape — pulls you straight back to the city.
+    if(k==='e'){if(doorState==='map'){closeFeed();exitMapFull();}else interact();}
+    // V: the map-mode interact key — TVs etc, anything inside a 3D map that
+    // needs a press (E is taken by exit in here, see above). Gated to 30m
+    // so it only does anything once the on-screen [V] TOGGLE TV prompt
+    // (see updateTVPrompt) is actually showing.
+    if(k==='v'&&doorState==='map'&&window.Tiles3D){
+      const bd=window.Tiles3D.getBillboardDist();
+      if(bd!==null&&bd<=30){
+        const on=window.Tiles3D.toggleBillboardVideo();
+        if(on!==null){sfxUI();toast(on?'TV ON':'TV OFF');}
+      }
     }
+    if(k===' '){jumpAction();e.preventDefault();}
     if(k==='shift'&&doorState==='map'&&window.Tiles3D)window.Tiles3D.setRun(true);
-    if(k==='f'&&flyUnlocked){flyMode=!flyMode;if(window.Tiles3D)window.Tiles3D.setFly(flyMode);toast(flyMode?'FLY ON':'FLY OFF');}
+    if(k==='f'&&(flyUnlocked||doorState==='map')){flyMode=!flyMode;if(window.Tiles3D)window.Tiles3D.setFly(flyMode);toast(flyMode?'FLY ON':'FLY OFF');}
+    // Super speed (PC): Ctrl, maps only — Space stays jump and Shift stays
+    // run, so this is the one free key left. e.repeat guards against the
+    // browser firing keydown repeatedly while the key is held.
+    if(k==='control'&&!e.repeat&&doorState==='map'&&window.Tiles3D){
+      const on=window.Tiles3D.toggleSuperSpeed();
+      toast(on?'SUPER SPEED ON':'SUPER SPEED OFF');
+      if(on){sfxOpen();triggerHBSpike();}
+    }
+    // Super-SUPER speed (PC only, maps only): T, 10x on top of super speed.
+    if(k==='t'&&!e.repeat&&doorState==='map'&&window.Tiles3D){
+      const on=window.Tiles3D.toggleSuperSuper();
+      toast(on?'SUPER SUPER SPEED ON':'SUPER SUPER SPEED OFF');
+      if(on){sfxOpen();triggerHBSpike();}
+    }
     if(k==='escape'){closeFeed();exitMapFull();}
   });
   document.addEventListener('keyup',e=>{
@@ -1310,9 +1816,20 @@ function setupControls(){
   });
   document.addEventListener('click',()=>{
     if(!started||isMobile)return;
+    // Click is unassigned on purpose — E and Escape are the exit keys.
+    // This just re-grabs pointer lock if it was ever dropped.
     if(document.pointerLockElement!==document.body){
       document.body.requestPointerLock().catch(()=>{});
     }
+  });
+  const tvTapBtn=$('tvTapBtn');
+  if(tvTapBtn)tvTapBtn.addEventListener('click',ev=>{
+    ev.stopPropagation();
+    if(doorState!=='map'||!window.Tiles3D)return;
+    const bd=window.Tiles3D.getBillboardDist();
+    if(bd===null||bd>30)return;
+    const on=window.Tiles3D.toggleBillboardVideo();
+    if(on!==null){sfxUI();toast(on?'TV ON':'TV OFF');}
   });
   document.addEventListener('mousemove',e=>{
     if(!started||document.pointerLockElement!==document.body)return;
@@ -1345,34 +1862,91 @@ function setupTouch(){
   rj.addEventListener('touchstart',e=>ts(rj,td.r,rkn,e),{passive:true});
   document.addEventListener('touchmove',tm,{passive:true});
   document.addEventListener('touchend',te,{passive:true});
-  $('btnj').addEventListener('touchstart',e=>{e.preventDefault();doJump();},{passive:false});
-  $('btnf').addEventListener('touchstart',e=>{
-    e.preventDefault();
-    if(!flyUnlocked){toast('WATCH 2 BILLBOARDS TO UNLOCK FLY');return;}
-    flyMode=!flyMode;if(window.Tiles3D)window.Tiles3D.setFly(flyMode);toast(flyMode?'FLY ON':'FLY OFF');
-  },{passive:false});
-  $('btne').addEventListener('touchstart',e=>{e.preventDefault();interact();},{passive:false});
-  // Map-tiles walkthrough only: RUN is a toggle (holding a run button while
-  // also driving both joysticks isn't practical on a phone), and jump is a
-  // tap anywhere in free space rather than a dedicated button — the
-  // joystick zones and HUD buttons sit above the canvas so they intercept
-  // their own taps first and this never fires for them.
-  let mapRunOn=false;
-  $('btnrun').addEventListener('touchstart',e=>{
-    e.preventDefault();
-    mapRunOn=!mapRunOn;
-    $('btnrun').classList.toggle('active',mapRunOn);
-    if(window.Tiles3D)window.Tiles3D.setRun(mapRunOn);
-  },{passive:false});
-  const t3=document.getElementById('tiles3dCanvas');
-  if(t3)t3.addEventListener('touchstart',e=>{
-    if(doorState==='map'&&window.Tiles3D)window.Tiles3D.jump();
+  // BUG FIX ("joysticks lock together / do weird things"): touchend was the
+  // only cleanup path. iOS/Android routinely send touchcancel instead —
+  // interrupted by a notification, an OS edge-swipe gesture, a multi-touch
+  // reinterpretation — and without this, that finger's zone (td.l/td.r)
+  // stayed permanently "active" with a stale identifier, and its knob never
+  // released, which is exactly the stuck/tangled feeling being reported.
+  document.addEventListener('touchcancel',te,{passive:true});
+
+  // ── GLOBAL TAP/LONG-PRESS GESTURE (everywhere on screen EXCEPT the two
+  // joystick circles, which consume their own touches above) ─────────────
+  // 1 tap = interact (replaces the old E button)
+  // 2 taps = jump (replaces the old J button)
+  // 3 taps = fly toggle in the hub / super speed toggle in Google Maps
+  //          (replaces the old F button and RUN button respectively)
+  // long press (maps only) = fly toggle — the hub already has 3-tap for
+  // fly, but that gesture is taken by super speed inside maps, so maps get
+  // their own separate fly trigger instead of overloading triple-tap.
+  const LONG_PRESS_MS=550;
+  let tapCount=0,tapTimer=null;
+  let pressId=null,pressTimer=null,pressFired=false;
+  function touchIsOnJoystick(e){
+    const t=e.changedTouches[0];
+    const el=document.elementFromPoint(t.clientX,t.clientY);
+    return!!(el&&(el.closest('#lj')||el.closest('#rj')));
+  }
+  document.addEventListener('touchstart',e=>{
+    if(!started||ending)return;
+    if(touchIsOnJoystick(e))return;
+    const t=e.changedTouches[0];
+    pressId=t.identifier;pressFired=false;
+    clearTimeout(pressTimer);
+    pressTimer=setTimeout(()=>{
+      pressFired=true;
+      if(doorState==='map'&&window.Tiles3D){
+        flyMode=!flyMode;window.Tiles3D.setFly(flyMode);toast(flyMode?'FLY ON':'FLY OFF');
+      }
+    },LONG_PRESS_MS);
   },{passive:true});
+  document.addEventListener('touchend',e=>{
+    if(!started||ending)return;
+    for(const t of e.changedTouches){
+      if(t.identifier!==pressId)continue;
+      clearTimeout(pressTimer);
+      if(!pressFired){
+        // Resolved before the long-press threshold — a genuine tap, feed
+        // the existing single/double/triple counter exactly as before.
+        tapCount++;
+        clearTimeout(tapTimer);
+        tapTimer=setTimeout(()=>{
+          primeAudio();
+          if(tapCount===1){sfxUI();interact();}
+          else if(tapCount===2){jumpAction();}
+          else{mobileTripleTap();}
+          tapCount=0;
+        },300);
+      }
+      pressId=null;
+    }
+  },{passive:true});
+}
+
+// ── TITLE SCREEN CHOICE (WATCH MOVIE vs ENTER REAL WORLD) ──────────────
+// "Enter" (either button) starts the game exactly as the old tap-anywhere
+// used to. "Watch movie" just clears the text off screen so the background
+// video reads clean, and drops a small always-visible box bottom-left that
+// starts the game whenever they're done watching.
+function setupConnectChoices(){
+  const watch=$('cWatch'),enter=$('cEnter'),box=$('enterBox');
+  if(enter)enter.addEventListener('click',startGame);
+  if(box)box.addEventListener('click',startGame);
+  if(watch)watch.addEventListener('click',()=>{
+    primeAudio();
+    ['cp1','cp2'].forEach(id=>{const el=$(id);if(el)el.style.display='none';});
+    if(box)box.style.display='block';
+  });
 }
 
 function startGame(){
   if(started)return;primeAudio();started=true;
   $('connect').classList.add('fade');setTimeout(()=>$('connect').style.display='none',1900);
+  // Free the loading-screen video's bandwidth/decoding the moment the real
+  // game takes over — no point streaming a multi-GB file in the background
+  // once nobody's looking at it.
+  const cbv=$('connectBgVideo');
+  if(cbv){cbv.pause();cbv.removeAttribute('src');cbv.load();}
   startMusicCycle();setTimeout(radioInit,3000);
   if(!isMobile)document.body.requestPointerLock().catch(()=>{});
   showStmt();
@@ -1383,7 +1957,7 @@ function openDoor(dIdx){
   const dobj=doorObjs[dIdx];const d=DOORS[dobj.doorIdx];
   if(!dobj.opened){
     dobj.opened=true;openedDoors.add(dobj.doorIdx);doorCount++;
-    $('dcount').textContent=doorCount+' / 16';
+    $('dcount').textContent=doorCount+' / '+doorObjs.length;
     updateBBLocks();checkBBUnlock();checkCompletion();
     dobj.fill.visible=false;
     if(dobj.handle)dobj.handle.visible=false;
@@ -1454,28 +2028,33 @@ function enterMapFull(dobj,d){
   doorwayArmed=false;
   if(dobj.cssObj)dobj.cssObj.visible=false;
   $('mapFull').style.display='block';
-  $('btnrun').style.display='flex';$('btnrun').classList.remove('active');
-  $('btnj').style.display='none';
   $('mapMsg').textContent='';
   svSeconds=60;
   svMission={narrative:d.narrative&&d.narrative.length?d.narrative:[d.overlay||''],idx:0,
     targetRadiusM:d.targetRadiusM||60,done:false};
+  const isManhattan=dobj.doorIdx===2&&!d.isPyramidPortal;
   window.Tiles3D.enter({
     lat:d.lat,lng:d.lng,elevM:d.elevM||0,apiKey:GMAPS_KEY,
-    frameColor:RETURN_FRAME_COLORS[dobj.doorIdx%RETURN_FRAME_COLORS.length],
-    onReady:()=>{if(doorState==='map'){mapUpdateDistance();startMapTimer();}},
+    skyMode:d.skyMode||'cycle',fx:isManhattan?'manhattan':'',
+    frameColor:PORTAL_BLUE,manhattan:isManhattan,fallHeight:d.fallHeight||200,
+    billboardVideoUrl:d.billboardVideoUrl||null,
+    onReady:()=>{if(doorState==='map'){mapUpdateDistance();startMapTimer();if(isManhattan)buildPyramidPortal();else clearPyramidPortal();}},
     onFail:()=>{if(doorState==='map'){console.error('[Tiles3D] ground never settled for',d.label,'lat',d.lat,'lng',d.lng,'elevM',d.elevM,'— likely a bad elevM estimate, or Map Tiles API/billing if tiles never loaded at all.');toast('3D TILES FAILED TO LOAD — CHECK LOCATION DATA OR MAP TILES API/BILLING');exitMapFull();}}
   });
 }
-// One distinct colour per door, cycled if there are ever more doors than
-// colours. Purely a placeholder frame — move/restyle later as needed.
-const RETURN_FRAME_COLORS=[0x4ade80,0xffb020,0x38bdf8,0xf472b6,0xa78bfa,0xfb7185,0x2dd4bf,0xfacc15];
+// One blue return portal everywhere — no more per-door colour cycling.
+const PORTAL_BLUE=0x2dd4ff;
 
 // Door 1's walk-through destination — real Google 3D Tiles, same pipeline
 // as every other map door, not the never-configured forest tileset. Real
 // coordinates: Preikestolen / Pulpit Rock, Norway — 604m sheer cliff with
 // a small flat summit, so spawning near the edge reads instantly.
+// billboardVideoUrl: a real 3D plane inside this session (see
+// buildBillboardVideo in the Tiles3D module) that autoplays the moment the
+// ground settles — streams via HTTP range requests like any <video>, so it
+// doesn't need the whole (very large) source file downloaded first.
 const DOOR1_MOUNTAIN={lat:58.98666,lng:6.18748,elevM:604,targetRadiusM:9999,
+  billboardVideoUrl:'https://archive.org/download/revenge-of-the-creature-3d/amarec(20250311-1702).ia.mp4',
   overlay:'You fell through a game to get here.\nHe never had to fall through anything.',
   narrative:['You fell through a game to get here.','He never had to fall through anything.']};
 
@@ -1490,17 +2069,55 @@ function enterMountainSecret(dobj){
   enterMapFull(dobj,DOOR1_MOUNTAIN);
 }
 
+// Door 3's (Rockefeller Plaza) nested walk-through destination — the golden
+// pyramidPortal3 frame (built only inside that door's own session, see
+// enterMapFull's onReady above) hot-swaps here without returning to the hub.
+// isPyramidPortal:true is how enterMapFull knows NOT to rebuild the golden
+// portal a second time once we've actually arrived at Giza.
+// Destination is now the Amazon (Meeting of the Waters, Manaus). Flag/func names
+// (isPyramidPortal, buildPyramidPortal etc.) kept from the Giza version — only the
+// target changed. skyMode:'amazon' triggers the near-night single-skybox look.
+// targetRadiusM:9999 — same trick as DOOR1_MOUNTAIN — this is a simple
+// walk-through with no real distance objective, not a scored mission.
+const AMAZON_DEST={lat:-3.13,lng:-59.90,elevM:30,targetRadiusM:9999,isPyramidPortal:true,skyMode:'amazon',
+  overlay:'The Amazon Rainforest.',
+  narrative:['The Amazon Rainforest.','80% of its deforestation is animal agriculture.']};
+
+function enterPyramidPortal(){
+  const dobj=doorObjs.find(o=>o.doorIdx===2);
+  if(!dobj)return;
+  enterMapFull(dobj,AMAZON_DEST);
+}
+
 // No time limit, no forced exit — the player stays until they choose E
 // (or walks through a return frame). svElapsed only drives the narrative
 // line cycling below; it never ends the session.
 const MIN_LOOK_SECONDS=60; // minimum dwell before "target reached" can register — no exit follows it
 let svElapsed=0;
+// TV proximity prompt — only shown within 30m of the billboard (and only
+// in sessions that actually have one, e.g. Pulpit Rock/Norway). PC gets a
+// text hint ([V] TOGGLE TV); mobile gets an actual tappable button, since
+// there's no keyboard to hint at.
+function updateTVPrompt(){
+  const bd=window.Tiles3D.getBillboardDist();
+  const near=bd!==null&&bd<=30;
+  const h=$('tvHint'),t=$('tvTap');
+  if(h)h.style.display=(!isMobile&&near)?'block':'none';
+  if(t)t.style.display=(isMobile&&near)?'block':'none';
+}
+
 function mapUpdateDistance(){
   if(!window.Tiles3D||!window.Tiles3D.isReady())return;
+  updateTVPrompt();
   // Return-frame check runs regardless of mission state — walking through
   // it always takes you back to A, no E needed. This is IN ADDITION to E.
   const fd=window.Tiles3D.getFrameDist();
   if(fd!==null&&fd<=1.4){exitMapFull();return;}
+  // Pyramid-portal check — only ever non-null inside door 3's own session
+  // (see buildPyramidPortal/clearPyramidPortal). Walking into it re-enters
+  // the map pipeline at Giza instead of exiting to the hub.
+  const pd=window.Tiles3D.getPyramidPortalDist();
+  if(pd!==null&&pd<=1.4){enterPyramidPortal();return;}
   if(!svMission||svMission.done)return;
   const p=window.Tiles3D.getLocalXZ();
   const dist=Math.hypot(p.x,p.z); // target sits at local (0,0) — the tile group is anchored there
@@ -1530,8 +2147,10 @@ function startMapTimer(){
 
 function exitMapFull(){
   clearInterval(svTimer);svTimer=null;svElapsed=0;
+  // Fly was allowed for free inside 3D maps, no billboard unlock needed —
+  // don't let that leak into the main hub if it wasn't actually earned there.
+  if(!flyUnlocked&&flyMode){flyMode=false;if(window.Tiles3D)window.Tiles3D.setFly(false);}
   $('mapFull').style.display='none';
-  $('btnrun').style.display='none';$('btnj').style.display='flex';
   if(window.Tiles3D)window.Tiles3D.setRun(false);
   if(window.Tiles3D)window.Tiles3D.exit();
   svMission=null;
@@ -1574,13 +2193,13 @@ function activateBB(idx){
     bobj.cssObj.visible=true;
   }
   bbWatched++;
-  if(bbWatched>=2&&!flyUnlocked){flyUnlocked=true;$('btnf').classList.remove('locked');toast('FLY UNLOCKED — PRESS F');}
+  if(bbWatched>=2&&!flyUnlocked){flyUnlocked=true;toast(isMobile?'TRIPLE TAP TO FLY':'FLY UNLOCKED — PRESS F');}
   toast('▶ '+bb.label);sfxOpen();triggerHBSpike();
 }
 
 // ── FINAL BILLBOARD ───────────────────────────────────────────────────
 function checkCompletion(){
-  if(doorCount>=DOORS.length&&!finalBBUnlocked){
+  if(doorObjs.length>0&&doorCount>=doorObjs.length&&!finalBBUnlocked){
     finalBBUnlocked=true;
     if(finalBBObj){
       finalBBObj.bm.emissive.setHex(0xff8800);finalBBObj.bm.emissiveIntensity=0.8;
@@ -1592,7 +2211,7 @@ function checkCompletion(){
 }
 
 function activateFinalBB(){
-  if(!finalBBUnlocked){toast('COMPLETE ALL 15 DOORS FIRST');return;}
+  if(!finalBBUnlocked){toast('COMPLETE ALL '+doorObjs.length+' DOORS FIRST');return;}
   if(finalBBObj.active){if(stoneVisible)toast('FIND THE STONE AT THE CITY CENTRE');return;}
   finalBBObj.active=true;
   if(finalBBObj.cssObj&&finalBBObj.iframe){
@@ -1617,6 +2236,52 @@ function clickStone(){
 }
 
 // ── INTERACT ──────────────────────────────────────────────────────────
+// Dolly-cam door preview: only the single nearest UNOPENED streetview-type
+// door within 5m ever gets a live preview (see the module-side
+// armDoorPreview — deliberately one at a time, never all 18 at once).
+// While inside a full 3D map (doorState==='map') the preview is always
+// off — the module's isolated renderer is busy running the actual
+// immersive session at that point.
+function updateDoorPreviewArm(){
+  if(!window.Tiles3D)return;
+  if(doorState==='map'){
+    if(armedPreviewIdx>=0){
+      window.Tiles3D.disarmDoorPreview();
+      const prev=doorObjs[armedPreviewIdx];if(prev&&prev.pvCss)prev.pvCss.visible=false;
+      armedPreviewIdx=-1;
+    }
+    return;
+  }
+  let nearest=-1,nearestD=5;
+  for(let i=0;i<doorObjs.length;i++){
+    const o=doorObjs[i];
+    if(o.opened||!o.pvMount)continue;
+    const dd=Math.hypot(o.pos.x-rig.position.x,o.pos.z-rig.position.z);
+    if(dd<nearestD){nearestD=dd;nearest=i;}
+  }
+  if(nearest!==armedPreviewIdx){
+    if(armedPreviewIdx>=0){
+      const prev=doorObjs[armedPreviewIdx];if(prev&&prev.pvCss)prev.pvCss.visible=false;
+    }
+    if(nearest>=0){
+      const o=doorObjs[nearest],dd=DOORS[o.doorIdx];
+      window.Tiles3D.armDoorPreview(o.pvMount,dd.lat,dd.lng,dd.elevM||0,GMAPS_KEY,dd.dollyHeight||200);
+      o.pvCss.visible=true;
+    } else {
+      window.Tiles3D.disarmDoorPreview();
+    }
+    armedPreviewIdx=nearest;
+  }
+  if(armedPreviewIdx>=0){
+    const o=doorObjs[armedPreviewIdx];
+    const dx=rig.position.x-o.pos.x,dz=rig.position.z-o.pos.z;
+    const c=Math.cos(o.ry),s=Math.sin(o.ry);
+    // rotate into the door's own local space so "left/right of the door"
+    // maps consistently to parallax regardless of which way it's facing
+    const localX=dx*c-dz*s,localZ=-(dx*s+dz*c);
+    window.Tiles3D.updateDoorPreview(localX,localZ);
+  }
+}
 function updateNear(){
   nearDoor=null;nearBB=null;nearFinalBB=false;nearStone=false;
   $('xh').classList.remove('lock');$('hint').style.display='none';
@@ -1657,6 +2322,16 @@ function updateNear(){
 
 function interact(){
   if(!started||ending)return;primeAudio();sfxUI();
+  if(doorState==='map'){
+    // Mobile single-tap path to the TV — same 30m gate as the V key/tap
+    // button, so an idle tap elsewhere in the map doesn't silently toggle
+    // a TV you can't even see yet.
+    if(window.Tiles3D){
+      const bd=window.Tiles3D.getBillboardDist();
+      if(bd!==null&&bd<=30)window.Tiles3D.toggleBillboardVideo();
+    }
+    return;
+  }
   if(nearStone){clickStone();return;}
   if(nearFinalBB){activateFinalBB();return;}
   if(nearDoor!==null){openDoor(nearDoor);return;}
@@ -1698,6 +2373,27 @@ function checkForestSecretEntry(){
 
 function doJump(){if(onGround&&!flyMode)vel.y=JUMP_V;}
 
+// Shared by Space (PC) and the mobile double-tap gesture — routes to
+// whichever jump actually applies for the current state.
+function jumpAction(){
+  if(doorState==='map'){if(window.Tiles3D)window.Tiles3D.jump();}
+  else doJump();
+}
+
+// Mobile triple-tap: fly toggle in the hub, super speed toggle in a Google
+// Maps walkthrough. Never both — super speed only ever exists in maps.
+function mobileTripleTap(){
+  if(doorState==='map'){
+    if(!window.Tiles3D)return;
+    const on=window.Tiles3D.toggleSuperSpeed();
+    toast(on?'SUPER SPEED ON':'SUPER SPEED OFF');
+    if(on){sfxOpen();triggerHBSpike();}
+  } else {
+    if(!flyUnlocked){toast('WATCH 2 BILLBOARDS TO UNLOCK FLY');return;}
+    flyMode=!flyMode;if(window.Tiles3D)window.Tiles3D.setFly(flyMode);toast(flyMode?'FLY ON':'FLY OFF');
+  }
+}
+
 function updateMovement(dt){
   if(!started)return;
   if(doorState==='map'){
@@ -1714,7 +2410,13 @@ function updateMovement(dt){
         f:kW||td.l.my<-0.1?1:0,
         b:kS||td.l.my>0.1?1:0,
         l:kA||td.l.mx<-0.1?1:0,
-        r:kD||td.l.mx>0.1?1:0
+        r:kD||td.l.mx>0.1?1:0,
+        // Analog stick deflection (0..1) replaces the old on-screen RUN
+        // toggle: push the joystick further to walk faster, full deflection
+        // = the old RUN_SPEED, exactly as asked. Keyboard has no analog
+        // value, so it stays discrete — omitted here (undefined) and the
+        // Tiles3D loop falls back to move.run (Shift) in that case.
+        mag:td.l.a?Math.min(1,Math.hypot(td.l.mx,td.l.my)):undefined
       });
       if(window.Tiles3D.isReady())mapUpdateDistance();
     }
@@ -1735,8 +2437,13 @@ function updateMovement(dt){
   if(flyMode){
     vel.x=mx;vel.z=mz;
     if(kW||td.l.my<-0.1)vel.y=Math.abs(SPEED)*Math.sin(camera.rotation.x);
-    else if(!(kS||td.l.my>0.1))vel.y*=0.85;
+    else if(!(kS||td.l.my>0.1)){
+      if(mag<0.1)vel.y+=(Math.cos(clock.elapsedTime*1.1)*0.09-vel.y)*Math.min(1,dt*9); // idle hover bob
+      else vel.y*=0.85;
+    }
   } else {vel.x=mx;vel.z=mz;vel.y-=GRAV*dt;}
+  const idleFlyHub=flyMode&&mag<0.1&&!(kW||kS||td.l.my<-0.1||td.l.my>0.1);
+  camera.rotation.z+=((idleFlyHub?Math.sin(clock.elapsedTime*0.7)*0.006:0)-camera.rotation.z)*Math.min(1,dt*3);
   rig.position.x+=vel.x*dt;rig.position.z+=vel.z*dt;rig.position.y+=vel.y*dt;
   onGround=false;
   if(!flyMode){
@@ -1813,106 +2520,131 @@ function sched(delay){setTimeout(()=>{if(ending)return;musicActive=musicEls[Math
 function updateMusic(dt){const spd=MCEIL/MFADE;musicVol=musicTarget>musicVol?Math.min(musicTarget,musicVol+spd*dt):Math.max(musicTarget,musicVol-spd*dt);if(musicActive)musicActive.volume=Math.max(0,Math.min(1,musicVol));}
 
 // ── RADIO ─────────────────────────────────────────────────────────────
-function radioInit(){
-  if(rEl)return;
-  rEl=document.createElement('audio');
-  rEl.preload='none';
-  rEl.volume=0.72;
-  rEl.addEventListener('error',rErr);
-  rStart();
+// Ported wholesale from the Vegan Bros / Go Dean stage's radio setup: real
+// Web Audio gain + bandpass-filter "tuning in/out" sweep, HLS support for
+// the .m3u8 stations via hls.js, and long/short/scan play behaviours. One
+// system, same behaviour in the city hub and the Google Maps spaces — no
+// zone-specific weighting.
+function radioTunerShow(on,st){
+  const el=$('radio');if(!el)return;
+  if(on&&st){
+    let label=st.name;
+    if(st.scanner){const city=SCANNER_CITIES[Math.floor(Math.random()*SCANNER_CITIES.length)];label="POLICE SCANNER / "+city;}
+    $('rfreq').textContent=label;
+    el.classList.add('on');
+  } else {
+    el.classList.remove('on');
+  }
 }
 
-function rErr(){
-  rFail++;
-  if(rFail>=RADIO.length*2){
+function initRadioCtx(){
+  if(radioCtx)return;
+  radioCtx=new(window.AudioContext||window.webkitAudioContext)();
+  radioFilter=radioCtx.createBiquadFilter();radioFilter.type="bandpass";radioFilter.frequency.value=2200;radioFilter.Q.value=0.5;
+  radioGain=radioCtx.createGain();radioGain.gain.value=0;radioFilter.connect(radioGain);radioGain.connect(radioCtx.destination);
+  radioEl=document.createElement("audio");radioEl.crossOrigin="anonymous";radioEl.preload="none";
+  radioSrc=radioCtx.createMediaElementSource(radioEl);radioSrc.connect(radioFilter);
+  radioEl.addEventListener("error",radioOnError);
+}
+
+function radioOnError(){
+  radioFailCount++;
+  if(radioFailCount>=RADIO_STATIONS.length){
     // Every known station failed in a row (rare — usually a network blip).
-    // Keep it playing: reset the fail count and just try again shortly,
-    // instead of going silent for 40-70s.
-    rFail=0;
-    setTimeout(()=>{rIdx=(rIdx+1)%RADIO.length;rPlayIdx(true);},1500);
+    radioFailCount=0;radioPlaying=false;radioTunerShow(false,null);
+    radioTimer=setTimeout(radioStartCycle,Math.random()*75000+45000);
     return;
   }
-  rIdx=(rIdx+1)%RADIO.length;
-  setTimeout(rPlayIdx,600);
+  radioStIdx=(radioStIdx+1)%RADIO_STATIONS.length;
+  setTimeout(radioPlayNow,500);
 }
 
-function rBeginFadeOut(onDone){
-  if(rDistorting||!rEl){if(onDone)onDone();return;}
-  rDistorting=true;
-  $('radio').classList.add('tuning');
-  const startVol=rEl.volume;
-  const start=Date.now();
-  const dur=2000+Math.random()*1400;
-  const tick=()=>{
-    const t=Math.min(1,(Date.now()-start)/dur);
-    const wobble=Math.sin(t*80+Math.random()*3)*(1-t)*0.2;
-    rEl.volume=Math.max(0,startVol*(1-t)+wobble);
-    if(t<1){requestAnimationFrame(tick);}
-    else{
-      rEl.volume=0;rDistorting=false;
-      $('radio').classList.remove('tuning');
-      if(onDone)onDone();
-    }
-  };
-  requestAnimationFrame(tick);
-}
-
-function rPlayIdx(isSettled){
-  if(!rEl)return;
-  const st=RADIO[rIdx];
-  rEl.pause();rEl.removeAttribute('src');rEl.load();
-  rEl.src=st.url;
-  rEl.volume=0.72;
-  rEl.play().then(()=>{
-    rFail=0;
-    $('rfreq').textContent=st.name;
-    $('radio').classList.add('on');
-    if(isSettled!==false){
-      const stayDur=45000+Math.random()*165000;
-      rTimer=setTimeout(()=>{
-        rBeginFadeOut(()=>{
-          if(ending)return;
-          if(rEl)rEl.pause();
-          $('radio').classList.remove('on');$('rfreq').textContent='— —';
-          // Straight into the next station — no more long silent gaps.
-          const nextGap=(1200+Math.random()*2600)*radioGapMul();
-          rTimer=setTimeout(()=>{rIdx=weightedRadioIdx(new Set([rIdx]));rPlayIdx(true);},nextGap);
-        });
-      },stayDur);
-    }
-  }).catch(rErr);
-}
-
-function rCycleAndSettle(){
-  const numCycle=1+Math.floor(Math.random()*5);
-  const visited=new Set();
-  let ci=0;
-  const fresh=()=>{let idx,tries=0;do{idx=weightedRadioIdx(visited);tries++;}while(visited.has(idx)&&tries<20);visited.add(idx);return idx;};
-  const step=()=>{
-    if(ci>=numCycle){rIdx=fresh();rPlayIdx(true);return;}
-    ci++;rIdx=fresh();
-    rPlayIdx(false);
-    const brief=8000+Math.random()*22000;
-    rTimer=setTimeout(()=>{
-      rBeginFadeOut(()=>{
-        if(rEl)rEl.pause();
-        $('radio').classList.remove('on');$('rfreq').textContent='— —';
-        setTimeout(step,300+Math.random()*700);
-      });
-    },brief);
-  };
-  step();
-}
-
-function rStart(){
-  if(rPlay||ending)return;
-  rPlay=true;rFail=0;
-  if(Math.random()<0.38){
-    rIdx=weightedRadioIdx();
-    rPlayIdx(true);
+function radioPlayNow(){
+  if(!radioCtx)return;
+  const st=RADIO_STATIONS[radioStIdx];
+  if(radioHls){radioHls.destroy();radioHls=null;}
+  radioEl.pause();radioEl.removeAttribute("src");radioEl.load();
+  if(st.hls&&window.Hls&&Hls.isSupported()){
+    radioHls=new Hls({enableWorker:false,lowLatencyMode:false});
+    radioHls.loadSource(st.url);radioHls.attachMedia(radioEl);
+    radioHls.on(Hls.Events.MANIFEST_PARSED,()=>{radioEl.play().then(()=>{radioFailCount=0;radioOnPlay(st);}).catch(radioOnError);});
+    radioHls.on(Hls.Events.ERROR,(ev,d)=>{if(d.fatal)radioOnError();});
   } else {
-    rCycleAndSettle();
+    radioEl.src=st.url;
+    radioEl.play().then(()=>{radioFailCount=0;radioOnPlay(st);}).catch(radioOnError);
   }
+}
+
+function radioOnPlay(st){
+  const t=radioCtx.currentTime;
+  $('radio').classList.add('tuning');
+  radioGain.gain.cancelScheduledValues(t);radioGain.gain.setValueAtTime(0,t);
+  radioGain.gain.linearRampToValueAtTime(0.34,t+2.5);
+  radioFilter.frequency.cancelScheduledValues(t);radioFilter.frequency.setValueAtTime(180,t);radioFilter.frequency.exponentialRampToValueAtTime(2200,t+2);
+  radioFilter.Q.setValueAtTime(3.5,t);radioFilter.Q.linearRampToValueAtTime(0.5,t+2);
+  setTimeout(()=>$('radio').classList.remove('tuning'),2000);
+  radioTunerShow(true,st);
+  let playMs;
+  if(radioBehavior==="long")playMs=Math.random()*150000+30000;
+  else if(radioBehavior==="short")playMs=Math.random()*10000+10000;
+  else playMs=Math.random()*3000+3000;
+  radioTimer=setTimeout(radioDoStop,playMs);
+}
+
+function radioDoStop(){
+  const t=radioCtx.currentTime;
+  if(radioBehavior==="scan"&&radioScanHops>0){
+    radioScanHops--;
+    $('radio').classList.add('tuning');
+    radioGain.gain.cancelScheduledValues(t);radioGain.gain.setValueAtTime(radioGain.gain.value,t);
+    radioFilter.frequency.cancelScheduledValues(t);radioFilter.frequency.setValueAtTime(radioFilter.frequency.value,t);radioFilter.frequency.exponentialRampToValueAtTime(180,t+0.25);
+    radioGain.gain.linearRampToValueAtTime(0,t+0.25);
+    setTimeout(()=>{
+      radioEl.pause();radioStIdx=(radioStIdx+1)%RADIO_STATIONS.length;
+      if(radioScanHops===0)radioBehavior="long";
+      radioPlayNow();
+    },300);
+  } else {
+    $('radio').classList.add('tuning');
+    radioGain.gain.cancelScheduledValues(t);radioGain.gain.setValueAtTime(radioGain.gain.value,t);
+    radioFilter.frequency.cancelScheduledValues(t);radioFilter.frequency.setValueAtTime(radioFilter.frequency.value,t);radioFilter.frequency.exponentialRampToValueAtTime(180,t+2.5);
+    radioFilter.Q.setValueAtTime(0.5,t);radioFilter.Q.linearRampToValueAtTime(4.0,t+2);
+    radioGain.gain.linearRampToValueAtTime(0,t+2.8);
+    setTimeout(()=>{
+      radioEl.pause();radioPlaying=false;radioTunerShow(false,null);
+      $('radio').classList.remove('tuning');
+      if(ending)return;
+      if(radioBehavior==="short"){radioStartCycle();}
+      else{radioTimer=setTimeout(radioStartCycle,Math.random()*75000+45000);}
+    },2900);
+  }
+}
+
+function radioStartCycle(){
+  if(radioPlaying||ending)return;
+  radioPlaying=true;radioFailCount=0;
+  // 1 in 3 chance: go straight to a scanner station
+  const wantScanner=Math.random()<0.33;
+  if(wantScanner){
+    const scannerStations=RADIO_STATIONS.map((s,i)=>({s,i})).filter(x=>x.s.scanner);
+    if(scannerStations.length){
+      radioStIdx=scannerStations[Math.floor(Math.random()*scannerStations.length)].i;
+      radioBehavior="short"; // scanners play for a shorter burst — creepier
+      radioPlayNow();return;
+    }
+  }
+  radioStIdx=Math.floor(Math.random()*RADIO_STATIONS.length);
+  const rnd=Math.random();
+  if(rnd<0.4){radioBehavior="long";}
+  else if(rnd<0.8){radioBehavior="short";}
+  else{radioBehavior="scan";radioScanHops=Math.floor(Math.random()*3)+2;}
+  radioPlayNow();
+}
+
+function radioInit(){
+  initRadioCtx();
+  if(radioCtx.state==="suspended")radioCtx.resume();
+  radioStartCycle();
 }
 
 function toast(t,dur){
@@ -2026,7 +2758,7 @@ function animate(){
   const t=clock.elapsedTime;
   updateDayNight(dt);
   if(started){
-    updateMovement(dt);updateNear();updateHB(dt);updateMusic(dt);checkVoid(dt);updateMinimap(dt);updateDoorParallax(dt);
+    updateMovement(dt);updateNear();updateDoorPreviewArm();updateHB(dt);updateMusic(dt);checkVoid(dt);updateMinimap(dt);updateDoorParallax(dt);
     stmtT-=dt;if(stmtT<=0){stmtT=20+Math.random()*22;showStmt();}
     const bob=Math.sin(t*2)*0.15;
     bbObjs.forEach(o=>{if(o.tri)o.tri.position.y=o.tri.userData.baseY+bob;});
@@ -2040,6 +2772,19 @@ function animate(){
     if(finalBBObj&&finalBBUnlocked){
       const pulse=1.5+Math.sin(t*2)*0.5;
       finalBBObj.glowM.emissiveIntensity=pulse;finalBBObj.pl.intensity=2.5+Math.sin(t*2)*1.5;
+    }
+    // Super speed auto-depletes after 60s with no button to watch — poll it
+    // here so the player gets a toast the instant it runs out instead of
+    // just quietly slowing back down and wondering why.
+    if(doorState==='map'&&window.Tiles3D){
+      const ssOn=window.Tiles3D.isSuperSpeedActive();
+      if(lastSuperSpeedOn&&!ssOn)toast('SUPER SPEED DEPLETED');
+      lastSuperSpeedOn=ssOn;
+      const ss2On=window.Tiles3D.isSuperSuperActive();
+      if(lastSuperSuperOn&&!ss2On)toast('SUPER SUPER SPEED DEPLETED');
+      lastSuperSuperOn=ss2On;
+    } else if(lastSuperSpeedOn||lastSuperSuperOn){
+      lastSuperSpeedOn=false;lastSuperSuperOn=false;
     }
   }
   const skyOn=_skyMat&&_skyMat.opacity>0.005;
