@@ -34,20 +34,25 @@ canvas{position:fixed;inset:0;width:100%;height:100%;z-index:0}
 #connect{position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:100;transition:opacity 1.8s;overflow:hidden}
 #connect.fade{opacity:0;pointer-events:none}
 #connectBgVideo{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:0}
-#connectBgOverlay{position:absolute;inset:0;background:rgba(0,0,0,.82);z-index:1}
-#cp1,#cp2{position:relative;z-index:2}
+#connectBgOverlay{display:none}
+#cp1,#cp2{position:relative;z-index:2;text-shadow:0 2px 10px rgba(0,0,0,.9),0 0 24px rgba(0,0,0,.7)}
 #cp1{display:flex;flex-direction:column;align-items:center;text-align:center}
-.cs{color:#181610;font-size:9px;letter-spacing:7px;margin-bottom:14px}
+.cs{color:#fff;font-size:13px;letter-spacing:7px;margin-bottom:14px}
 .ct{color:var(--gold);font-size:clamp(26px,7vw,52px);letter-spacing:14px;margin-bottom:4px;font-weight:700}
-.cg{color:#201e14;font-size:clamp(8px,1.3vw,11px);letter-spacing:6px;margin-bottom:32px}
+.cg{color:#fff;font-size:clamp(12px,1.8vw,16px);letter-spacing:6px;margin-bottom:32px}
 #cbar{width:180px;height:2px;background:rgba(200,184,106,.08);border:1px solid rgba(200,184,106,.1);margin-bottom:10px;overflow:hidden}
 #cfill{height:100%;width:0%;background:var(--gold);transition:width .4s ease}
-#ctxt{color:#1c1a10;font-size:9px;letter-spacing:5px}
+#ctxt{color:#fff;font-size:13px;letter-spacing:5px}
 #cp2{display:none;flex-direction:column;align-items:center;text-align:center;padding:0 24px;max-width:560px}
-#cdisc{color:#161410;font-size:clamp(7px,1.1vw,9px);letter-spacing:1.4px;line-height:2.2;margin-bottom:24px;border-top:1px solid rgba(200,184,106,.06);border-bottom:1px solid rgba(200,184,106,.06);padding:14px 0;text-align:left}
-#cdisc b{color:#22200a;letter-spacing:2px}
+#cdisc{color:#fff;font-size:clamp(12px,1.6vw,15px);letter-spacing:1.4px;line-height:2.2;margin-bottom:24px;border-top:1px solid rgba(200,184,106,.2);border-bottom:1px solid rgba(200,184,106,.2);padding:14px 0;text-align:left;background:rgba(0,0,0,.45)}
+#cdisc b{color:var(--gold);letter-spacing:2px}
 #ctap{color:var(--gold);font-size:clamp(13px,3vw,20px);letter-spacing:8px;animation:pulse 2.6s ease-in-out infinite;cursor:pointer}
-#csub{color:#161410;font-size:9px;letter-spacing:3px;margin-top:10px}
+#csub{color:#fff;font-size:11px;letter-spacing:3px;margin-top:10px}
+#cchoices{display:flex;gap:16px;margin-top:8px;flex-wrap:wrap;justify-content:center}
+.cbtn{padding:12px 26px;background:rgba(0,0,0,.55);border:1px solid rgba(200,184,106,.5);color:var(--gold);font-family:'Courier New',monospace;font-size:12px;letter-spacing:4px;cursor:pointer;transition:all .2s;text-shadow:none}
+.cbtn:hover{background:rgba(200,184,106,.25);border-color:var(--gold)}
+#enterBox{display:none;position:fixed;left:20px;bottom:20px;z-index:101;background:rgba(0,0,0,.6);border:1px solid rgba(200,184,106,.5);padding:10px 18px;color:var(--gold);font-family:'Courier New',monospace;font-size:12px;letter-spacing:3px;cursor:pointer;text-shadow:none}
+#enterBox:hover{background:rgba(200,184,106,.25)}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.2}}
 #hud{position:fixed;bottom:0;left:0;right:0;z-index:10;pointer-events:none;padding:0 16px 14px;display:flex;justify-content:space-between;align-items:flex-end}
 #hbwrap{width:80px;height:20px}
@@ -83,8 +88,13 @@ canvas{position:fixed;inset:0;width:100%;height:100%;z-index:0}
 #tilesDarken{position:absolute;inset:0;z-index:1;pointer-events:none;background:#000;opacity:0;transition:opacity 2s linear}
 #fxVig{position:absolute;inset:0;z-index:1;pointer-events:none;opacity:0;display:none;background:radial-gradient(ellipse at center,rgba(0,0,0,0) 30%,rgba(0,0,0,.5) 68%,rgba(0,0,0,.96) 100%)}
 @media(pointer:coarse){#fxBlur{-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px)}}
+#ssBlur{position:absolute;inset:0;z-index:1;pointer-events:none;opacity:0;display:none;-webkit-backdrop-filter:blur(9px);backdrop-filter:blur(9px);-webkit-mask-image:radial-gradient(ellipse at center,transparent 12%,#000 70%);mask-image:radial-gradient(ellipse at center,transparent 12%,#000 70%)}
+#ssColor{position:absolute;inset:0;z-index:1;pointer-events:none;opacity:0;display:none;background:conic-gradient(from 0deg,#ff8a3d,#e14be8,#3dc7ff,#7cff8a,#ff8a3d);mix-blend-mode:color-dodge}
 #tilesLoading{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:82;pointer-events:none;color:rgba(200,184,106,0.6);font-size:10px;letter-spacing:5px;text-align:center}
 #mapMsg{position:fixed;top:9%;left:50%;transform:translateX(-50%);z-index:81;pointer-events:none;text-align:center;max-width:78%;color:#ff3b30;font-family:Georgia,serif;font-style:italic;letter-spacing:.03em;font-size:clamp(11px,1.6vw,15px);line-height:1.6;text-shadow:0 2px 30px rgba(0,0,0,1),0 0 24px rgba(255,20,20,.3)}
+#tvHint{position:fixed;bottom:13%;left:50%;transform:translateX(-50%);z-index:83;display:none;pointer-events:none;color:#fff;font-family:Georgia,serif;letter-spacing:.08em;font-size:14px;text-shadow:0 2px 12px rgba(0,0,0,.9)}
+#tvTap{position:fixed;bottom:13%;left:50%;transform:translateX(-50%);z-index:83;display:none}
+#tvTapBtn{pointer-events:auto;cursor:pointer;padding:11px 26px;border:2px solid rgba(255,255,255,.85);border-radius:30px;background:rgba(0,0,0,.55);color:#fff;font-family:Georgia,serif;letter-spacing:.08em;font-size:14px}
 /* Resume hint — only shown when NOT in a feed */
 /* Resume hint removed — mouse silently re-locks on next click instead of nagging */
 #bbunlock{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:30;pointer-events:none;opacity:0;transition:opacity .5s;text-align:center}
@@ -178,9 +188,27 @@ let lastSafeX=0,lastSafeY=0,lastSafeZ=0,noGroundFallTime=0;
 const SUPER_SPEED_MULT=11,SUPER_SPEED_MS=60000;
 let superSpeedActive=false,superSpeedTimer=null;
 function setSuperSpeed(on){
+  // Turning plain super speed on while super-SUPER speed is active would
+  // otherwise leave both flags set — the speed formula below only ever
+  // reads the higher tier, so this alone wouldn't be harmful, but cancel it
+  // for clarity/toasts anyway.
+  if(on)setSuperSuper(false);
   superSpeedActive=!!on;
   if(superSpeedTimer){clearTimeout(superSpeedTimer);superSpeedTimer=null;}
   if(superSpeedActive)superSpeedTimer=setTimeout(()=>{superSpeedActive=false;superSpeedTimer=null;},SUPER_SPEED_MS);
+}
+// T-key "super SUPER speed": 10x whatever super speed already was (so
+// ~110x base walk speed), 60s duration, same shape as super speed above,
+// just one tier up. Motion blur + a faint hue-drifting "oily" screen
+// overlay ramp in with it (see #ssBlur/#ssColor + updateSuperFx below) —
+// purely cosmetic, doesn't touch the actual movement math beyond speed.
+const SUPER_SUPER_MULT=SUPER_SPEED_MULT*10,SUPER_SUPER_MS=60000;
+let superSuperActive=false,superSuperTimer=null,ssHue=0;
+function setSuperSuper(on){
+  if(on){superSpeedActive=false;if(superSpeedTimer){clearTimeout(superSpeedTimer);superSpeedTimer=null;}}
+  superSuperActive=!!on;
+  if(superSuperTimer){clearTimeout(superSuperTimer);superSuperTimer=null;}
+  if(superSuperActive)superSuperTimer=setTimeout(()=>{superSuperActive=false;superSuperTimer=null;},SUPER_SUPER_MS);
 }
 
 // ── PER-SESSION LOOK (set from enter() opts) ─────────────────────────
@@ -213,69 +241,136 @@ function updateFx(dt){
   if(v)v.style.opacity=(FX_VIG_BASE+(1-FX_VIG_BASE)*k).toFixed(3);
   fxGrain=FX_GRAIN_BASE+FX_GRAIN_MOVE*k;
 }
-// Return doorframe: a plain colored frame placed 10m from spawn in every
-// Google Maps space. Walking through it (checked from the classic script
-// via getFrameDist()) exits back to the main build — no E needed. This is
-// in addition to E, not instead of it.
-let returnFrame3=null,returnFramePos=null;
-function buildReturnFrame(colorHex){
-  if(returnFrame3){scene3.remove(returnFrame3);returnFrame3=null;}
-  const w=2.4,h=3.2,th=0.18,mat=new THREE3.MeshBasicMaterial({color:colorHex||0x4ade80});
+// Super-SUPER speed screen FX: a directional-feeling motion blur (backdrop
+// blur, same trick as #fxBlur but stronger) plus a very faint, slowly
+// hue-rotating "oily" wash on distant scenery. Ramps in/out over ~0.4s so
+// it doesn't slam on/off with the toggle.
+let ssFxK=0;
+function updateSuperFx(dt){
+  const b=document.getElementById('ssBlur'),c=document.getElementById('ssColor');
+  if(!b||!c)return;
+  ssFxK+=((superSuperActive?1:0)-ssFxK)*Math.min(1,dt*2.5);
+  if(ssFxK>0.003){
+    b.style.display='block';c.style.display='block';
+    b.style.opacity=(ssFxK*0.6).toFixed(3);
+    c.style.opacity=(ssFxK*0.1).toFixed(3);
+    ssHue=(ssHue+dt*35)%360;
+    c.style.filter='blur(46px) saturate(180%) hue-rotate('+ssHue.toFixed(0)+'deg)';
+  } else {
+    b.style.display='none';c.style.display='none';
+  }
+}
+// ── PORTALS (circular, glowing, pulsing) ──────────────────────────────
+// Both the blue return-portal and the gold destination-portal are built by
+// this one shared helper now — no more box door-frames, and critically no
+// more ground-raycast placement. raycastGround() at an arbitrary (fx,fz)
+// was the source of the "duplicates everywhere / buried under buildings"
+// problem: Photorealistic 3D Tiles streams in multiple LODs as you move,
+// so a raycast fired the instant a portal is built can hit a half-loaded
+// low tile, a rooftop, or the true street — different every session, and
+// under dense meshes like Rockefeller Plaza often UNDER the visible
+// ground. Fix: anchor purely off the session's own settled spawn height
+// (spawnGroundY, captured once, right when the ground-poll confirms it's
+// stable — see enter() below) and go straight up into open sky instead of
+// trusting tile geometry at all. Offset is sideways-only (never forward/
+// back) so the portal is always an easy strafe-and-look-up target.
+const PORTAL_SIDE_OFFSET=20;       // metres left/right of spawn's own X
+const PORTAL_HEIGHT_DEFAULT=100;   // metres above settled ground
+const PORTAL_HEIGHT_MANHATTAN=280; // Midtown towers run 200-300m+; 120m was still down among rooftops
+let spawnGroundY=0; // set once per session the instant spawn settles
+
+function buildPortalGroup(colorHex,label){
+  const R=1.6,TUBE=0.16;
   const grp=new THREE3.Group();
-  const top=new THREE3.Mesh(new THREE3.BoxGeometry(w+th*2,th,th*2),mat);top.position.y=h;
-  const l=new THREE3.Mesh(new THREE3.BoxGeometry(th,h,th*2),mat);l.position.set(-w/2,h/2,0);
-  const r=new THREE3.Mesh(new THREE3.BoxGeometry(th,h,th*2),mat);r.position.set(w/2,h/2,0);
-  grp.add(top,l,r);
-  // 10m from spawn — spawn sits at local (0, SPAWN_OFFSET) once settled.
-  const ang=Math.random()*Math.PI*2;
-  const fx=Math.sin(ang)*10,fz=SPAWN_OFFSET+Math.cos(ang)*10;
-  // BUG FIX: this used to copy the PLAYER's current ground height instead of
-  // sampling the ground at the frame's own (fx,fz) — fine right at spawn,
-  // but wrong the instant the player moves off flat ground, and wrong at
-  // spots like Rockefeller Plaza where dense city mesh sits well above/below
-  // spawn's own reading. Raycast at the frame's actual position instead.
-  const g=raycastGround(fx,fz);
-  const gy=g!==null?g:(camera3?camera3.position.y-EYE_H:0);
-  grp.position.set(fx,gy,fz);
-  returnFrame3=grp;returnFramePos={x:fx,z:fz};
-  scene3.add(grp);
+  const ringMat=new THREE3.MeshBasicMaterial({color:colorHex});
+  const ring=new THREE3.Mesh(new THREE3.TorusGeometry(R,TUBE,20,56),ringMat);
+  grp.add(ring);
+  // Inner shimmering "event horizon" disc — the pulsing glow you actually
+  // see when looking straight at the portal, not just its rim.
+  const discMat=new THREE3.MeshBasicMaterial({color:colorHex,transparent:true,opacity:0.35,side:THREE3.DoubleSide,depthWrite:false,blending:THREE3.AdditiveBlending});
+  const disc=new THREE3.Mesh(new THREE3.CircleGeometry(R*0.94,48),discMat);
+  grp.add(disc);
+  // Soft radial-gradient halo sprite behind it — a cheap stand-in for a
+  // real bloom pass, gives the "glowing" read from a distance.
+  const hex='#'+colorHex.toString(16).padStart(6,'0');
+  const cv=document.createElement('canvas');cv.width=256;cv.height=256;
+  const cx=cv.getContext('2d');
+  const grad=cx.createRadialGradient(128,128,0,128,128,128);
+  grad.addColorStop(0,hex);grad.addColorStop(0.5,hex);grad.addColorStop(1,'rgba(0,0,0,0)');
+  cx.fillStyle=grad;cx.fillRect(0,0,256,256);
+  const haloMat=new THREE3.SpriteMaterial({map:new THREE3.CanvasTexture(cv),transparent:true,opacity:0.35,depthWrite:false,blending:THREE3.AdditiveBlending});
+  const halo=new THREE3.Sprite(haloMat);halo.scale.set(R*4.2,R*4.2,1);
+  grp.add(halo);
+  const pl=new THREE3.PointLight(colorHex,3,18);grp.add(pl);
+  if(label){
+    const lc=document.createElement('canvas');lc.width=512;lc.height=64;
+    const lx=lc.getContext('2d');lx.fillStyle=hex;lx.font='28px "Courier New",monospace';
+    lx.textAlign='center';lx.textBaseline='middle';lx.fillText(label,256,32);
+    const labelSpr=new THREE3.Sprite(new THREE3.SpriteMaterial({map:new THREE3.CanvasTexture(lc),transparent:true,depthWrite:false}));
+    labelSpr.scale.set(3,0.38,1);labelSpr.position.set(0,R+0.7,0);grp.add(labelSpr);
+  }
+  grp.scale.setScalar(1.5); // +50% — bigger, easier to spot from a distance
+  return{grp,ringMat,discMat,haloMat,pl};
 }
 
-// Second, gold-colored portal frame — ONLY built inside door 3 (Rockefeller
-// Plaza), planted 5m directly behind spawn. Walking through it hot-swaps the
-// tileset straight to the Amazon without returning to the
-// main hub first — same enter()/settle pipeline every other door already
-// uses, just re-entered while already inside a map (see enterMapFull's
-// onReady and AMAZON_DEST below).
-let pyramidPortal3=null,pyramidPortalPos=null;
-function buildPyramidPortal(){
+// Blue return portal: one per map, always. Walking into it (checked from
+// the classic script via getFrameDist()) exits back to the main build — no
+// E needed. This is in addition to E, not instead of it.
+let returnFrame3=null,returnFramePos=null,returnPortal=null,lastPortalSide=1;
+function buildReturnFrame(colorHex,tall){
+  if(returnFrame3){scene3.remove(returnFrame3);returnFrame3=null;returnPortal=null;}
+  const p=buildPortalGroup(colorHex||0x2dd4ff,null);
+  const side=(Math.random()<0.5?-1:1)*PORTAL_SIDE_OFFSET;
+  lastPortalSide=side;
+  const fx=side,fz=SPAWN_OFFSET;
+  const fy=spawnGroundY+(tall?PORTAL_HEIGHT_MANHATTAN:PORTAL_HEIGHT_DEFAULT);
+  p.grp.position.set(fx,fy,fz);
+  returnFrame3=p.grp;returnFramePos={x:fx,y:fy,z:fz};returnPortal=p;
+  scene3.add(returnFrame3);
+}
+
+// Gold destination portal — now built in EVERY map, ~8m further out than
+// the blue return portal on the same side (comfortably "within 10m" of
+// it) and at the same height, so they read as a matched pair. Right now
+// only the Rockefeller Plaza session's gold portal actually goes anywhere
+// (hot-swaps to the Amazon — see enterMapFull's onReady and AMAZON_DEST
+// below); every other map's is a visual placeholder until a real
+// per-map destination is wired up (classic script shows a "COMING SOON"
+// toast if you walk into one of those instead).
+let pyramidPortal3=null,pyramidPortalPos=null,goldPortal=null;
+function buildPyramidPortal(tall,label){
   clearPyramidPortal();
-  const w=2.4,h=3.2,th=0.18,mat=new THREE3.MeshBasicMaterial({color:0xd4af37});
-  const grp=new THREE3.Group();
-  const top=new THREE3.Mesh(new THREE3.BoxGeometry(w+th*2,th,th*2),mat);top.position.y=h;
-  const l=new THREE3.Mesh(new THREE3.BoxGeometry(th,h,th*2),mat);l.position.set(-w/2,h/2,0);
-  const r=new THREE3.Mesh(new THREE3.BoxGeometry(th,h,th*2),mat);r.position.set(w/2,h/2,0);
-  grp.add(top,l,r);
-  const cv=document.createElement('canvas');cv.width=512;cv.height=64;
-  const cx=cv.getContext('2d');cx.fillStyle='#d4af37';cx.font='28px "Courier New",monospace';
-  cx.textAlign='center';cx.textBaseline='middle';cx.fillText('→ AMAZON',256,32);
-  const spr=new THREE3.Sprite(new THREE3.SpriteMaterial({map:new THREE3.CanvasTexture(cv),transparent:true,depthWrite:false}));
-  spr.scale.set(3,0.38,1);spr.position.set(0,h+0.5,0);grp.add(spr);
-  // Fixed 5m directly behind spawn (spawn sits at local (0,SPAWN_OFFSET)),
-  // not a random angle like the return frame — this one's meant to be found.
-  const fx=0,fz=SPAWN_OFFSET+5;
-  // Same bug/fix as buildReturnFrame above — this was landing wherever the
-  // player's own ground height happened to be, which inside Rockefeller
-  // Plaza's dense mesh meant the portal spawned floating mid-building
-  // instead of on the ground 5m behind the player.
-  const g=raycastGround(fx,fz);
-  const gy=g!==null?g:(camera3?camera3.position.y-EYE_H:0);
-  grp.position.set(fx,gy,fz);grp.rotation.y=Math.PI; // faces back toward spawn
-  pyramidPortal3=grp;pyramidPortalPos={x:fx,z:fz};
-  scene3.add(grp);
+  const p=buildPortalGroup(0xd4af37,label||'→ ???');
+  const side=lastPortalSide+Math.sign(lastPortalSide||1)*8; // same side as blue, 8m further out
+  const fx=side,fz=SPAWN_OFFSET;
+  const fy=spawnGroundY+(tall?PORTAL_HEIGHT_MANHATTAN:PORTAL_HEIGHT_DEFAULT);
+  p.grp.position.set(fx,fy,fz);
+  pyramidPortal3=p.grp;pyramidPortalPos={x:fx,y:fy,z:fz};goldPortal=p;
+  scene3.add(pyramidPortal3);
 }
 function clearPyramidPortal(){
-  if(pyramidPortal3){scene3.remove(pyramidPortal3);pyramidPortal3=null;pyramidPortalPos=null;}
+  if(pyramidPortal3){scene3.remove(pyramidPortal3);pyramidPortal3=null;pyramidPortalPos=null;goldPortal=null;}
+}
+// Slow spin + breathing pulse on both portals' glow — called every frame
+// from loop() once the session is ready. Purely cosmetic, no gameplay tie.
+let portalT=0;
+function updatePortals(dt){
+  portalT+=dt;
+  const spin=portalT*0.6;
+  if(returnPortal){
+    const pulse=0.6+Math.sin(portalT*2.4)*0.4;
+    returnPortal.discMat.opacity=0.25+pulse*0.3;
+    returnPortal.haloMat.opacity=0.25+pulse*0.3;
+    returnPortal.pl.intensity=2+pulse*3;
+    returnFrame3.rotation.z=spin;
+  }
+  if(goldPortal){
+    const pulse=0.6+Math.sin(portalT*2.4+1.4)*0.4;
+    goldPortal.discMat.opacity=0.25+pulse*0.3;
+    goldPortal.haloMat.opacity=0.25+pulse*0.3;
+    goldPortal.pl.intensity=2+pulse*3;
+    pyramidPortal3.rotation.z=-spin;
+  }
 }
 
 // ── BILLBOARD VIDEO (Norway mountain destination only) ──────────────────
@@ -290,18 +385,31 @@ function buildBillboardVideo(url){
   clearBillboardVideo();
   if(!url)return;
   const v=document.createElement('video');
-  v.crossOrigin='anonymous';v.muted=true;v.loop=true;v.playsInline=true;v.autoplay=true;
+  // By the time a player reaches this TV they've already clicked the age
+  // gate and clicked/tapped into the game itself — real gestures already
+  // happened on this page, so audio is unmuted straight away instead of
+  // requiring yet another click just to hear it.
+  v.crossOrigin='anonymous';v.muted=false;v.loop=true;v.playsInline=true;v.autoplay=true;
   v.src=url;
-  v.play().catch(()=>{}); // autoplay can still be blocked pre-gesture; harmless if so, texture just stays black until it starts
+  v.play().catch(()=>{
+    // Only if a browser still blocks it: fall back to muted-autoplay so the
+    // picture isn't stuck black, and let toggleBillboardVideo() (V key / tap)
+    // unmute it on demand.
+    v.muted=true;v.play().catch(()=>{});
+  });
   const tex=new THREE3.VideoTexture(v);
   tex.minFilter=THREE3.LinearFilter;tex.magFilter=THREE3.LinearFilter;
-  const W=8,H=6; // big enough to read from spawn, roughly 4:3
+  const W=160,H=120; // 20x the original 8x6
   const mesh=new THREE3.Mesh(new THREE3.PlaneGeometry(W,H),new THREE3.MeshBasicMaterial({map:tex,side:THREE3.DoubleSide}));
   // Straight ahead of spawn, facing back toward the player — same forward
   // axis every other door uses (camera starts at look.h=0, facing -Z).
-  const fx=0,fz=SPAWN_OFFSET-14;
-  const g=raycastGround(fx,fz);
-  const gy=(g!==null?g:(camera3?camera3.position.y-EYE_H:0))+H/2;
+  // Was 14m out; now 50m further (64m total) — plenty of room on this
+  // stretch of cliff/water.
+  const fx=0,fz=SPAWN_OFFSET-64;
+  // Anchored off the settled spawn height (see spawnGroundY, set in
+  // enter()) instead of its own raycast — same fix as the portals above,
+  // and lifted an extra 60m per request.
+  const gy=spawnGroundY+60+H/2;
   mesh.position.set(fx,gy,fz);mesh.rotation.y=Math.PI;
   billboardVideoEl=v;billboardVideoTex=tex;billboardVideoMesh=mesh;
   scene3.add(mesh);
@@ -310,6 +418,18 @@ function clearBillboardVideo(){
   if(billboardVideoMesh){scene3.remove(billboardVideoMesh);billboardVideoMesh=null;}
   if(billboardVideoTex){billboardVideoTex.dispose();billboardVideoTex=null;}
   if(billboardVideoEl){billboardVideoEl.pause();billboardVideoEl.removeAttribute('src');billboardVideoEl.load();billboardVideoEl=null;}
+}
+// V key (PC) / tap (mobile) toggle — pauses it, or unmutes+resumes it if it
+// was ever silently muted-fallback-autoplaying. Not required for normal
+// playback (it's already on with sound by default) — just a manual override.
+function toggleBillboardVideo(){
+  if(!billboardVideoEl)return null;
+  if(billboardVideoEl.paused||billboardVideoEl.muted){
+    billboardVideoEl.muted=false;billboardVideoEl.play().catch(()=>{});
+    return true;
+  }
+  billboardVideoEl.pause();
+  return false;
 }
 
 function ensureRenderer(){
@@ -492,6 +612,8 @@ function loop(){
   if(!ready){renderer3.render(scene3,camera3);return;}
   updateFx(dt);
   updateSky3(dt);
+  updatePortals(dt);
+  updateSuperFx(dt);
   camera3.rotation.y=look.h;camera3.rotation.x=look.p;
   const fwd=new THREE3.Vector3(-Math.sin(look.h),0,-Math.cos(look.h));
   const rgt=new THREE3.Vector3(Math.cos(look.h),0,-Math.sin(look.h));
@@ -508,7 +630,8 @@ function loop(){
   // stick only halfway sits between walk and run instead of snapping to one
   // or the other — this is what replaced the on-screen RUN button.
   const analogMag=(move.mag!=null)?move.mag:(move.run?1:0);
-  const spd=(WALK_SPEED+(RUN_SPEED-WALK_SPEED)*analogMag)*(superSpeedActive?SUPER_SPEED_MULT:1);
+  const speedMult=superSuperActive?SUPER_SUPER_MULT:(superSpeedActive?SUPER_SPEED_MULT:1);
+  const spd=(WALK_SPEED+(RUN_SPEED-WALK_SPEED)*analogMag)*speedMult;
   if(mag>0.001){
     camera3.position.x+=(mx/mag)*spd*dt;
     camera3.position.z+=(mz/mag)*spd*dt;
@@ -540,6 +663,7 @@ function loop(){
       }
     } else {
       vel3Y-=(vel3Y>0?GRAV_UP:GRAV_DOWN)*(Math.abs(vel3Y)<1.6?0.5:1)*dt; // half gravity near apex = slight hang
+      if(vel3Y<-55)vel3Y=-55; // terminal velocity cap — matters now that map entry is a real ~200m fall, not a teleport
       camera3.position.y+=vel3Y*dt;
       if(g!==null&&camera3.position.y<=g+EYE_H&&vel3Y<=0){
         camera3.position.y=g+EYE_H;vel3Y=0;onGround3=true;
@@ -565,12 +689,81 @@ function loop(){
 }
 requestAnimationFrame(loop);
 
+// ── HUB DOOR DOLLY-CAM PREVIEW ────────────────────────────────────────
+// Live "peek through the door before you open it" effect for the main
+// hub. Only ever ONE of these tiny sessions is alive at a time — the
+// classic hub script only calls armDoorPreview() for whichever single
+// door the player is currently within 5m of (see updateDoorPreviewArm()
+// in the classic script), and disarms it the instant they step away.
+// That's deliberate: running all 18 doors' tile sessions live
+// simultaneously would mean 18x the tile downloads/GPU memory/Maps API
+// billing, running constantly whether anyone's looking or not.
+//
+// mountEl is a plain empty <div> the hub script already embedded in its
+// OWN 3D scene via its own (older, r128) THREE.CSS3DObject, sitting right
+// on the door's panel — passed in here as a function argument, so there's
+// no cross-script global-scope issue (module scripts don't share
+// top-level const/let with classic scripts, but a DOM element handed
+// across a function call is just a value). This module's tiny canvas gets
+// appended straight into that div, so it inherits the div's real 3D
+// position/rotation/perspective for free.
+let dpMountEl=null,dpCanvas=null,dpRenderer=null,dpScene=null,dpCamera=null,dpTiles=null,dpHeight=200;
+function armDoorPreview(mountEl,lat,lng,elevM,apiKey,dollyHeight){
+  if(dpMountEl===mountEl)return; // already armed on this exact door
+  disarmDoorPreview();
+  dpMountEl=mountEl;
+  dpHeight=dollyHeight||200;
+  dpCanvas=document.createElement('canvas');
+  dpCanvas.style.cssText='width:100%;height:100%;display:block;';
+  dpCanvas.width=200;dpCanvas.height=440; // modest res — it's a small peek window, not the main view
+  dpRenderer=new THREE3.WebGLRenderer({canvas:dpCanvas,antialias:false});
+  dpRenderer.setPixelRatio(1);dpRenderer.outputColorSpace=THREE3.SRGBColorSpace;
+  dpRenderer.setSize(200,440,false);
+  dpScene=new THREE3.Scene();
+  dpScene.add(new THREE3.HemisphereLight(0xffffff,0x445566,2.2));
+  dpCamera=new THREE3.PerspectiveCamera(55,200/440,1,3000);
+  // dpHeight up, facing straight down — matches this door's own
+  // fallHeight (see DOORS), so the preview is a genuine preview of the
+  // exact view you're about to fall through once you actually open it.
+  dpCamera.position.set(0,dpHeight,0);
+  dpCamera.rotation.set(-Math.PI/2,0,0);
+  dpTiles=new TilesRenderer(GOOGLE_3D_TILES_ROOT);
+  dpTiles.registerPlugin(new GoogleCloudAuthPlugin({apiToken:apiKey}));
+  dpTiles.registerPlugin(new ReorientationPlugin({lat:lat*Math.PI/180,lon:lng*Math.PI/180,height:elevM||0}));
+  dpTiles.registerPlugin(new TileCompressionPlugin());
+  dpTiles.setCamera(dpCamera);
+  dpTiles.setResolutionFromRenderer(dpCamera,dpRenderer);
+  dpScene.add(dpTiles.group);
+  mountEl.appendChild(dpCanvas);
+}
+function disarmDoorPreview(){
+  if(dpTiles){dpTiles.dispose();dpTiles=null;}
+  if(dpRenderer){dpRenderer.dispose();dpRenderer=null;}
+  if(dpCanvas&&dpCanvas.parentNode)dpCanvas.parentNode.removeChild(dpCanvas);
+  dpCanvas=null;dpScene=null;dpCamera=null;dpMountEl=null;dpHeight=200;
+}
+// Called every hub frame while a door is armed. localX/localZ are the
+// player's position relative to the door, in the door's own local space
+// (see updateDoorPreviewArm in the classic script) — used only for a
+// small look-direction parallax nudge, so stepping side to side in front
+// of the door genuinely shifts what you see through it, full directional
+// parallax like looking through a real window rather than a flat photo.
+function updateDoorPreview(localX,localZ){
+  if(!dpTiles||!dpRenderer)return;
+  dpTiles.update();
+  const px=Math.max(-1,Math.min(1,localX/3)),pz=Math.max(-1,Math.min(1,localZ/4));
+  dpCamera.position.set(px*10,dpHeight,pz*10);
+  dpCamera.rotation.set(-Math.PI/2+pz*0.12,0,-px*0.12);
+  dpRenderer.render(dpScene,dpCamera);
+}
+
 window.Tiles3D={
   enter(opts){
     ensureRenderer();clearTiles();clearBillboardVideo();
     running=true;ready=false;lastT=performance.now();
     look={h:0,p:0};move={f:0,b:0,l:0,r:0,run:false};
     setSuperSpeed(false); // never carry super speed in from a previous session
+    setSuperSuper(false);
     vel3Y=0;onGround3=true;jumpReq=false;skyT=0;skyTintHue=Math.random()<0.5?0.08:0.75;
     lastSafeX=0;lastSafeY=SPAWN_UP;lastSafeZ=SPAWN_OFFSET;noGroundFallTime=0;
     if(skyMatB)skyMatB.color.setHSL(skyTintHue,0.35,0.55);
@@ -611,10 +804,22 @@ window.Tiles3D={
         if(g!==null){
           if(prevG!==null&&Math.abs(g-prevG)<2){
             settled=true;
-            camera3.position.set(0,g+EYE_H,SPAWN_OFFSET);
+            spawnGroundY=g;
+            // Used to teleport straight to g+EYE_H here. Now it drops the
+            // player from up high instead (200m by default, or a taller
+            // opts.fallHeight for maps with skyscrapers/tall landmarks —
+            // see DOORS' fallHeight/dollyHeight, e.g. Manhattan/Giza) — the
+            // same height the hub's door dolly-cam preview parks its camera
+            // at for that door, so walking through visibly falls from
+            // roughly where you were just peeking from, through open sky,
+            // past the portals (which sit a bit lower) and down onto the
+            // actual ground. The normal per-frame gravity/ground-snap code
+            // below (in loop()) does the rest — nothing else has to change.
+            camera3.position.set(0,g+(opts.fallHeight||200),SPAWN_OFFSET);
+            onGround3=false;vel3Y=0;
             ready=true;
             document.getElementById('tilesLoading').style.display='none';
-            buildReturnFrame(opts.frameColor);
+            buildReturnFrame(opts.frameColor,!!opts.manhattan);
             if(opts.billboardVideoUrl)buildBillboardVideo(opts.billboardVideoUrl);
             if(opts.onReady)opts.onReady();
           }
@@ -633,11 +838,21 @@ window.Tiles3D={
     document.getElementById('tilesLoading').style.display='none';
     if(nightOverlay)nightOverlay.style.opacity='0';
     skyMode='cycle';fxMode='';fxGrain=0;applyLookDom();
-    returnFrame3=null;returnFramePos=null;
+    // BUG FIX: this used to just null the variables without ever calling
+    // scene3.remove() on the return portal — buildReturnFrame()'s own
+    // cleanup only knows how to remove *its own* returnFrame3 reference, so
+    // once that reference was wiped here it could never find the old mesh
+    // again. Every map exit was leaving the PREVIOUS session's blue portal
+    // orphaned in scene3 forever, invisibly stacking up call after call —
+    // almost certainly the real source of the "4 or more duplicates"
+    // reported under various maps. Remove it from the scene properly first.
+    if(returnFrame3){scene3.remove(returnFrame3);returnFrame3=null;}
+    returnFramePos=null;returnPortal=null;
     clearPyramidPortal();
     clearBillboardVideo();
     clearTiles();
     setSuperSpeed(false);
+    setSuperSuper(false);
   },
   setLook(h,p){look.h=h;look.p=p;},
   // BUG FIX: this used to do move=m, which threw away move.run every single
@@ -654,19 +869,42 @@ window.Tiles3D={
   // Returns the new on/off state so the caller can toast it immediately.
   toggleSuperSpeed(){setSuperSpeed(!superSpeedActive);return superSpeedActive;},
   isSuperSpeedActive(){return superSpeedActive;},
+  // T-key "super SUPER speed" — 10x whatever super speed already was.
+  // Mutually exclusive with plain super speed (turning this on cancels
+  // that one instead of stacking, so the multiplier is always exactly
+  // SUPER_SUPER_MULT rather than compounding by accident).
+  toggleSuperSuper(){setSuperSuper(!superSuperActive);return superSuperActive;},
+  isSuperSuperActive(){return superSuperActive;},
   getLocalXZ(){return camera3?{x:camera3.position.x,z:camera3.position.z}:{x:0,z:0};},
-  // Distance from the player to the return-frame, in metres, or null if
-  // no frame has been placed for this session yet.
+  // Distance from the player to the return-portal, in metres, or null if
+  // no portal has been placed for this session yet. Full 3D distance now
+  // that the portal lives up in the sky rather than at ground height.
   getFrameDist(){
     if(!camera3||!returnFramePos)return null;
-    return Math.hypot(camera3.position.x-returnFramePos.x,camera3.position.z-returnFramePos.z);
+    return Math.hypot(camera3.position.x-returnFramePos.x,camera3.position.y-returnFramePos.y,camera3.position.z-returnFramePos.z);
   },
-  // Distance from the player to the gold pyramid-portal frame (door 3 only),
+  // Distance from the player to the gold destination portal (door 3 only),
   // or null if that portal doesn't exist in the current session.
   getPyramidPortalDist(){
     if(!camera3||!pyramidPortalPos)return null;
-    return Math.hypot(camera3.position.x-pyramidPortalPos.x,camera3.position.z-pyramidPortalPos.z);
-  }
+    return Math.hypot(camera3.position.x-pyramidPortalPos.x,camera3.position.y-pyramidPortalPos.y,camera3.position.z-pyramidPortalPos.z);
+  },
+  // Distance from the player to the billboard TV, in metres, or null if
+  // this session has no TV (only the Pulpit Rock/Norway door does).
+  getBillboardDist(){
+    if(!camera3||!billboardVideoMesh)return null;
+    return camera3.position.distanceTo(billboardVideoMesh.position);
+  },
+  armDoorPreview,disarmDoorPreview,updateDoorPreview,
+  // BUG FIX: these two used to be called as bare identifiers from a closure
+  // written in the classic (non-module) script — but buildPyramidPortal/
+  // clearPyramidPortal only exist in THIS module's own scope. A classic-
+  // script closure resolves names from where it was WRITTEN, not where
+  // it's invoked from, so every call threw a silent ReferenceError in the
+  // console and the gold portal was never actually built, ever. Exposing
+  // them properly here, same pattern as everything else on this object.
+  buildGoldPortal:buildPyramidPortal,clearGoldPortal:clearPyramidPortal,
+  toggleBillboardVideo
 };
 </script>
 
@@ -698,14 +936,18 @@ window.Tiles3D={
     <div class="ct">GO DEAN!</div>
     <div class="cg">STAGE 10 — THE OUTSIDE WORLD</div>
     <div id="cdisc"><b>NOTICE &amp; DISCLAIMER</b><br><br>Go Dean! is a non-profit work of parody and satire by @earthling_official / earthlingofficial.com.<br><br>Stage 10 integrates live public feeds and real coordinates of documented animal agriculture facilities.<br><br>All Dean quotes are direct and verified. The archive does not forget.<br><br><b>IT EXISTS FOR THE ANIMALS.</b></div>
-    <div id="ctap">TAP TO ENTER THE OUTSIDE WORLD</div>
+    <div id="cchoices">
+      <div class="cbtn" id="cWatch">WATCH MOVIE</div>
+      <div class="cbtn" id="cEnter">ENTER REAL WORLD</div>
+    </div>
     <div id="csub">earthlingofficial.com</div>
   </div>
 </div>
+<div id="enterBox">ENTER THE REAL WORLD</div>
 
 <div id="hud">
   <div id="hbwrap"><svg id="hbsvg" viewBox="0 0 80 20" fill="none"><polyline id="hbline" points="0,10 12,10 16,3 20,17 24,10 34,10 36,6 38,14 40,10 80,10" stroke="rgba(200,184,106,0.4)" stroke-width="1.1" fill="none"/></svg></div>
-  <div id="dcount">0 / 17</div>
+  <div id="dcount">0 / 18</div>
 </div>
 
 <div id="tod"></div>
@@ -719,10 +961,14 @@ window.Tiles3D={
 <div id="mapFull">
   <canvas id="tiles3dCanvas"></canvas>
   <div id="fxBlur"></div>
+  <div id="ssBlur"></div>
+  <div id="ssColor"></div>
   <div id="tilesDarken"></div>
   <div id="tilesGrain"></div>
   <div id="fxVig"></div>
   <div id="tilesLoading">LOADING TERRAIN…</div>
+  <div id="tvHint">[ V ] TOGGLE TV</div>
+  <div id="tvTap"><div id="tvTapBtn">▶ TAP TO WATCH</div></div>
   <div id="mapMsg"></div>
 </div>
 
@@ -776,6 +1022,11 @@ const DOORS=[
    overlay:'JBS Dinmore processes 1.4 million cattle annually.\nMore animals than the population of Adelaide.\nThis is legal. This is Tuesday.',
    narrative:['JBS Dinmore processes 1.4 million cattle annually.','More animals than the population of Adelaide.','This is legal. This is Tuesday.']},
   {type:'streetview',label:'ROCKEFELLER PLAZA — NEW YORK CITY',lat:40.75874,lng:-73.97812,elevM:15,targetRadiusM:60,
+   // Midtown towers near here run 200–300m+ (30 Rock alone is ~260m) — the
+   // default 200m fall/preview height was still down among the rooftops,
+   // which is why the gold portal (anchored off this same height) kept
+   // getting lost against building geometry. Bumped well above the skyline.
+   fallHeight:380,dollyHeight:380,
    overlay:"This is the world people walk through, unaware.\nA century ago this part of Manhattan was lined with slaughterhouses — that's the whole reason the Meatpacking District has that name.\nThe trade didn't end. It just moved out of sight.",
    narrative:["This is the world people walk through, unaware.","A century ago this part of Manhattan was lined with slaughterhouses.","That's the whole reason the Meatpacking District has that name.","The trade didn't end. It just moved out of sight."]},
   {type:'streetview',label:'MARINA BAY — SINGAPORE',lat:1.283786,lng:103.860624,elevM:8,targetRadiusM:60,
@@ -807,11 +1058,22 @@ const DOORS=[
    overlay:"Dean's own backyard.\nI asked him about it directly. He had no answer.",
    narrative:["JBS Greeley — Weld County, Colorado.","One of the largest beef slaughter plants in the United States.","This is Dean's own backyard.","I asked him about it directly. He had no answer."]},
   {type:'streetview',label:'GREAT PYRAMID — GIZA, EGYPT',lat:29.9792,lng:31.1342,elevM:61,targetRadiusM:9999,
+   fallHeight:260,dollyHeight:260,
    overlay:'The Great Pyramid of Giza.',
    narrative:['The Great Pyramid of Giza.']},
   {type:'streetview',label:'AMAZON RAINFOREST — MANAUS, BRAZIL',lat:-3.13,lng:-59.90,elevM:30,targetRadiusM:9999,skyMode:'amazon',
    overlay:'The Amazon Rainforest.\n80% of its deforestation is animal agriculture.',
    narrative:['The Amazon Rainforest.','80% of its deforestation is animal agriculture.']},
+  // NEW DOOR — placed in front of the in-city "GO DEAN" sign. Auto-placed by
+  // findDoorSpot() like every other hub door for now, since the sign itself
+  // is a prop baked into procedural_city_66.glb and this script has no way
+  // to read its coordinates. Once you've got the sign's actual x/z position
+  // (Blender, or eyeballing it in-engine), give buildDoors() a hardcoded
+  // override for this doorIdx the same way DOOR1_MOUNTAIN etc. override
+  // their own placement — happy to wire that in once you have the numbers.
+  {type:'streetview',label:'GODEAN — YOGYAKARTA, INDONESIA',lat:-7.76972,lng:110.29389,elevM:121,targetRadiusM:9999,
+   overlay:'Godean, Yogyakarta, Indonesia.\nThe real place behind the name.',
+   narrative:['Godean, Yogyakarta, Indonesia.','The real place behind the name.']},
   {type:'youtube',label:'THE ARCHIVE — DEAN, ON RECORD',youtubeId:'ce4DJh-L7Ys',live:false,
    overlay:"I asked Dean: can you claim to oppose the patriarchy while funding an industry built on exploiting the reproductive systems of female animals?\nHe had no answer.\nDays later he bragged live about a Hello Fresh sponsorship — one he didn't have. Just an email sent, hoping.\nI called it out: that supply chain runs on cheap POC and migrant labour.\nThe irony: he'd once accused me of exploiting POC myself — for raising awareness of PITS, the trauma inflicted on slaughterhouse workers.\nThis is the record. It doesn't forget.",
    sequence:[
@@ -969,7 +1231,7 @@ const MUSIC=[
 const DOOR_COLORS=[
   0x00ffcc,0xff00aa,0x00ff44,0xff6600,0xaa00ff,
   0x00ccff,0xff0066,0x88ff00,0xff8800,0x0044ff,
-  0xff00ff,0x00ffaa,0xff3300,0xffff00,0x44ff88,0xff44aa,0x66ccff
+  0xff00ff,0x00ffaa,0xff3300,0xffff00,0x44ff88,0xff44aa,0x66ccff,0x33dd77
 ];
 
 // ── ENGINE ────────────────────────────────────────────────────────────
@@ -978,6 +1240,7 @@ let postScene,postCamera,rt,postMat;
 let rig=null,started=false,ending=false;
 let flyMode=false,flyUnlocked=false,bbWatched=0;
 let lastSuperSpeedOn=false; // for detecting the 60s auto-depletion, see animate()
+let lastSuperSuperOn=false;
 const vel=new THREE.Vector3();
 let kW=0,kA=0,kS=0,kD=0,onGround=false;
 const SPEED=6,GRAV=22,JUMP_V=16,PLAYER_H=1.85;
@@ -992,6 +1255,8 @@ let activeDoorIdx=-1,doorState='closed',doorwayArmed=false,forestArmed=false;
 let svTimer=null,svSeconds=60,svMission=null;
 const GMAPS_KEY='AIzaSyDkv5cMLdPRV0qGF1kwtjb2h6WaVEe4ud8'; // needs Map Tiles API enabled + billed in Cloud Console
 const doorObjs=[],bbObjs=[];
+let armedPreviewIdx=-1; // which hub door (if any) currently has a live dolly-cam preview
+let currentGoldPortalIsManhattan=false,nearGoldPortalPrev=false;
 let finalBBObj=null,stoneObj=null;
 let finalBBUnlocked=false,stoneVisible=false;
 let cityMeshes=[],cityBounds={minX:-60,maxX:60,minZ:-60,maxZ:60};
@@ -1055,6 +1320,11 @@ function loadHDR(){
 $('wen').addEventListener('click',()=>{
   $('warning').style.opacity='0';$('warning').style.transition='opacity .8s';
   setTimeout(()=>$('warning').style.display='none',800);init();
+  // This click is a real user gesture, so unmuting here (unlike the initial
+  // page-load autoplay, which browsers force muted with no exceptions) is
+  // enough to make audio actually play.
+  const cbv=$('connectBgVideo');
+  if(cbv){cbv.muted=false;cbv.play().catch(()=>{});}
 });
 
 function init(){
@@ -1087,8 +1357,7 @@ function init(){
   const gnd=new THREE.Mesh(new THREE.PlaneGeometry(600,600),new THREE.MeshStandardMaterial({color:0x0e1016,roughness:1}));
   gnd.rotation.x=-Math.PI/2;gnd.position.y=-0.05;gnd.receiveShadow=true;scene.add(gnd);
   loadHDR();setupPost();setupControls();setupTouch();buildMusic();
-  $('connect').addEventListener('click',startGame,{once:true});
-  $('connect').addEventListener('touchstart',startGame,{passive:true,once:true});
+  setupConnectChoices();
   addEventListener('resize',onResize);
   renderer.setAnimationLoop(animate);
   loadCity();
@@ -1286,7 +1555,7 @@ function mkHieroglyphTexture(){
 // ── BUILD: DOORS ──────────────────────────────────────────────────────
 function buildDoors(){
   const DW=DOOR_DW,DH=DOOR_DH;
-  for(let i=0;i<17;i++){ // 17 hub doors (0–16); the last DOORS entry (Archive) is not built in the hub
+  for(let i=0;i<18;i++){ // 18 hub doors (0–17); the last DOORS entry (Archive) is not built in the hub
     const d=DOORS[i];
     const spot=findDoorSpot(i);
     const neonColor=DOOR_COLORS[i];
@@ -1315,7 +1584,7 @@ function buildDoors(){
     const gl=new THREE.PointLight(neonColor,0.3,5);gl.position.set(0,DH/2,0.6);grp.add(gl);
     const glow=new THREE.PointLight(neonColor,0.4,3);glow.position.set(0,0.3,0.8);grp.add(glow);
     scene.add(grp);
-    let cssObj=null,iframe=null,svEl=null;
+    let cssObj=null,iframe=null,svEl=null,pvMount=null,pvCss=null;
     if(css3d&&typeof THREE.CSS3DObject==='function'){
       const PW=Math.round(DW*IFRAME_MULT),PH=Math.round(DH*IFRAME_MULT);
       let mountEl;
@@ -1355,8 +1624,24 @@ function buildDoors(){
       cssObj.position.set(spot.x+nx,spot.y+DH/2,spot.z+nz);
       cssObj.rotation.y=spot.ry;cssObj.visible=false;
       scene.add(cssObj);
+      // Dolly-cam preview mount: an empty div, embedded in 3D exactly over
+      // this door's panel, same as cssObj above. It stays empty (and
+      // invisible) until the player walks within 5m of this specific
+      // UNOPENED door — at which point the module script's isolated
+      // Tiles3D engine appends its own tiny live-rendering canvas into it
+      // (see armDoorPreview/updateDoorPreviewArm). Only ever one of these
+      // has anything in it at a time.
+      if(d.type==='streetview'){
+        pvMount=document.createElement('div');
+        pvMount.style.cssText=`width:${PW}px;height:${PH}px;overflow:hidden;background:#000;`;
+        pvCss=new THREE.CSS3DObject(pvMount);
+        pvCss.scale.setScalar(1/IFRAME_MULT);
+        pvCss.position.set(spot.x+nx*1.4,spot.y+DH/2,spot.z+nz*1.4);
+        pvCss.rotation.y=spot.ry;pvCss.visible=false;
+        scene.add(pvCss);
+      }
     }
-    doorObjs.push({grp,fill,handle,gl,glow,pos:{x:spot.x,y:spot.y,z:spot.z},ry:spot.ry,doorIdx:i,opened:false,cssObj,iframe,svEl,_px:0,_py:0});
+    doorObjs.push({grp,fill,handle,gl,glow,pos:{x:spot.x,y:spot.y,z:spot.z},ry:spot.ry,doorIdx:i,opened:false,cssObj,iframe,svEl,pvMount,pvCss,_px:0,_py:0});
   }
 }
 
@@ -1502,11 +1787,20 @@ function setupControls(){
     if(k==='s'||k==='arrowdown'){kS=1;e.preventDefault();}
     if(k==='a'||k==='arrowleft'){kA=1;e.preventDefault();}
     if(k==='d'||k==='arrowright'){kD=1;e.preventDefault();}
-    // E only opens doors in the hub now — inside a map it used to also mean
-    // "exit", which is exactly the double-duty causing the jam. Escape is
-    // the one dedicated leave-key on PC now (unchanged, see below). Mobile
-    // keeps tap-to-exit via interact() since it has no Escape key at all.
-    if(k==='e'&&doorState!=='map')interact();
+    // E: hub = interact (open doors etc). Inside a map = exit, same as
+    // Escape — pulls you straight back to the city.
+    if(k==='e'){if(doorState==='map'){closeFeed();exitMapFull();}else interact();}
+    // V: the map-mode interact key — TVs etc, anything inside a 3D map that
+    // needs a press (E is taken by exit in here, see above). Gated to 30m
+    // so it only does anything once the on-screen [V] TOGGLE TV prompt
+    // (see updateTVPrompt) is actually showing.
+    if(k==='v'&&doorState==='map'&&window.Tiles3D){
+      const bd=window.Tiles3D.getBillboardDist();
+      if(bd!==null&&bd<=30){
+        const on=window.Tiles3D.toggleBillboardVideo();
+        if(on!==null){sfxUI();toast(on?'TV ON':'TV OFF');}
+      }
+    }
     if(k===' '){jumpAction();e.preventDefault();}
     if(k==='shift'&&doorState==='map'&&window.Tiles3D)window.Tiles3D.setRun(true);
     if(k==='f'&&(flyUnlocked||doorState==='map')){flyMode=!flyMode;if(window.Tiles3D)window.Tiles3D.setFly(flyMode);toast(flyMode?'FLY ON':'FLY OFF');}
@@ -1516,6 +1810,12 @@ function setupControls(){
     if(k==='control'&&!e.repeat&&doorState==='map'&&window.Tiles3D){
       const on=window.Tiles3D.toggleSuperSpeed();
       toast(on?'SUPER SPEED ON':'SUPER SPEED OFF');
+      if(on){sfxOpen();triggerHBSpike();}
+    }
+    // Super-SUPER speed (PC only, maps only): T, 10x on top of super speed.
+    if(k==='t'&&!e.repeat&&doorState==='map'&&window.Tiles3D){
+      const on=window.Tiles3D.toggleSuperSuper();
+      toast(on?'SUPER SUPER SPEED ON':'SUPER SUPER SPEED OFF');
       if(on){sfxOpen();triggerHBSpike();}
     }
     if(k==='escape'){closeFeed();exitMapFull();}
@@ -1528,12 +1828,20 @@ function setupControls(){
   });
   document.addEventListener('click',()=>{
     if(!started||isMobile)return;
-    // Any click exits a map — no key to remember, matches mobile's
-    // any-tap-exits behaviour exactly.
-    if(doorState==='map'){exitMapFull();return;}
+    // Click is unassigned on purpose — E and Escape are the exit keys.
+    // This just re-grabs pointer lock if it was ever dropped.
     if(document.pointerLockElement!==document.body){
       document.body.requestPointerLock().catch(()=>{});
     }
+  });
+  const tvTapBtn=$('tvTapBtn');
+  if(tvTapBtn)tvTapBtn.addEventListener('click',ev=>{
+    ev.stopPropagation();
+    if(doorState!=='map'||!window.Tiles3D)return;
+    const bd=window.Tiles3D.getBillboardDist();
+    if(bd===null||bd>30)return;
+    const on=window.Tiles3D.toggleBillboardVideo();
+    if(on!==null){sfxUI();toast(on?'TV ON':'TV OFF');}
   });
   document.addEventListener('mousemove',e=>{
     if(!started||document.pointerLockElement!==document.body)return;
@@ -1627,6 +1935,22 @@ function setupTouch(){
   },{passive:true});
 }
 
+// ── TITLE SCREEN CHOICE (WATCH MOVIE vs ENTER REAL WORLD) ──────────────
+// "Enter" (either button) starts the game exactly as the old tap-anywhere
+// used to. "Watch movie" just clears the text off screen so the background
+// video reads clean, and drops a small always-visible box bottom-left that
+// starts the game whenever they're done watching.
+function setupConnectChoices(){
+  const watch=$('cWatch'),enter=$('cEnter'),box=$('enterBox');
+  if(enter)enter.addEventListener('click',startGame);
+  if(box)box.addEventListener('click',startGame);
+  if(watch)watch.addEventListener('click',()=>{
+    primeAudio();
+    ['cp1','cp2'].forEach(id=>{const el=$(id);if(el)el.style.display='none';});
+    if(box)box.style.display='block';
+  });
+}
+
 function startGame(){
   if(started)return;primeAudio();started=true;
   $('connect').classList.add('fade');setTimeout(()=>$('connect').style.display='none',1900);
@@ -1713,25 +2037,25 @@ function enterMapFull(dobj,d){
     toast('3D TILE ENGINE FAILED — REFRESH PAGE');return;
   }
   doorState='map';
-  doorwayArmed=false;
+  doorwayArmed=false;nearGoldPortalPrev=false;
   if(dobj.cssObj)dobj.cssObj.visible=false;
   $('mapFull').style.display='block';
   $('mapMsg').textContent='';
   svSeconds=60;
   svMission={narrative:d.narrative&&d.narrative.length?d.narrative:[d.overlay||''],idx:0,
     targetRadiusM:d.targetRadiusM||60,done:false};
+  const isManhattan=dobj.doorIdx===2&&!d.isPyramidPortal;
   window.Tiles3D.enter({
     lat:d.lat,lng:d.lng,elevM:d.elevM||0,apiKey:GMAPS_KEY,
-    skyMode:d.skyMode||'cycle',fx:(dobj.doorIdx===2&&!d.isPyramidPortal)?'manhattan':'',
-    frameColor:RETURN_FRAME_COLORS[dobj.doorIdx%RETURN_FRAME_COLORS.length],
+    skyMode:d.skyMode||'cycle',fx:isManhattan?'manhattan':'',
+    frameColor:PORTAL_BLUE,manhattan:isManhattan,fallHeight:d.fallHeight||200,
     billboardVideoUrl:d.billboardVideoUrl||null,
-    onReady:()=>{if(doorState==='map'){mapUpdateDistance();startMapTimer();if(dobj.doorIdx===2&&!d.isPyramidPortal)buildPyramidPortal();else clearPyramidPortal();}},
+    onReady:()=>{if(doorState==='map'){mapUpdateDistance();startMapTimer();currentGoldPortalIsManhattan=isManhattan;window.Tiles3D.buildGoldPortal(isManhattan,isManhattan?'→ AMAZON':'→ ???');}},
     onFail:()=>{if(doorState==='map'){console.error('[Tiles3D] ground never settled for',d.label,'lat',d.lat,'lng',d.lng,'elevM',d.elevM,'— likely a bad elevM estimate, or Map Tiles API/billing if tiles never loaded at all.');toast('3D TILES FAILED TO LOAD — CHECK LOCATION DATA OR MAP TILES API/BILLING');exitMapFull();}}
   });
 }
-// One distinct colour per door, cycled if there are ever more doors than
-// colours. Purely a placeholder frame — move/restyle later as needed.
-const RETURN_FRAME_COLORS=[0x4ade80,0xffb020,0x38bdf8,0xf472b6,0xa78bfa,0xfb7185,0x2dd4bf,0xfacc15];
+// One blue return portal everywhere — no more per-door colour cycling.
+const PORTAL_BLUE=0x2dd4ff;
 
 // Door 1's walk-through destination — real Google 3D Tiles, same pipeline
 // as every other map door, not the never-configured forest tileset. Real
@@ -1782,17 +2106,39 @@ function enterPyramidPortal(){
 // line cycling below; it never ends the session.
 const MIN_LOOK_SECONDS=60; // minimum dwell before "target reached" can register — no exit follows it
 let svElapsed=0;
+// TV proximity prompt — only shown within 30m of the billboard (and only
+// in sessions that actually have one, e.g. Pulpit Rock/Norway). PC gets a
+// text hint ([V] TOGGLE TV); mobile gets an actual tappable button, since
+// there's no keyboard to hint at.
+function updateTVPrompt(){
+  const bd=window.Tiles3D.getBillboardDist();
+  const near=bd!==null&&bd<=30;
+  const h=$('tvHint'),t=$('tvTap');
+  if(h)h.style.display=(!isMobile&&near)?'block':'none';
+  if(t)t.style.display=(isMobile&&near)?'block':'none';
+}
+
 function mapUpdateDistance(){
   if(!window.Tiles3D||!window.Tiles3D.isReady())return;
+  updateTVPrompt();
   // Return-frame check runs regardless of mission state — walking through
   // it always takes you back to A, no E needed. This is IN ADDITION to E.
   const fd=window.Tiles3D.getFrameDist();
   if(fd!==null&&fd<=1.4){exitMapFull();return;}
-  // Pyramid-portal check — only ever non-null inside door 3's own session
-  // (see buildPyramidPortal/clearPyramidPortal). Walking into it re-enters
-  // the map pipeline at Giza instead of exiting to the hub.
+  // Pyramid-portal check — the gold portal now exists in every map (see
+  // buildGoldPortal), but only Rockefeller Plaza's actually goes anywhere
+  // yet. Elsewhere it's a placeholder: walking in shows a one-time toast
+  // instead of silently doing nothing, and doesn't fire again until you
+  // step out and back in (nearGoldPortalPrev edge-trigger).
   const pd=window.Tiles3D.getPyramidPortalDist();
-  if(pd!==null&&pd<=1.4){enterPyramidPortal();return;}
+  const nearGold=pd!==null&&pd<=1.4;
+  if(nearGold&&!nearGoldPortalPrev){
+    nearGoldPortalPrev=true;
+    if(currentGoldPortalIsManhattan){enterPyramidPortal();return;}
+    toast('DESTINATION COMING SOON');
+  }
+  if(!nearGold)nearGoldPortalPrev=false;
+  if(nearGold)return;
   if(!svMission||svMission.done)return;
   const p=window.Tiles3D.getLocalXZ();
   const dist=Math.hypot(p.x,p.z); // target sits at local (0,0) — the tile group is anchored there
@@ -1834,7 +2180,7 @@ function exitMapFull(){
     if(dobj&&dobj.svEl)dobj.svEl.innerHTML='';
     if(dobj&&dobj.cssObj)dobj.cssObj.visible=false;
   }
-  doorState='closed';activeDoorIdx=-1;doorwayArmed=false;
+  doorState='closed';activeDoorIdx=-1;doorwayArmed=false;nearGoldPortalPrev=false;
   $('live').style.display='none';
   // Pointer lock was never dropped, so nothing to re-request — this is just a safety net.
   if(!isMobile&&document.pointerLockElement!==document.body)document.body.requestPointerLock().catch(()=>{});
@@ -1911,6 +2257,55 @@ function clickStone(){
 }
 
 // ── INTERACT ──────────────────────────────────────────────────────────
+// Dolly-cam door preview: only the single nearest UNOPENED streetview-type
+// door within 5m ever gets a live preview (see the module-side
+// armDoorPreview — deliberately one at a time, never all 18 at once).
+// While inside a full 3D map (doorState==='map') the preview is always
+// off — the module's isolated renderer is busy running the actual
+// immersive session at that point.
+function updateDoorPreviewArm(){
+  if(!window.Tiles3D)return;
+  if(doorState==='map'){
+    if(armedPreviewIdx>=0){
+      window.Tiles3D.disarmDoorPreview();
+      const prev=doorObjs[armedPreviewIdx];if(prev&&prev.pvCss)prev.pvCss.visible=false;
+      armedPreviewIdx=-1;
+    }
+    return;
+  }
+  let nearest=-1,nearestD=5;
+  for(let i=0;i<doorObjs.length;i++){
+    const o=doorObjs[i];
+    if(o.opened||!o.pvMount)continue;
+    const dd=Math.hypot(o.pos.x-rig.position.x,o.pos.z-rig.position.z);
+    if(dd<nearestD){nearestD=dd;nearest=i;}
+  }
+  if(nearest!==armedPreviewIdx){
+    if(armedPreviewIdx>=0){
+      const prev=doorObjs[armedPreviewIdx];if(prev&&prev.pvCss)prev.pvCss.visible=false;
+    }
+    if(nearest>=0){
+      const o=doorObjs[nearest],dd=DOORS[o.doorIdx];
+      window.Tiles3D.armDoorPreview(o.pvMount,dd.lat,dd.lng,dd.elevM||0,GMAPS_KEY,dd.dollyHeight||200);
+      o.pvCss.visible=true;
+    } else {
+      window.Tiles3D.disarmDoorPreview();
+    }
+    armedPreviewIdx=nearest;
+  }
+  if(armedPreviewIdx>=0){
+    const o=doorObjs[armedPreviewIdx];
+    const dx=rig.position.x-o.pos.x,dz=rig.position.z-o.pos.z;
+    const c=Math.cos(o.ry),s=Math.sin(o.ry);
+    // rotate into the door's own local space so "left/right of the door"
+    // maps consistently to parallax regardless of which way it's facing.
+    // Negated on purpose: real window parallax is inverted from your own
+    // motion (step left, and you see more of what's to the right beyond
+    // the frame) — this was reported backwards, flipped it here.
+    const localX=-(dx*c-dz*s),localZ=-(dx*s+dz*c);
+    window.Tiles3D.updateDoorPreview(localX,localZ);
+  }
+}
 function updateNear(){
   nearDoor=null;nearBB=null;nearFinalBB=false;nearStone=false;
   $('xh').classList.remove('lock');$('hint').style.display='none';
@@ -1951,6 +2346,16 @@ function updateNear(){
 
 function interact(){
   if(!started||ending)return;primeAudio();sfxUI();
+  if(doorState==='map'){
+    // Mobile single-tap path to the TV — same 30m gate as the V key/tap
+    // button, so an idle tap elsewhere in the map doesn't silently toggle
+    // a TV you can't even see yet.
+    if(window.Tiles3D){
+      const bd=window.Tiles3D.getBillboardDist();
+      if(bd!==null&&bd<=30)window.Tiles3D.toggleBillboardVideo();
+    }
+    return;
+  }
   if(nearStone){clickStone();return;}
   if(nearFinalBB){activateFinalBB();return;}
   if(nearDoor!==null){openDoor(nearDoor);return;}
@@ -1966,8 +2371,15 @@ function checkDoorwayEntry(){
   // opening is centered on local z=0, so either approach direction works.
   const c=Math.cos(dobj.ry),s=Math.sin(dobj.ry);
   const localX=dx*c-dz*s,localZ=dx*s+dz*c;
-  if(Math.abs(localZ)>1.05)doorwayArmed=true;
-  if(doorwayArmed&&Math.abs(localX)<DOOR_DW*.52&&Math.abs(localZ)<0.72){
+  // BUG FIX: this used to require the player to first be beyond 1.05m in Z
+  // (to "arm" it) before it would ever fire — meant to stop an instant
+  // re-trigger the moment the door opens, but since a player is normally
+  // already standing well inside that radius when they press E (that's how
+  // they were close enough to open it), simply continuing to walk forward
+  // could never satisfy "first get further away, then come back" and the
+  // walk-through silently did nothing. Trigger directly off being inside
+  // the doorway box instead — no arming stage needed.
+  if(Math.abs(localX)<DOOR_DW*.55&&Math.abs(localZ)<0.85){
     enterMapFull(dobj,DOORS[dobj.doorIdx]);
   }
 }
@@ -2377,7 +2789,7 @@ function animate(){
   const t=clock.elapsedTime;
   updateDayNight(dt);
   if(started){
-    updateMovement(dt);updateNear();updateHB(dt);updateMusic(dt);checkVoid(dt);updateMinimap(dt);updateDoorParallax(dt);
+    updateMovement(dt);updateNear();updateDoorPreviewArm();updateHB(dt);updateMusic(dt);checkVoid(dt);updateMinimap(dt);updateDoorParallax(dt);
     stmtT-=dt;if(stmtT<=0){stmtT=20+Math.random()*22;showStmt();}
     const bob=Math.sin(t*2)*0.15;
     bbObjs.forEach(o=>{if(o.tri)o.tri.position.y=o.tri.userData.baseY+bob;});
@@ -2399,8 +2811,11 @@ function animate(){
       const ssOn=window.Tiles3D.isSuperSpeedActive();
       if(lastSuperSpeedOn&&!ssOn)toast('SUPER SPEED DEPLETED');
       lastSuperSpeedOn=ssOn;
-    } else if(lastSuperSpeedOn){
-      lastSuperSpeedOn=false;
+      const ss2On=window.Tiles3D.isSuperSuperActive();
+      if(lastSuperSuperOn&&!ss2On)toast('SUPER SUPER SPEED DEPLETED');
+      lastSuperSuperOn=ss2On;
+    } else if(lastSuperSpeedOn||lastSuperSuperOn){
+      lastSuperSpeedOn=false;lastSuperSuperOn=false;
     }
   }
   const skyOn=_skyMat&&_skyMat.opacity>0.005;
