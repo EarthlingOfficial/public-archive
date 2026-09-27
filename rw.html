@@ -90,6 +90,8 @@ canvas{position:fixed;inset:0;width:100%;height:100%;z-index:0}
 @media(pointer:coarse){#fxBlur{-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px)}}
 #ssBlur{position:absolute;inset:0;z-index:1;pointer-events:none;opacity:0;display:none;-webkit-backdrop-filter:blur(9px);backdrop-filter:blur(9px);-webkit-mask-image:radial-gradient(ellipse at center,transparent 12%,#000 70%);mask-image:radial-gradient(ellipse at center,transparent 12%,#000 70%)}
 #ssColor{position:absolute;inset:0;z-index:1;pointer-events:none;opacity:0;display:none;background:conic-gradient(from 0deg,#ff8a3d,#e14be8,#3dc7ff,#7cff8a,#ff8a3d);mix-blend-mode:color-dodge}
+#dtBlur{position:absolute;inset:0;z-index:1;pointer-events:none;opacity:0;display:none;-webkit-backdrop-filter:blur(18px);backdrop-filter:blur(18px);-webkit-mask-image:radial-gradient(ellipse at center,transparent 6%,#000 58%);mask-image:radial-gradient(ellipse at center,transparent 6%,#000 58%)}
+#dtTint{position:absolute;inset:0;z-index:1;pointer-events:none;opacity:0;display:none;background:radial-gradient(ellipse at center,rgba(255,255,255,.4) 0%,rgba(130,200,255,.3) 42%,rgba(15,30,110,.65) 100%);mix-blend-mode:overlay}
 #tilesLoading{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:82;pointer-events:none;color:rgba(200,184,106,0.6);font-size:10px;letter-spacing:5px;text-align:center}
 #mapMsg{position:fixed;top:9%;left:50%;transform:translateX(-50%);z-index:81;pointer-events:none;text-align:center;max-width:78%;color:#ff3b30;font-family:Georgia,serif;font-style:italic;letter-spacing:.03em;font-size:clamp(11px,1.6vw,15px);line-height:1.6;text-shadow:0 2px 30px rgba(0,0,0,1),0 0 24px rgba(255,20,20,.3)}
 #tvHint{position:fixed;bottom:13%;left:50%;transform:translateX(-50%);z-index:83;display:none;pointer-events:none;color:#fff;font-family:Georgia,serif;letter-spacing:.08em;font-size:14px;text-shadow:0 2px 12px rgba(0,0,0,.9)}
@@ -207,8 +209,24 @@ let superSuperActive=false,superSuperTimer=null,ssHue=0;
 function setSuperSuper(on){
   if(on){superSpeedActive=false;if(superSpeedTimer){clearTimeout(superSpeedTimer);superSpeedTimer=null;}}
   superSuperActive=!!on;
+  if(!superSuperActive)setDoubleTurbo(false); // can't have double turbo without its base tier
   if(superSuperTimer){clearTimeout(superSuperTimer);superSuperTimer=null;}
-  if(superSuperActive)superSuperTimer=setTimeout(()=>{superSuperActive=false;superSuperTimer=null;},SUPER_SUPER_MS);
+  if(superSuperActive)superSuperTimer=setTimeout(()=>{superSuperActive=false;superSuperTimer=null;setDoubleTurbo(false);},SUPER_SUPER_MS);
+}
+// O-key "double turbo": press T first (super-SUPER), then O stacks one more
+// tier on top — 2x super-super again (~220x base walk), 60s, same shape as
+// the tiers above. Auto-cancels the instant super-super ends (timeout above
+// or T pressed again), since it can't exist without its base tier running.
+// Screen FX: stronger backdrop blur (#dtBlur), a blue/white "warp" tint
+// (#dtTint), and a camera wobble applied in loop() — see updateDoubleTurboFx.
+const DOUBLE_TURBO_MULT=SUPER_SUPER_MULT*2,DOUBLE_TURBO_MS=60000;
+let doubleTurboActive=false,doubleTurboTimer=null;
+function setDoubleTurbo(on){
+  if(on&&!superSuperActive)return false; // must already be in super-super
+  doubleTurboActive=!!on;
+  if(doubleTurboTimer){clearTimeout(doubleTurboTimer);doubleTurboTimer=null;}
+  if(doubleTurboActive)doubleTurboTimer=setTimeout(()=>{doubleTurboActive=false;doubleTurboTimer=null;},DOUBLE_TURBO_MS);
+  return true;
 }
 
 // ── PER-SESSION LOOK (set from enter() opts) ─────────────────────────
@@ -260,6 +278,34 @@ function updateSuperFx(dt){
     b.style.display='none';c.style.display='none';
   }
 }
+// Double-turbo screen FX: stronger blur + a blue/white tint ramp in/out
+// over ~0.35s, same pattern as updateSuperFx above but heavier. Also builds
+// a small camera-shake offset (dtWobbleZ/dtWobbleX) — NOT applied to
+// camera3 here, since rotation.z/x still get overwritten later this same
+// frame by the hover-sway/ground-snap block in loop(). Instead loop() adds
+// this offset on top right before render, once everything else has settled.
+let dtFxK=0,dtWobbleT=0,dtWobbleZ=0,dtWobbleX=0;
+function updateDoubleTurboFx(dt){
+  const b=document.getElementById('dtBlur'),c=document.getElementById('dtTint');
+  dtFxK+=((doubleTurboActive?1:0)-dtFxK)*Math.min(1,dt*3);
+  if(b&&c){
+    if(dtFxK>0.003){
+      b.style.display='block';c.style.display='block';
+      b.style.opacity=(dtFxK*0.85).toFixed(3);
+      c.style.opacity=(dtFxK*0.55).toFixed(3);
+    } else {
+      b.style.display='none';c.style.display='none';
+    }
+  }
+  if(dtFxK>0.003){
+    dtWobbleT+=dt*(9+dtFxK*4);
+    const amt=dtFxK*0.05;
+    dtWobbleZ=Math.sin(dtWobbleT)*amt;
+    dtWobbleX=Math.sin(dtWobbleT*1.7+1.1)*amt*0.5;
+  } else {
+    dtWobbleZ=0;dtWobbleX=0;
+  }
+}
 // ── PORTALS (circular, glowing, pulsing) ──────────────────────────────
 // Both the blue return-portal and the gold destination-portal are built by
 // this one shared helper now — no more box door-frames, and critically no
@@ -309,6 +355,7 @@ function buildPortalGroup(colorHex,label){
     const labelSpr=new THREE3.Sprite(new THREE3.SpriteMaterial({map:new THREE3.CanvasTexture(lc),transparent:true,depthWrite:false}));
     labelSpr.scale.set(3,0.38,1);labelSpr.position.set(0,R+0.7,0);grp.add(labelSpr);
   }
+  grp.scale.setScalar(1.5); // +50% — bigger, easier to spot from a distance
   return{grp,ringMat,discMat,haloMat,pl};
 }
 
@@ -328,19 +375,21 @@ function buildReturnFrame(colorHex,tall){
   scene3.add(returnFrame3);
 }
 
-// Gold destination portal — ONLY built inside door 3 (Rockefeller Plaza),
-// on the opposite side from the blue portal so the two never overlap.
-// Walking through it hot-swaps the tileset straight to the Amazon without
-// returning to the main hub first — same enter()/settle pipeline every
-// other door already uses, just re-entered while already inside a map
-// (see enterMapFull's onReady and AMAZON_DEST below).
+// Gold destination portal — now built in EVERY map, ~8m further out than
+// the blue return portal on the same side (comfortably "within 10m" of
+// it) and at the same height, so they read as a matched pair. Right now
+// only the Rockefeller Plaza session's gold portal actually goes anywhere
+// (hot-swaps to the Amazon — see enterMapFull's onReady and AMAZON_DEST
+// below); every other map's is a visual placeholder until a real
+// per-map destination is wired up (classic script shows a "COMING SOON"
+// toast if you walk into one of those instead).
 let pyramidPortal3=null,pyramidPortalPos=null,goldPortal=null;
-function buildPyramidPortal(){
+function buildPyramidPortal(tall,label){
   clearPyramidPortal();
-  const p=buildPortalGroup(0xd4af37,'→ AMAZON');
-  const side=-lastPortalSide;
+  const p=buildPortalGroup(0xd4af37,label||'→ ???');
+  const side=lastPortalSide+Math.sign(lastPortalSide||1)*8; // same side as blue, 8m further out
   const fx=side,fz=SPAWN_OFFSET;
-  const fy=spawnGroundY+PORTAL_HEIGHT_MANHATTAN;
+  const fy=spawnGroundY+(tall?PORTAL_HEIGHT_MANHATTAN:PORTAL_HEIGHT_DEFAULT);
   p.grp.position.set(fx,fy,fz);
   pyramidPortal3=p.grp;pyramidPortalPos={x:fx,y:fy,z:fz};goldPortal=p;
   scene3.add(pyramidPortal3);
@@ -382,18 +431,14 @@ function buildBillboardVideo(url){
   clearBillboardVideo();
   if(!url)return;
   const v=document.createElement('video');
-  // By the time a player reaches this TV they've already clicked the age
-  // gate and clicked/tapped into the game itself — real gestures already
-  // happened on this page, so audio is unmuted straight away instead of
-  // requiring yet another click just to hear it.
-  v.crossOrigin='anonymous';v.muted=false;v.loop=true;v.playsInline=true;v.autoplay=true;
+  // Loaded paused on purpose now — starts on the first V-press/tap
+  // (toggleBillboardVideo), not the moment the map loads. Still unmuted by
+  // default since a real gesture already happened getting into the game,
+  // so pressing V just calls play() with sound, no second mute step needed.
+  v.crossOrigin='anonymous';v.muted=false;v.loop=true;v.playsInline=true;v.autoplay=false;
+  v.preload='auto';
   v.src=url;
-  v.play().catch(()=>{
-    // Only if a browser still blocks it: fall back to muted-autoplay so the
-    // picture isn't stuck black, and let toggleBillboardVideo() (V key / tap)
-    // unmute it on demand.
-    v.muted=true;v.play().catch(()=>{});
-  });
+  v.load();
   const tex=new THREE3.VideoTexture(v);
   tex.minFilter=THREE3.LinearFilter;tex.magFilter=THREE3.LinearFilter;
   const W=160,H=120; // 20x the original 8x6
@@ -416,9 +461,9 @@ function clearBillboardVideo(){
   if(billboardVideoTex){billboardVideoTex.dispose();billboardVideoTex=null;}
   if(billboardVideoEl){billboardVideoEl.pause();billboardVideoEl.removeAttribute('src');billboardVideoEl.load();billboardVideoEl=null;}
 }
-// V key (PC) / tap (mobile) toggle — pauses it, or unmutes+resumes it if it
-// was ever silently muted-fallback-autoplaying. Not required for normal
-// playback (it's already on with sound by default) — just a manual override.
+// V key (PC) / tap (mobile) toggle — starts it (unmuted) the first time,
+// pauses/resumes on every press after. This is the ONLY way the TV ever
+// plays now — buildBillboardVideo loads it paused, no autoplay.
 function toggleBillboardVideo(){
   if(!billboardVideoEl)return null;
   if(billboardVideoEl.paused||billboardVideoEl.muted){
@@ -427,6 +472,11 @@ function toggleBillboardVideo(){
   }
   billboardVideoEl.pause();
   return false;
+}
+// Read-only state for the on-screen prompt (PLAYING vs PAUSED) — separate
+// from toggle so updateTVPrompt can poll it every frame without side effects.
+function isBillboardPlaying(){
+  return !!billboardVideoEl&&!billboardVideoEl.paused&&!billboardVideoEl.muted;
 }
 
 function ensureRenderer(){
@@ -611,6 +661,7 @@ function loop(){
   updateSky3(dt);
   updatePortals(dt);
   updateSuperFx(dt);
+  updateDoubleTurboFx(dt);
   camera3.rotation.y=look.h;camera3.rotation.x=look.p;
   const fwd=new THREE3.Vector3(-Math.sin(look.h),0,-Math.cos(look.h));
   const rgt=new THREE3.Vector3(Math.cos(look.h),0,-Math.sin(look.h));
@@ -627,7 +678,7 @@ function loop(){
   // stick only halfway sits between walk and run instead of snapping to one
   // or the other — this is what replaced the on-screen RUN button.
   const analogMag=(move.mag!=null)?move.mag:(move.run?1:0);
-  const speedMult=superSuperActive?SUPER_SUPER_MULT:(superSpeedActive?SUPER_SPEED_MULT:1);
+  const speedMult=doubleTurboActive?DOUBLE_TURBO_MULT:(superSuperActive?SUPER_SUPER_MULT:(superSpeedActive?SUPER_SPEED_MULT:1));
   const spd=(WALK_SPEED+(RUN_SPEED-WALK_SPEED)*analogMag)*speedMult;
   if(mag>0.001){
     camera3.position.x+=(mx/mag)*spd*dt;
@@ -681,6 +732,7 @@ function loop(){
       }
     }
   }
+  if(dtFxK>0.003){camera3.rotation.z+=dtWobbleZ;camera3.rotation.x+=dtWobbleX;}
   camera3.updateMatrixWorld();
   renderer3.render(scene3,camera3);
 }
@@ -761,6 +813,7 @@ window.Tiles3D={
     look={h:0,p:0};move={f:0,b:0,l:0,r:0,run:false};
     setSuperSpeed(false); // never carry super speed in from a previous session
     setSuperSuper(false);
+    dtFxK=0;dtWobbleZ=0;dtWobbleX=0;
     vel3Y=0;onGround3=true;jumpReq=false;skyT=0;skyTintHue=Math.random()<0.5?0.08:0.75;
     lastSafeX=0;lastSafeY=SPAWN_UP;lastSafeZ=SPAWN_OFFSET;noGroundFallTime=0;
     if(skyMatB)skyMatB.color.setHSL(skyTintHue,0.35,0.55);
@@ -872,6 +925,15 @@ window.Tiles3D={
   // SUPER_SUPER_MULT rather than compounding by accident).
   toggleSuperSuper(){setSuperSuper(!superSuperActive);return superSuperActive;},
   isSuperSuperActive(){return superSuperActive;},
+  // Returns null if rejected (super-super isn't on yet — caller should
+  // toast "press T first" or similar), else the resulting on/off state,
+  // same convention as toggleSuperSpeed/toggleSuperSuper above.
+  toggleDoubleTurbo(){
+    if(!superSuperActive)return null;
+    setDoubleTurbo(!doubleTurboActive);
+    return doubleTurboActive;
+  },
+  isDoubleTurboActive(){return doubleTurboActive;},
   getLocalXZ(){return camera3?{x:camera3.position.x,z:camera3.position.z}:{x:0,z:0};},
   // Distance from the player to the return-portal, in metres, or null if
   // no portal has been placed for this session yet. Full 3D distance now
@@ -893,7 +955,15 @@ window.Tiles3D={
     return camera3.position.distanceTo(billboardVideoMesh.position);
   },
   armDoorPreview,disarmDoorPreview,updateDoorPreview,
-  toggleBillboardVideo
+  // BUG FIX: these two used to be called as bare identifiers from a closure
+  // written in the classic (non-module) script — but buildPyramidPortal/
+  // clearPyramidPortal only exist in THIS module's own scope. A classic-
+  // script closure resolves names from where it was WRITTEN, not where
+  // it's invoked from, so every call threw a silent ReferenceError in the
+  // console and the gold portal was never actually built, ever. Exposing
+  // them properly here, same pattern as everything else on this object.
+  buildGoldPortal:buildPyramidPortal,clearGoldPortal:clearPyramidPortal,
+  toggleBillboardVideo,isBillboardPlaying
 };
 </script>
 
@@ -952,11 +1022,13 @@ window.Tiles3D={
   <div id="fxBlur"></div>
   <div id="ssBlur"></div>
   <div id="ssColor"></div>
+  <div id="dtBlur"></div>
+  <div id="dtTint"></div>
   <div id="tilesDarken"></div>
   <div id="tilesGrain"></div>
   <div id="fxVig"></div>
   <div id="tilesLoading">LOADING TERRAIN…</div>
-  <div id="tvHint">[ V ] TOGGLE TV</div>
+  <div id="tvHint">[ V ] PLAY TV</div>
   <div id="tvTap"><div id="tvTapBtn">▶ TAP TO WATCH</div></div>
   <div id="mapMsg"></div>
 </div>
@@ -1210,6 +1282,9 @@ const RADIO_STATIONS=[
   {url:"https://ice6.somafm.com/thetrip-128-mp3",hls:false,scanner:false,name:"THE TRIP"},
   {url:"https://ice1.somafm.com/7soul-128-mp3",hls:false,scanner:false,name:"7TH STREET SOUL"},
   {url:"https://npr-ice.streamguys1.com/live.mp3",hls:false,scanner:false,name:"NPR NEWS"},
+  {url:"https://ice1.somafm.com/poptron-128-mp3",hls:false,scanner:false,name:"POPTRON"},
+  {url:"https://ice1.somafm.com/indiepop-128-mp3",hls:false,scanner:false,name:"INDIE POP ROCKS"},
+  {url:"https://ice1.somafm.com/bagel-128-mp3",hls:false,scanner:false,name:"BAGEL RADIO"},
 ];
 
 const MUSIC=[
@@ -1245,6 +1320,7 @@ let svTimer=null,svSeconds=60,svMission=null;
 const GMAPS_KEY='AIzaSyDkv5cMLdPRV0qGF1kwtjb2h6WaVEe4ud8'; // needs Map Tiles API enabled + billed in Cloud Console
 const doorObjs=[],bbObjs=[];
 let armedPreviewIdx=-1; // which hub door (if any) currently has a live dolly-cam preview
+let currentGoldPortalIsManhattan=false,nearGoldPortalPrev=false;
 let finalBBObj=null,stoneObj=null;
 let finalBBUnlocked=false,stoneVisible=false;
 let cityMeshes=[],cityBounds={minX:-60,maxX:60,minZ:-60,maxZ:60};
@@ -1255,7 +1331,7 @@ const MCEIL=0.22,MFADE=2.5;
 let _primed=false,_musicStart=false;
 let radioCtx=null,radioGain=null,radioFilter=null,radioSrc=null;
 let radioEl=null,radioHls=null,radioPlaying=false,radioTimer=null;
-let radioStIdx=0,radioFailCount=0,radioBehavior="long",radioScanHops=0;
+let radioStIdx=0,radioFailCount=0,radioBehavior="long",radioScanHops=0,radioLoadTimer=null;
 let stmtQ=[...STMTS].sort(()=>Math.random()-0.5),stmtIdx=0,stmtT=18;
 let voidCD=0;
 const DAY_CYCLE=720;
@@ -1786,7 +1862,7 @@ function setupControls(){
       const bd=window.Tiles3D.getBillboardDist();
       if(bd!==null&&bd<=30){
         const on=window.Tiles3D.toggleBillboardVideo();
-        if(on!==null){sfxUI();toast(on?'TV ON':'TV OFF');}
+        if(on!==null){sfxUI();toast(on?'TV — PLAYING':'TV — PAUSED');}
       }
     }
     if(k===' '){jumpAction();e.preventDefault();}
@@ -1805,6 +1881,15 @@ function setupControls(){
       const on=window.Tiles3D.toggleSuperSuper();
       toast(on?'SUPER SUPER SPEED ON':'SUPER SUPER SPEED OFF');
       if(on){sfxOpen();triggerHBSpike();}
+    }
+    // Double turbo (PC only, maps only): O — only works once T (super-
+    // super) is already on, stacks one more tier on top with a blur/tint/
+    // wobble FX to sell the "Superman speed" feel. null = rejected (T not
+    // on yet), so nudge toward the actual sequence instead of a silent no-op.
+    if(k==='o'&&!e.repeat&&doorState==='map'&&window.Tiles3D){
+      const on=window.Tiles3D.toggleDoubleTurbo();
+      if(on===null)toast('PRESS T FIRST — SUPER SUPER SPEED');
+      else{toast(on?'DOUBLE TURBO ON':'DOUBLE TURBO OFF');if(on){sfxOpen();triggerHBSpike();}}
     }
     if(k==='escape'){closeFeed();exitMapFull();}
   });
@@ -1829,7 +1914,7 @@ function setupControls(){
     const bd=window.Tiles3D.getBillboardDist();
     if(bd===null||bd>30)return;
     const on=window.Tiles3D.toggleBillboardVideo();
-    if(on!==null){sfxUI();toast(on?'TV ON':'TV OFF');}
+    if(on!==null){sfxUI();toast(on?'TV — PLAYING':'TV — PAUSED');}
   });
   document.addEventListener('mousemove',e=>{
     if(!started||document.pointerLockElement!==document.body)return;
@@ -2025,7 +2110,7 @@ function enterMapFull(dobj,d){
     toast('3D TILE ENGINE FAILED — REFRESH PAGE');return;
   }
   doorState='map';
-  doorwayArmed=false;
+  doorwayArmed=false;nearGoldPortalPrev=false;
   if(dobj.cssObj)dobj.cssObj.visible=false;
   $('mapFull').style.display='block';
   $('mapMsg').textContent='';
@@ -2038,7 +2123,7 @@ function enterMapFull(dobj,d){
     skyMode:d.skyMode||'cycle',fx:isManhattan?'manhattan':'',
     frameColor:PORTAL_BLUE,manhattan:isManhattan,fallHeight:d.fallHeight||200,
     billboardVideoUrl:d.billboardVideoUrl||null,
-    onReady:()=>{if(doorState==='map'){mapUpdateDistance();startMapTimer();if(isManhattan)buildPyramidPortal();else clearPyramidPortal();}},
+    onReady:()=>{if(doorState==='map'){mapUpdateDistance();startMapTimer();currentGoldPortalIsManhattan=isManhattan;window.Tiles3D.buildGoldPortal(isManhattan,isManhattan?'→ AMAZON':'→ ???');}},
     onFail:()=>{if(doorState==='map'){console.error('[Tiles3D] ground never settled for',d.label,'lat',d.lat,'lng',d.lng,'elevM',d.elevM,'— likely a bad elevM estimate, or Map Tiles API/billing if tiles never loaded at all.');toast('3D TILES FAILED TO LOAD — CHECK LOCATION DATA OR MAP TILES API/BILLING');exitMapFull();}}
   });
 }
@@ -2050,11 +2135,20 @@ const PORTAL_BLUE=0x2dd4ff;
 // coordinates: Preikestolen / Pulpit Rock, Norway — 604m sheer cliff with
 // a small flat summit, so spawning near the edge reads instantly.
 // billboardVideoUrl: a real 3D plane inside this session (see
-// buildBillboardVideo in the Tiles3D module) that autoplays the moment the
-// ground settles — streams via HTTP range requests like any <video>, so it
-// doesn't need the whole (very large) source file downloaded first.
+// buildBillboardVideo in the Tiles3D module) that loads the moment the
+// ground settles and starts on the first V-press/tap — streams via HTTP
+// range requests like any <video>, so it doesn't need the whole (very
+// large) source file downloaded first.
+// TEMP TEST: pointed at CONNECT_BG_VIDEO_URL (the same title-screen video,
+// already confirmed working from archive.org) instead of the creature-movie
+// URL, to isolate whether the TV rig itself works with a known-good archive.org
+// source. If this plays fine, the creature-movie URL itself is the problem
+// (dead/restricted item, no CORS on its redirect, etc) and swap back to it
+// once that's confirmed working directly. Doesn't touch the #connectBgVideo
+// element on the title screen at all — this is a separate <video> the module
+// creates for itself, same URL string, no shared state.
 const DOOR1_MOUNTAIN={lat:58.98666,lng:6.18748,elevM:604,targetRadiusM:9999,
-  billboardVideoUrl:'https://archive.org/download/revenge-of-the-creature-3d/amarec(20250311-1702).ia.mp4',
+  billboardVideoUrl:CONNECT_BG_VIDEO_URL,
   overlay:'You fell through a game to get here.\nHe never had to fall through anything.',
   narrative:['You fell through a game to get here.','He never had to fall through anything.']};
 
@@ -2096,14 +2190,20 @@ const MIN_LOOK_SECONDS=60; // minimum dwell before "target reached" can register
 let svElapsed=0;
 // TV proximity prompt — only shown within 30m of the billboard (and only
 // in sessions that actually have one, e.g. Pulpit Rock/Norway). PC gets a
-// text hint ([V] TOGGLE TV); mobile gets an actual tappable button, since
-// there's no keyboard to hint at.
+// text hint, mobile gets an actual tappable button (no keyboard to hint
+// at) — both read the video's real play state every frame so the label
+// always says PLAYING or PAUSED rather than a static "toggle" prompt.
 function updateTVPrompt(){
   const bd=window.Tiles3D.getBillboardDist();
   const near=bd!==null&&bd<=30;
-  const h=$('tvHint'),t=$('tvTap');
-  if(h)h.style.display=(!isMobile&&near)?'block':'none';
+  const h=$('tvHint'),t=$('tvTap'),tb=$('tvTapBtn');
+  const playing=near&&window.Tiles3D.isBillboardPlaying();
+  if(h){
+    h.style.display=(!isMobile&&near)?'block':'none';
+    if(near)h.textContent='[ V ] TV — '+(playing?'PLAYING':'PAUSED');
+  }
   if(t)t.style.display=(isMobile&&near)?'block':'none';
+  if(tb&&near)tb.textContent=playing?'⏸ TV — PLAYING':'▶ TV — PAUSED';
 }
 
 function mapUpdateDistance(){
@@ -2113,11 +2213,20 @@ function mapUpdateDistance(){
   // it always takes you back to A, no E needed. This is IN ADDITION to E.
   const fd=window.Tiles3D.getFrameDist();
   if(fd!==null&&fd<=1.4){exitMapFull();return;}
-  // Pyramid-portal check — only ever non-null inside door 3's own session
-  // (see buildPyramidPortal/clearPyramidPortal). Walking into it re-enters
-  // the map pipeline at Giza instead of exiting to the hub.
+  // Pyramid-portal check — the gold portal now exists in every map (see
+  // buildGoldPortal), but only Rockefeller Plaza's actually goes anywhere
+  // yet. Elsewhere it's a placeholder: walking in shows a one-time toast
+  // instead of silently doing nothing, and doesn't fire again until you
+  // step out and back in (nearGoldPortalPrev edge-trigger).
   const pd=window.Tiles3D.getPyramidPortalDist();
-  if(pd!==null&&pd<=1.4){enterPyramidPortal();return;}
+  const nearGold=pd!==null&&pd<=1.4;
+  if(nearGold&&!nearGoldPortalPrev){
+    nearGoldPortalPrev=true;
+    if(currentGoldPortalIsManhattan){enterPyramidPortal();return;}
+    toast('DESTINATION COMING SOON');
+  }
+  if(!nearGold)nearGoldPortalPrev=false;
+  if(nearGold)return;
   if(!svMission||svMission.done)return;
   const p=window.Tiles3D.getLocalXZ();
   const dist=Math.hypot(p.x,p.z); // target sits at local (0,0) — the tile group is anchored there
@@ -2159,7 +2268,7 @@ function exitMapFull(){
     if(dobj&&dobj.svEl)dobj.svEl.innerHTML='';
     if(dobj&&dobj.cssObj)dobj.cssObj.visible=false;
   }
-  doorState='closed';activeDoorIdx=-1;doorwayArmed=false;
+  doorState='closed';activeDoorIdx=-1;doorwayArmed=false;nearGoldPortalPrev=false;
   $('live').style.display='none';
   // Pointer lock was never dropped, so nothing to re-request — this is just a safety net.
   if(!isMobile&&document.pointerLockElement!==document.body)document.body.requestPointerLock().catch(()=>{});
@@ -2277,8 +2386,11 @@ function updateDoorPreviewArm(){
     const dx=rig.position.x-o.pos.x,dz=rig.position.z-o.pos.z;
     const c=Math.cos(o.ry),s=Math.sin(o.ry);
     // rotate into the door's own local space so "left/right of the door"
-    // maps consistently to parallax regardless of which way it's facing
-    const localX=dx*c-dz*s,localZ=-(dx*s+dz*c);
+    // maps consistently to parallax regardless of which way it's facing.
+    // Negated on purpose: real window parallax is inverted from your own
+    // motion (step left, and you see more of what's to the right beyond
+    // the frame) — this was reported backwards, flipped it here.
+    const localX=-(dx*c-dz*s),localZ=-(dx*s+dz*c);
     window.Tiles3D.updateDoorPreview(localX,localZ);
   }
 }
@@ -2347,8 +2459,15 @@ function checkDoorwayEntry(){
   // opening is centered on local z=0, so either approach direction works.
   const c=Math.cos(dobj.ry),s=Math.sin(dobj.ry);
   const localX=dx*c-dz*s,localZ=dx*s+dz*c;
-  if(Math.abs(localZ)>1.05)doorwayArmed=true;
-  if(doorwayArmed&&Math.abs(localX)<DOOR_DW*.52&&Math.abs(localZ)<0.72){
+  // BUG FIX: this used to require the player to first be beyond 1.05m in Z
+  // (to "arm" it) before it would ever fire — meant to stop an instant
+  // re-trigger the moment the door opens, but since a player is normally
+  // already standing well inside that radius when they press E (that's how
+  // they were close enough to open it), simply continuing to walk forward
+  // could never satisfy "first get further away, then come back" and the
+  // walk-through silently did nothing. Trigger directly off being inside
+  // the doorway box instead — no arming stage needed.
+  if(Math.abs(localX)<DOOR_DW*.55&&Math.abs(localZ)<0.85){
     enterMapFull(dobj,DOORS[dobj.doorIdx]);
   }
 }
@@ -2548,6 +2667,7 @@ function initRadioCtx(){
 }
 
 function radioOnError(){
+  clearTimeout(radioLoadTimer);radioLoadTimer=null;
   radioFailCount++;
   if(radioFailCount>=RADIO_STATIONS.length){
     // Every known station failed in a row (rare — usually a network blip).
@@ -2564,6 +2684,16 @@ function radioPlayNow(){
   const st=RADIO_STATIONS[radioStIdx];
   if(radioHls){radioHls.destroy();radioHls=null;}
   radioEl.pause();radioEl.removeAttribute("src");radioEl.load();
+  clearTimeout(radioLoadTimer);
+  // Answers "how do we know it's just loading vs actually broken": play()
+  // resolving only means the browser accepted the request — a stream that
+  // connects then never sends data (bad relay, dead icecast mount) can sit
+  // there resolved-but-silent forever with no 'error' event to catch. So
+  // this is a hard ceiling — if we're not actually hearing audio within 8s
+  // of attempting a station, treat it as failed and skip to the next one,
+  // same path as a real error. Cleared the instant radioOnPlay fires for
+  // real (see there) or radioOnError already advances us (see above).
+  radioLoadTimer=setTimeout(radioOnError,8000);
   if(st.hls&&window.Hls&&Hls.isSupported()){
     radioHls=new Hls({enableWorker:false,lowLatencyMode:false});
     radioHls.loadSource(st.url);radioHls.attachMedia(radioEl);
@@ -2576,6 +2706,7 @@ function radioPlayNow(){
 }
 
 function radioOnPlay(st){
+  clearTimeout(radioLoadTimer);radioLoadTimer=null;
   const t=radioCtx.currentTime;
   $('radio').classList.add('tuning');
   radioGain.gain.cancelScheduledValues(t);radioGain.gain.setValueAtTime(0,t);
@@ -2586,6 +2717,10 @@ function radioOnPlay(st){
   radioTunerShow(true,st);
   let playMs;
   if(radioBehavior==="long")playMs=Math.random()*150000+30000;
+  // Scanner gets its own, longer window than a plain "short" hit — it's
+  // mostly ambient hiss with occasional chatter, so a 10-20s burst was
+  // barely long enough to catch anything. 15-35s now.
+  else if(radioBehavior==="scanner")playMs=Math.random()*20000+15000;
   else if(radioBehavior==="short")playMs=Math.random()*10000+10000;
   else playMs=Math.random()*3000+3000;
   radioTimer=setTimeout(radioDoStop,playMs);
@@ -2614,7 +2749,7 @@ function radioDoStop(){
       radioEl.pause();radioPlaying=false;radioTunerShow(false,null);
       $('radio').classList.remove('tuning');
       if(ending)return;
-      if(radioBehavior==="short"){radioStartCycle();}
+      if(radioBehavior==="short"||radioBehavior==="scanner"){radioStartCycle();}
       else{radioTimer=setTimeout(radioStartCycle,Math.random()*75000+45000);}
     },2900);
   }
@@ -2623,13 +2758,13 @@ function radioDoStop(){
 function radioStartCycle(){
   if(radioPlaying||ending)return;
   radioPlaying=true;radioFailCount=0;
-  // 1 in 3 chance: go straight to a scanner station
-  const wantScanner=Math.random()<0.33;
+  // Just over 1 in 2 chance: go straight to a scanner station (was 1 in 3).
+  const wantScanner=Math.random()<0.55;
   if(wantScanner){
     const scannerStations=RADIO_STATIONS.map((s,i)=>({s,i})).filter(x=>x.s.scanner);
     if(scannerStations.length){
       radioStIdx=scannerStations[Math.floor(Math.random()*scannerStations.length)].i;
-      radioBehavior="short"; // scanners play for a shorter burst — creepier
+      radioBehavior="scanner"; // own duration window — see radioOnPlay
       radioPlayNow();return;
     }
   }
