@@ -2094,7 +2094,7 @@ function carEnter(){
   P.copy(car.gp).addScaledVector(gUp,EYE_H);
   car.lookH=0;car.lastH=look.h;car.camSnap=true;
   carHud(true);carSound(true);
-  car.driveT=0;car.grabAt=Math.random()<1/6?20+Math.random()*160:null; // 1 in 6 drives, something comes for the car
+  if(car.grabAt==null){car.driveT=0;car.grabAt=Math.random()<1/5?20+Math.random()*160:null;} // 1 in 5 times you get in, something locks on to the car (and stays locked on if you get out)
 }
 function carLeave(){
   const P=camera3.position;
@@ -2386,6 +2386,9 @@ function carTumbleUpdate(dt,P){
 // ── the Vegan Wagon gets taken: a darter drops out of the sky, wraps the car, lifts it and smashes it into the ground
 const CAR_GRAB_SAY=["Something's coming down out of the sky — at US!","Earthling, look up. LOOK UP!","What is that? It's diving straight at the car!"];
 const CAR_HURL_SAY=["It's got the car! It's lifting us!","Hahaha! It's picked you up like a lamb at the market!","We're in the air — it's going to drop us!"];
+const CAR_HURL_OUT_SAY=["It's lifting the whole car up!","Look at that — it's going to smash it!","Up it goes… and down it comes!"];
+const CAR_GRAB_OUT_SAY=["Earthling — it's going for the car! Get your camera out!","Look! It's coming for the Vegan Wagon!","Good thing you got out. Watch this."];
+const CAR_WATCH_BOOM_SAY=["Hahaha! There goes the Vegan Wagon!","Kaboom! Glad you weren't in that one, Earthling.","And that's why we walk."];
 const CAR_BOOM_SAY=["Hahaha! Kaboom! The Vegan Wagon's gone, and so are you!","Hahaha! Smashed like a crate at the abattoir!","Hahaha! That's one way to end a road trip!"];
 const CAR_CRASH_LINES=["Picked up and dropped like a crate of hens at the slaughterhouse door.",
 "The Vegan Wagon was vegan. The driver, apparently, was not.",
@@ -2398,24 +2401,34 @@ function carGrabStart(){
   AL.state='car';AL.t=0;AL.speed=0;AL.vel.set(0,0,0);AL.said=false;
   AL.W.copy(car.gp).addScaledVector(gUp,380).addScaledVector(car.fwd,-160);
   AL.root.position.copy(AL.W);AL.root.updateMatrixWorld(true);alResetChains();AL.root.visible=true;
-  car.grab={t:0,phase:'dive',hurlT:0,vel:new THREE3.Vector3(),
+  car.grab={t:0,phase:'dive',hurlT:0,vel:new THREE3.Vector3(),outside:!car.on,
     camPos:car.gp.clone().addScaledVector(car.fwd,-13).addScaledVector(gUp,4.5),spin:new THREE3.Vector3(3+Math.random()*3,0,4+Math.random()*4)};
   car.tb=0;carFlameClear();
-  toastEv('SOMETHING IS COMING DOWN OUT OF THE SKY!');alSay(alPick(CAR_GRAB_SAY));
+  toastEv(car.on?'SOMETHING IS COMING DOWN OUT OF THE SKY!':'SOMETHING IS COMING FOR THE CAR!');alSay(car.on?alPick(CAR_GRAB_SAY):alPick(CAR_GRAB_OUT_SAY));
+}
+// the car's parked and you're out: it still comes for it, and you get to watch
+function carParkedTick(dt){
+  if(car.on||!car.obj||!car.obj.parent)return;
+  if(car.grab){carGrabUpdate(dt,null);return;}
+  if(car.grabAt!=null&&ready&&!onB&&sh.state!=='on'&&!sh.crash&&AL.state==='none'){car.driveT=(car.driveT||0)+dt;if(car.driveT>=car.grabAt){car.grabAt=null;carGrabStart();}}
 }
 function carGrabUpdate(dt,P){
-  const G=car.grab;G.t+=dt;car.anchor.copy(P);
+  const G=car.grab;G.t+=dt;if(!G.outside)car.anchor.copy(P);
+  if(G.phase==='boom'&&G.outside){ // you watched it happen: the fireball burns out, the car's gone
+    if(G.K){G.K.t+=dt;shBlastAnim(G.K,dt);if(G.K.t>10){scene3.remove(G.K.grp);G.K=null;}}
+    if(!G.K){car.grab=null;if(car.obj&&car.obj.parent)car.obj.parent.remove(car.obj);if(car.obj)car.obj.visible=true;}
+    return;}
   if(G.phase==='boom'){
     if(sh.crash){shCrashUpdate(dt,P);_cm.lookAt(P,sh.crash?sh.crash.pos:car.gp,gUp);camera3.quaternion.setFromRotationMatrix(_cm);car.anchor.copy(P);return;}
     car.grab=null;carLeave();if(car.obj&&car.obj.parent)car.obj.parent.remove(car.obj);if(car.obj)car.obj.visible=true;return; // the died event already sent you home
   }
   if(G.phase==='dive'){ // the car rolls to a stop as it comes down
     car.v*=Math.exp(-1.2*dt);car.gp.addScaledVector(car.fwd,car.v*dt);
-    if(AL.W.distanceTo(car.gp)<30||G.t>3.5){G.phase='lift';G.t0=G.t;G.p0=car.gp.clone();toastEv('IT\'S GOT THE CAR!');try{carThud(40);}catch(e){}}
+    if(AL.W.distanceTo(car.gp)<30||G.t>3.5){G.phase='lift';G.t0=G.t;G.p0=car.gp.clone();toastEv('IT\'S GOT THE CAR!');try{carThud(40);}catch(e){}if(G.outside&&!car.obj.parent)scene3.add(car.obj);}
   } else if(G.phase==='lift'){ // up it goes, kicking
     const f=Math.min(1,(G.t-G.t0)/2.2),e=f*f*(3-2*f);
     car.gp.copy(G.p0).addScaledVector(gUp,55*e);car.pitch=Math.sin(G.t*9)*0.12;car.roll=Math.sin(G.t*7)*0.15;car.v=0;
-    if(f>=1){G.phase='hurl';G.hurlT=G.t;G.vel.copy(car.fwd).multiplyScalar(28).addScaledVector(gUp,-38);alSay(alPick(CAR_HURL_SAY));}
+    if(f>=1){G.phase='hurl';G.hurlT=G.t;G.vel.copy(car.fwd).multiplyScalar(28).addScaledVector(gUp,-38);alSay(alPick(G.outside?CAR_HURL_OUT_SAY:CAR_HURL_SAY));}
   } else if(G.phase==='hurl'){ // smashed down into the ground
     G.vel.addScaledVector(gUp,-30*dt);car.gp.addScaledVector(G.vel,dt);car.pitch+=G.spin.x*dt;car.roll+=G.spin.z*dt;
     let hit=null;const g=carGroundObj();
@@ -2424,12 +2437,14 @@ function carGrabUpdate(dt,P){
       if(hit&&hit.point)car.gp.copy(hit.point);
       G.phase='boom';car.obj.visible=false;try{carThud(60);setTimeout(()=>{try{carThud(45);}catch(e){}},220);}catch(e){}
       try{carSound(false);}catch(e){}carFlameClear();
+      if(G.outside){G.K=shBlast(car.gp.clone(),gUp.clone(),car.fwd.clone(),55,20,0.32,null,true);toastEv('THE VEGAN WAGON IS GONE');alSay(alPick(CAR_WATCH_BOOM_SAY));return;}
       shBlast(car.gp.clone(),gUp.clone(),car.fwd.clone(),55,20,0.32,CAR_CRASH_LINES);
       toastEv('THE VEGAN WAGON IS GONE');alSay(alPick(CAR_BOOM_SAY));
       shCrashUpdate(0,P);_cm.lookAt(P,car.gp,gUp);camera3.quaternion.setFromRotationMatrix(_cm);return;
     }
   }
   carPose();
+  if(G.outside)return; // you're on foot: your own camera, your own footage
   // watch it happen from just behind, the camera rising with the car (it stays put once the car's thrown)
   if(G.phase!=='hurl'){_cv1.copy(car.gp).addScaledVector(car.fwd,-14).addScaledVector(gUp,5+(G.phase==='lift'?(car.gp.distanceTo(G.p0)*0.6):0));G.camPos.lerp(_cv1,Math.min(1,dt*1.5));}
   P.copy(G.camPos);_cv2.copy(car.gp).addScaledVector(gUp,1.2);_cm.lookAt(P,_cv2,gUp);camera3.quaternion.setFromRotationMatrix(_cm);
@@ -2581,6 +2596,7 @@ function carReset(){ // a new map session
   car.hb=false;car.slip=0;car.yr=0;car.tb=0;carSmokeClear();
   if(car.obj&&car.obj.parent)car.obj.parent.remove(car.obj);
   car.v=0;car.air=false;car.vy=0;
+  if(car.grab&&car.grab.K&&car.grab.K.grp)scene3.remove(car.grab.K.grp);
   car.grab=null;car.grabAt=null;if(car.obj)car.obj.visible=true;
   if(typeof AL!=='undefined'&&AL.state==='car'){AL.state='none';if(AL.root)AL.root.visible=false;}
 }
@@ -3294,7 +3310,7 @@ function shHelp(){
     :sh.area==='sleep'?'MOUSE   look\nE       sleep on the bed = fast travel\nN       back to the cockpit'
     :(sh.seat||0)>=2?'MOUSE   look around\n1 – 0   instant warp (above 100 km)\nP       change seat (back '+(sh.seat===2?'left':'right')+')\nX       camera (cockpit · close · orbit)'
     :'W / S   throttle (hold S at 0% = brakes)   SHIFT  booster\nA / D   turn          R / F  nose up / down\nMOUSE   look around\n'+((sh.seat||0)===1?'1 – 0   guide to a planet (again = off)\n':'')+(sh.guide?'L       nav lock '+(sh.lock?'ON':'off')+'\n':'')+''+((sh.seat||0)===0?'1 – 8   speeds (above 150 km)\n':'')+'B       autopilot home\n'+'P       change seat ('+['pilot','copilot','back left','back right'][sh.seat||0]+')\nSPACE   cargo bay     N  sleep area\nX       camera (cockpit · close · orbit)\nJ       get out (landed)';
-  shTxt(sh.help,t);shShow(sh.help,!!t);
+  sh.helpTxt=t;shShow(sh.help,false);
 }
 function shHud(on){
   if(on&&!sh.hud){sh.hud=document.createElement('div');sh.hud.style.cssText='position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:30;pointer-events:none;color:#cfefff;font:12px monospace;letter-spacing:2px;text-align:center;text-shadow:0 0 6px #000;white-space:pre;line-height:1.6';shUiHost().appendChild(sh.hud);}
@@ -3386,7 +3402,7 @@ function shBoard(){
   onGround3=true;vel3Y=0;wasFree=false;dLookX=0;dLookY=0;
   sh.anchor.copy(sh.pos);P.copy(sh.pos);
   shHud(true);shSound(true);shDrawPanel(-1);
-  toastEv('IN THE SHUTTLE — KEYS ARE BOTTOM LEFT');
+  toastEv('IN THE SHUTTLE — PRESS TAB FOR THE KEYS');
   shSay('Welcome aboard. Throttle up with W, hold Shift for the booster. Get above a hundred kilometres and the dashboard speeds open up.');
 }
 function shLeave(){
@@ -3668,7 +3684,7 @@ function shInteract(){
     return true;}
   if(sh.eva){shEvaBoard();return true;}
   if(sh.picker){shPickerChoose();return true;}
-  const a=sh.hoverAct;if(!a){toastEv(sh.area==='cockpit'?'KEYS ARE BOTTOM LEFT':'NOTHING TO USE THERE');return true;}
+  const a=sh.hoverAct;if(!a){toastEv(sh.area==='cockpit'?'PRESS TAB FOR THE KEYS':'NOTHING TO USE THERE');return true;}
   if(a.t==='btn'){
     if(a.i===0||a.i===1){shGoArea(a.i===0?'cargo':'sleep');return true;
       const A=shAltitude();
@@ -3818,7 +3834,7 @@ const SH_LTN_CRASH=["Struck by lightning and dropped like a stone. Nature doesn'
 "Fried by the sky. Somewhere a cow is not surprised."];
 function shLightningCheck(dt,A){
   if(sh.ground){sh.ltnFlight=false;sh.ltn=null;return false;}            // on the ground: the next take-off is a new flight
-  if(!sh.ltnFlight){sh.ltnFlight=true;sh.ltn=Math.random()<1/20?{t:0,at:15+Math.random()*60}:null;} // one roll per flight
+  if(!sh.ltnFlight){sh.ltnFlight=true;sh.ltn=Math.random()<1/6?{t:0,at:15+Math.random()*60}:null;} // one roll per flight (1 in 6)
   if(!sh.ltn||!A.air||onB||(ss.near&&ss.nearAlt<geo.alt))return false;    // only in Earth's air
   sh.ltn.t+=dt;if(sh.ltn.t<sh.ltn.at)return false;
   sh.ltn=null;shLightning();return true;
@@ -4488,10 +4504,10 @@ function mjUpdate(dt){
 
 // ── THE GIANT. Planet-sized, passive, rare (about once an hour). It drifts in from deep space, wraps its tentacles
 //    round the whole Earth for a while, lets go and drifts off. It never touches you; nothing about the planet changes.
-//    Its own creature, separate from the jellyfish above. Debug panel: 7 calls it straight away.
+//    1 in 5 times you enter the map tiles. Its own creature, separate from the jellyfish above. Debug panel: 7 calls it straight away.
 const GA_RE=6.371e6,GA_BELL=6.0e6,GA_HOLD=9.0e6,GA_WRAPALT=4.0e5,GA_NP=24,GA_NT=16;
 const GA_T={arrive:70,wrap:30,hold:100,release:25,leave:50};
-const GA={on:false,grp:null,bell:null,ten:[],fil:null,t:0,phase:'',next:2700+Math.random()*1800,clock:0,said:{},
+const GA={on:false,grp:null,bell:null,ten:[],fil:null,t:0,phase:'',arriveAt:0,clock:0,rolled:false,wasReady:false,built:false,building:false,said:{},
   H:new THREE3.Vector3(),T:new THREE3.Vector3(),S:new THREE3.Vector3(),L:new THREE3.Vector3(),B:new THREE3.Vector3(),q:new THREE3.Quaternion(),w:0,k:0,time:0};
 const GA_SAY={
   arrive:["Earthling… something out there is blotting out the stars.","Look up. LOOK UP. That's not a moon.","There's something out there… and it's the size of a planet."],
@@ -4603,7 +4619,7 @@ function gaBuild(){
 }
 function gaSummon(){
   if(GA.on||onB||(ss&&ss.carry))return false;
-  gaBuild();
+  gaBuild();GA.built=true;
   const P=camera3.position,up=new THREE3.Vector3().copy(P).sub(_C).normalize();
   // hang it in the sky above where you are, a little off to one side
   const t1=new THREE3.Vector3().crossVectors(up,Math.abs(up.y)<0.9?new THREE3.Vector3(0,1,0):new THREE3.Vector3(1,0,0)).normalize();
@@ -4664,8 +4680,17 @@ function gaShape(dt){
 }
 function gaUpdate(dt){
   if(!GA.on){
-    if(!scene3||!ready)return;
-    GA.clock+=dt;if(GA.clock>=GA.next&&!onB&&!(ss&&ss.carry)){GA.clock=0;GA.next=2700+Math.random()*1800;gaSummon();}
+    if(!scene3)return;
+    // every time you come into the map tiles: a 1 in 5 chance it comes, 1 to 4 minutes later (never at the door)
+    if(ready&&!GA.wasReady){GA.rolled=Math.random()<0.2;GA.clock=0;GA.arriveAt=60+Math.random()*180;}
+    GA.wasReady=ready;
+    if(!ready||!GA.rolled)return;
+    GA.clock+=dt;
+    // get it ready in the background once you've settled in (after the shuttle and the car), so it never hitches
+    if(!GA.built&&!GA.building&&GA.clock>20&&!PREP.gen&&!PREP.busy){GA.building=true;gaBuild();GA.grp.visible=true;GA.bellU.k.value=0;
+      const done=()=>{GA.built=true;GA.building=false;if(!GA.on)GA.grp.visible=false;};
+      try{const pr=renderer3.compileAsync?renderer3.compileAsync(GA.grp,camera3,scene3):null;if(pr&&pr.then)pr.then(done,done);else{renderer3.compile(GA.grp,camera3,scene3);done();}}catch(e){done();}}
+    if(GA.built&&GA.clock>=GA.arriveAt&&!onB&&!(ss&&ss.carry)){GA.rolled=false;gaSummon();}
     return;
   }
   GA.t+=dt;GA.time+=dt;
@@ -5005,7 +5030,7 @@ function shCrash(lines){
   toastEv('IT\'S GONE IN');alSay(alPick(sh.crashSay||SH_BOOM_SAY));sh.crashSay=null;
 }
 // a fireball at pos (k scales the whole thing: 1 = the shuttle), watched from camSide / camUp away
-function shBlast(pos,U,fwdV,camSide,camUp,k,lines){
+function shBlast(pos,U,fwdV,camSide,camUp,k,lines,watch){
   if(!SH_TEX_FIRE){
     SH_TEX_FIRE=shSoftTex([[0,'rgba(255,250,225,1)'],[0.25,'rgba(255,200,90,0.95)'],[0.55,'rgba(240,90,20,0.55)'],[1,'rgba(120,20,0,0)']]);
     SH_TEX_SMOKE=shSoftTex([[0,'rgba(40,36,34,0.9)'],[0.5,'rgba(30,27,26,0.55)'],[1,'rgba(20,18,18,0)']]);
@@ -5026,10 +5051,11 @@ function shBlast(pos,U,fwdV,camSide,camUp,k,lines){
   for(let i=0;i<26;i++){const a=Math.random()*Math.PI*2,r=rnd(8,60),h=rnd(18,42);
     P.push({k:'flame',s:spr(SH_TEX_FLAME,true),t0:rnd(0.5,1.2),life:1e9,p:new THREE3.Vector3(Math.cos(a)*r,h*0.45,Math.sin(a)*r),v:new THREE3.Vector3(),h,ph:Math.random()*6});}
   const light=new THREE3.PointLight(0xffa040,0,2500,1.4);light.position.set(0,40,0);grp.add(light);
-  sh.crash={t:0,pos,U,camPos,grp,P,light,said:false,lines};
+  const K={t:0,pos,U,camPos,grp,P,light,said:false,lines};
+  if(watch)return K; // just a fireball to watch: no crash screen, nobody dies
+  sh.crash=K;return K;
 }
-function shCrashUpdate(dt,P){
-  const K=sh.crash;K.t+=dt;const t=K.t;
+function shBlastAnim(K,dt){const t=K.t;
   for(const q of K.P){const tt=t-q.t0;if(tt<0)continue;const f=Math.min(1,tt/q.life),m=q.s.material;
     if(q.k==='flame'){m.opacity=Math.min(1,tt*1.5)*(0.75+0.25*Math.sin(t*14+q.ph));q.s.scale.set(q.h*0.5*(0.9+0.2*Math.sin(t*9+q.ph)),q.h*(0.85+0.3*Math.sin(t*11+q.ph*2)),1);q.s.position.copy(q.p);continue;}
     if(f>=1){m.opacity=0;continue;}
@@ -5044,6 +5070,10 @@ function shCrashUpdate(dt,P){
     else m.opacity=Math.min(0.7,tt*0.5)*(1-f);
   }
   K.light.intensity=t<0.15?60*t/0.15:Math.max(6,60*Math.exp(-(t-0.15)*1.5))*(0.85+0.3*Math.random());
+}
+function shCrashUpdate(dt,P){
+  const K=sh.crash;K.t+=dt;const t=K.t;
+  shBlastAnim(K,dt);
   sh.jolt=t<1.5?1.2*(1-t/1.5):0;sh.shake=sh.jolt;
   if(t>4.5&&!K.said){K.said=true;alBuild();
     AL.ovl.style.display='block';AL.ovl.style.transition='';AL.ovl.style.opacity='1';AL.dark.style.opacity='0.55';AL.blood.getContext('2d').clearRect(0,0,AL.blood.width,AL.blood.height);
@@ -5108,7 +5138,7 @@ function loop(){
   const speedMult=doubleTurboActive?DOUBLE_TURBO_MULT:(superSuperActive?SUPER_SUPER_MULT:(superSpeedActive?SUPER_SPEED_MULT:1));
   const spdBase=(WALK_SPEED+(RUN_SPEED-WALK_SPEED)*analogMag)*speedMult;
 
-  prepTick(dt);
+  prepTick(dt);carParkedTick(dt);
   evaSpdHyper=hyperSpd;evaSpdMult=speedMult;
   if(sh.state==='on'){shUpdate(dt,P);}
   else if(evMove(dt,P)){ /* a rare event (launch / explosion) is carrying you */ if(car.on)carLeave(); }
@@ -5515,7 +5545,7 @@ window.Tiles3D={
   setHandbrake(b){car.hb=!!b;},
   setFly(f){if(car.on)return;flyMode3=!!f;},
   toggleCar,carCam:carCamNext,isDriving(){return car.on;},
-  toggleShuttle,shuttleInteract:shInteract,setShuttleLevel:shSetLevel,shuttleArea:shGoArea,shuttlePitch:shPitchKeys,shuttleCam:shCamNext,shuttleSeat:shSeatNext,shuttleHome:shHomeStart,shuttleLock:shLockToggle,shuttleNum:shNum,isInShuttle:shIsOn,summonGiant(){return gaSummon();},isOnSpacewalk(){return sh.state==='on'&&!!sh.eva;},getShuttleArrow,setShuttleLook:shSetLook,identifyPart:shIdentify,getCarSpeed(){return car.on?Math.abs(car.v)*3.6:0;},getCarTurbo(){return car.on?(car.tb||0):0;},
+  toggleShuttle,shuttleInteract:shInteract,setShuttleLevel:shSetLevel,shuttleArea:shGoArea,shuttlePitch:shPitchKeys,shuttleCam:shCamNext,shuttleSeat:shSeatNext,shuttleHome:shHomeStart,shuttleLock:shLockToggle,shuttleNum:shNum,isInShuttle:shIsOn,summonGiant(){return gaSummon();},isOnSpacewalk(){return sh.state==='on'&&!!sh.eva;},getShuttleArrow,getShuttleHelp(){return sh.state==='on'?(sh.helpTxt||''):'';},setShuttleLook:shSetLook,identifyPart:shIdentify,getCarSpeed(){return car.on?Math.abs(car.v)*3.6:0;},getCarTurbo(){return car.on?(car.tb||0):0;},
   isFly(){return flyMode3;},
   // 0 = jump to 300 km above Mirror Earth (always on), 9 = debug-only jump 45,000 km up
   warp(kind,altM,dir){
@@ -6519,10 +6549,35 @@ function toggleMapTV(){
   });
 }
 
+// ── Tab menu: the keys for where you are right now (walking, car or shuttle)
+const KM_WALK='WALKING\n\nWASD     walk          MOUSE  look\nSHIFT    run           SPACE  jump\nF        fly           R      level out\n\nCTRL     super speed\nT        super super speed\nO        double turbo (after T)\nP        hyperspeed     (12 km up)\nK        million speed  (2 km up)\nL        mega speed     (2,000 km up)\nM        ultra speed    (20,000 km up)\n\nQ        Vegan Wagon   J  shuttle\nE / ESC  back to the city';
+const KM_CAR='VEGAN WAGON\n\nW / S    drive\nA / D    steer\nSHIFT    turbo\nSPACE    handbrake\nX        camera\nQ        get out';
+let kmEl=null,kmOn=false,kmTimer=null;
+function keyMenuText(){
+  const T=window.Tiles3D;if(!T)return KM_WALK;
+  if(T.isInShuttle&&T.isInShuttle()){const h=T.getShuttleHelp?T.getShuttleHelp():'';return (T.isOnSpacewalk&&T.isOnSpacewalk()?'SPACEWALK':'SHUTTLE')+(h?'\n\n'+h:'');}
+  if(T.isDriving&&T.isDriving())return KM_CAR;
+  return KM_WALK;
+}
+function keyMenuDraw(){
+  if(!kmOn)return;
+  if(doorState!=='map'){keyMenuToggle(false);return;}
+  const t=keyMenuText()+'\n\nTAB      close';
+  if(kmEl.textContent!==t)kmEl.textContent=t;
+}
+function keyMenuToggle(on){
+  kmOn=on===undefined?!kmOn:!!on;
+  if(!kmEl){kmEl=document.createElement('div');kmEl.style.cssText='position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:95;pointer-events:none;color:#e8f6ff;font:13px/1.6 monospace;letter-spacing:1px;white-space:pre;background:rgba(0,0,0,.78);padding:18px 24px;border:1px solid rgba(95,211,255,.5);border-radius:6px;display:none';document.body.appendChild(kmEl);}
+  kmEl.style.display=kmOn?'block':'none';
+  clearInterval(kmTimer);kmTimer=null;
+  if(kmOn){keyMenuDraw();kmTimer=setInterval(keyMenuDraw,300);}
+}
+
 function setupControls(){
   document.addEventListener('keydown',e=>{
     if(!started)return;
     const k=e.key.toLowerCase();
+    if(k==='tab'){e.preventDefault();if(!e.repeat&&doorState==='map')keyMenuToggle();return;}
     if(k==='w'||k==='arrowup'){kW=1;e.preventDefault();}
     if(k==='s'||k==='arrowdown'){kS=1;e.preventDefault();}
     if(k==='a'||k==='arrowleft'){kA=1;e.preventDefault();}
@@ -6553,7 +6608,7 @@ function setupControls(){
     if(shp&&k===' '){if(!e.repeat)window.Tiles3D.shuttleArea('cargo');e.preventDefault();return;}
     if(shp&&k==='n'){if(!e.repeat)window.Tiles3D.shuttleArea('sleep');return;}
     if(shp&&(k==='r'||k==='f')){window.__shR=k==='r'?1:window.__shR;window.__shF=k==='f'?1:window.__shF;window.Tiles3D.shuttlePitch(window.__shR,window.__shF);return;}
-    if(shp&&!e.repeat&&/^(control|t|o|m|k|l|p|0|q|9)$/.test(k)){toast('IN THE SHUTTLE — KEYS ARE BOTTOM LEFT');return;}
+    if(shp&&!e.repeat&&/^(control|t|o|m|k|l|p|0|q|9)$/.test(k)){toast('IN THE SHUTTLE — PRESS TAB FOR THE KEYS');return;}
     if(shp&&/^[0-9]$/.test(k))return;
     const drv=doorState==='map'&&window.Tiles3D&&window.Tiles3D.isDriving&&window.Tiles3D.isDriving();
     if(k==='q'&&!e.repeat&&doorState==='map'&&window.Tiles3D&&window.Tiles3D.toggleCar){
@@ -6786,8 +6841,27 @@ function startGame(){
   if(cbv){cbv.pause();cbv.removeAttribute('src');cbv.load();}
   startMusicCycle();setTimeout(radioInit,3000);
   if(!isMobile)document.body.requestPointerLock().catch(()=>{});
+  grabKeys();[150,600,1500,3000].forEach(ms=>setTimeout(grabKeys,ms));
   showStmt();
 }
+// ── keep the keyboard on the game. After the start click (or an embedded video loading) the browser's keyboard
+//    focus can be left on something else, so WASD does nothing until you click. While you're playing with the
+//    mouse grabbed, the keyboard always comes straight back to the game.
+function grabKeys(){
+  try{
+    if(typeof SR!=='undefined'&&SR.open)return;
+    const a=document.activeElement;
+    if(a&&a!==document.body&&a!==document.documentElement)a.blur();
+    if(document.body.tabIndex<0||!document.body.hasAttribute('tabindex')){document.body.setAttribute('tabindex','-1');document.body.style.outline='none';}
+    document.body.focus({preventScroll:true});
+    if(!document.hasFocus())window.focus();
+  }catch(_){}
+}
+document.addEventListener('pointerlockchange',()=>{if(document.pointerLockElement===document.body)grabKeys();});
+setInterval(()=>{ // a video player grabbing the keyboard mid-game
+  if(!started||isMobile||document.pointerLockElement!==document.body)return;
+  const a=document.activeElement;if(a&&a!==document.body&&a!==document.documentElement)grabKeys();
+},700);
 
 // ── DOOR LOGIC ────────────────────────────────────────────────────────
 function openDoor(dIdx){
