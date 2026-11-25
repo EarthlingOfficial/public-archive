@@ -2,6 +2,14 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-NYKP0C05F7"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-NYKP0C05F7');
+</script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Go Dean! — Stage 10: The Real World</title>
 <link rel="canonical" href="https://earthlingofficial.com/veganbrosstage10.html">
@@ -624,6 +632,7 @@ let postRT=null,postScene=null,postCam=null,postMat=null,postOK=true;
 // move along great circles (rotating about the earth's centre) instead of a flat plane.
 const _V=(x,y,z)=>new THREE3.Vector3(x,y,z);
 const gUp=_V(0,1,0),gFwd=_V(0,0,-1),lastSafePos=_V(0,0,0);
+let arriveDrop=false; // a search-bar arrival: dropped from 1.5 km up, falling fast while high
 let lastSafeAlt=-1e9,noGroundFallTime=0,lastLookH=0,frameOK=false;
 const _Minv=new THREE3.Matrix4(),_mb=new THREE3.Matrix4(),_C=_V(0,0,0);
 const _t1=_V(0,0,0),_t2=_V(0,0,0),_t3=_V(0,0,0),_ax=_V(0,0,0),_rv=_V(0,0,0),_ro=_V(0,0,0),_rd=_V(0,0,0),_gp=_V(0,0,0),prevPos=_V(0,0,0);
@@ -2444,7 +2453,7 @@ function carUpdate(dt,P){
     // body angle from the wheel heights, plus a little lean and squat
     const F=((hv(0)??avg)+(hv(1)??avg))/2,B=((hv(2)??avg)+(hv(3)??avg))/2;
     const Lh=((hv(0)??avg)+(hv(2)??avg))/2,Rh=((hv(1)??avg)+(hv(3)??avg))/2;
-    let pT=Math.atan2(F-B,CAR_WB),rT=Math.atan2(Lh-Rh,CAR_TRACK*2);
+    let pT=Math.atan2(F-B,CAR_WB),rT=Math.atan2(Rh-Lh,CAR_TRACK*2); // positive roll lifts the right side, so right-higher ground = positive
     car.slope=pT; // the real slope (the body angle below is clamped)
     pT=Math.max(-0.6,Math.min(0.6,pT));rT=Math.max(-0.5,Math.min(0.5,rT));
     if(bike)rT=Math.max(-0.75,Math.min(0.75,Math.atan2(v*car.yr,9.8))); // a bike leans into the turn
@@ -2454,8 +2463,8 @@ function carUpdate(dt,P){
       car.pv=(car.pitch-p0)/Math.max(dt,1e-3);car.rv=(car.roll-r0)/Math.max(dt,1e-3);}
   } else {
     car.noGround+=dt; // no tiles under us yet: hold still for a moment, then let gravity have it
-    if(AP.on)car.noGround=0; // on autopilot: you just keep driving across (the sea, mostly)
-    if(car.noGround>2){car.vy-=9.8*dt;car.gp.addScaledVector(gUp,car.vy*dt);car.air=true;}
+    if(AP.on&&!car.air)car.noGround=0; // on autopilot: you just keep driving across (the sea, mostly)
+    if(car.air||car.noGround>2){car.vy-=9.8*dt;car.gp.addScaledVector(gUp,car.vy*dt);car.air=true;} // already in the air (a big jump or fall, ground more than 30 m below): gravity never pauses
   }
   // ── wheels, steering wheel, lights
   car.spin-=car.v*dt/CAR_WR;car.spinR-=(hb?0:car.v)*dt/CAR_WR;
@@ -6028,7 +6037,7 @@ function loop(){
     hoverAmt+=((idleFly?1:0)-hoverAmt)*Math.min(1,dt*2);
     swayRoll=0;
     if(!spaceMode&&!(idleFly&&fVel.lengthSq()>0.01))P.addScaledVector(gUp,vel3Y*dt);
-    onGround3=false;jumpReq=false;noGroundFallTime=0;
+    onGround3=false;jumpReq=false;noGroundFallTime=0;arriveDrop=false;
     } else {
       // Airborne with F off: look anywhere (full loops), move where you look in full 3D — dive straight
       // down, climb, whatever — at your current speed tier (Shift/Ctrl/T/O). Gravity still pulls on top.
@@ -6087,12 +6096,14 @@ function loop(){
     } else {
       vel3Y-=(vel3Y>0?GRAV_UP:GRAV_DOWN)*(Math.abs(vel3Y)<1.6?0.5:1)*dt;
       let steerK=0;
-      {const cap=(onB?-(140+Math.min(2000,Math.max(0,geo.alt-4000)/20)):-55)+0;if(vel3Y<cap)vel3Y=cap;} // from high up you fall fast, easing to the normal speed near the ground
+      {let cap=(onB?-(140+Math.min(2000,Math.max(0,geo.alt-4000)/20)):-55)+0;
+        if(arriveDrop&&!onB&&gh){const hA=_t3.copy(P).sub(gh).dot(gUp);cap=-Math.max(55,Math.min(300,(hA-100)*0.6));} // search-bar arrival: fast while high, normal speed for the last ~190 m
+        if(vel3Y<cap)vel3Y=cap;} // from high up you fall fast, easing to the normal speed near the ground
       P.addScaledVector(gUp,vel3Y*dt);
       if(gh){
         const hUp=_t3.copy(P).sub(gh).dot(gUp);
         if(hUp<=EYE_H&&vel3Y<=0){
-          P.addScaledVector(gUp,EYE_H-hUp);vel3Y=0;onGround3=true;
+          P.addScaledVector(gUp,EYE_H-hUp);vel3Y=0;onGround3=true;arriveDrop=false;
           lastSafePos.copy(P);lastSafeAlt=geo.alt;
         }
         noGroundFallTime=0;
@@ -6262,7 +6273,7 @@ window.Tiles3D={
     setSuperSuper(false);
     dtFxK=0;dtWobbleZ=0;dtWobbleX=0;turboRollAngle=0;
     vel3Y=0;onGround3=true;jumpReq=false;skyT=0;skyTintHue=Math.random()<0.5?0.08:0.75;
-    lastSafePos.set(0,SPAWN_UP,SPAWN_OFFSET);lastSafeAlt=-1e9;airT=0;noGroundFallTime=0;gUp.set(0,1,0);gFwd.set(0,0,-1);lastLookH=0;frameOK=false;hyperActive=false;hyperTier=0;prevOK=false;speedNow=0;swayRoll=0;hyperK=0;wasFree=false;relevelT=0;levelOutT=0;syncPitch=null;dLookX=0;dLookY=0;redK=0;nightFx=0;camera3.fov=65;camera3.updateProjectionMatrix();
+    lastSafePos.set(0,SPAWN_UP,SPAWN_OFFSET);lastSafeAlt=-1e9;arriveDrop=false;airT=0;noGroundFallTime=0;gUp.set(0,1,0);gFwd.set(0,0,-1);lastLookH=0;frameOK=false;hyperActive=false;hyperTier=0;prevOK=false;speedNow=0;swayRoll=0;hyperK=0;wasFree=false;relevelT=0;levelOutT=0;syncPitch=null;dLookX=0;dLookY=0;redK=0;nightFx=0;camera3.fov=65;camera3.updateProjectionMatrix();
     if(skyMatB)skyMatB.color.setHSL(skyTintHue,0.35,0.55);
     skyMode=opts.skyMode||'cycle';fxMode=opts.fx||'';fxMotion=0;fxHold=0;fxGrain=0;hoverT=0;hoverAmt=0;
     camera3.quaternion.identity();
@@ -6324,9 +6335,12 @@ window.Tiles3D={
             // past the portals (which sit a bit lower) and down onto the
             // actual ground. The normal per-frame gravity/ground-snap code
             // below (in loop()) does the rest — nothing else has to change.
-            camera3.position.set(0,g+(opts.fallHeight||200)+100,SPAWN_OFFSET);
+            // search-bar places (wide): the first ground found can be a rough low-detail tile sitting well below the real
+            // ground, so start 1.5 km up (above the expected height too) and fall onto whatever has loaded by then
+            if(opts.highDrop)camera3.position.set(0,Math.max(g,0)+1500,SPAWN_OFFSET);
+            else camera3.position.set(0,g+(opts.fallHeight||200)+100,SPAWN_OFFSET);
             refreshFrame(opts.elevM);lastSafePos.set(0,g+EYE_H,SPAWN_OFFSET);lastLookH=0;gFwd.set(0,0,-1);gUp.set(0,1,0);
-            onGround3=false;vel3Y=0;
+            onGround3=false;vel3Y=opts.highDrop?-60:0;arriveDrop=!!opts.highDrop;
             ready=true;readyAt=performance.now();
             document.getElementById('tilesLoading').style.display='none';
             buildReturnFrame(opts.frameColor,!!opts.manhattan);
@@ -8031,7 +8045,7 @@ function srBuild(){
   const d=document.createElement('div');
   d.style.cssText='position:fixed;left:50%;top:14%;transform:translateX(-50%);width:min(620px,90vw);z-index:200;display:none;font-family:"Courier New",monospace;';
   d.innerHTML='<div style="color:#ffcf6a;font-size:12px;letter-spacing:4px;margin-bottom:8px;text-shadow:0 0 6px #000">WHERE TO, EARTHLING?</div>'
-    +'<input type="text" autocomplete="off" spellcheck="false" placeholder="A city, an address, a landmark…" style="width:100%;box-sizing:border-box;padding:14px 16px;font:18px \'Courier New\',monospace;color:#fff;background:rgba(0,0,0,.85);border:1px solid rgba(255,207,106,.7);outline:none;">'
+    +'<input type="text" autocomplete="off" spellcheck="false" placeholder="A city, an address, a landmark, or coordinates…" style="width:100%;box-sizing:border-box;padding:14px 16px;font:18px \'Courier New\',monospace;color:#fff;background:rgba(0,0,0,.85);border:1px solid rgba(255,207,106,.7);outline:none;">'
     +'<div class="srl" style="background:rgba(0,0,0,.85);border:1px solid rgba(255,207,106,.35);border-top:none;"></div>'
     +'<div style="color:#bbb;font-size:11px;letter-spacing:2px;margin-top:8px;text-shadow:0 0 6px #000">ENTER = GO · ↑ ↓ = PICK · ESC = CANCEL</div>';
   (document.getElementById('mapFull')||document.body).appendChild(d);
@@ -8046,8 +8060,27 @@ function srRender(msg){
     r.textContent=it.name+(it.sub?' — '+it.sub:'');
     r.addEventListener('mousedown',ev=>{ev.preventDefault();SR.sel=i;srGo();});SR.list.appendChild(r);});
 }
+// coordinates typed straight in: 33.79887, -118.16512 or 33°47'55.9"N 118°09'54.4"W
+function srCoords(q){
+  q=q.replace(/[″”“]/g,'"').replace(/[′’‘]/g,"'").replace(/º/g,'°').trim();
+  const D='(\\d+(?:\\.\\d+)?)\\s*°\\s*(?:(\\d+(?:\\.\\d+)?)\\s*\'\\s*)?(?:(\\d+(?:\\.\\d+)?)\\s*"\\s*)?';
+  let m=q.match(new RegExp('^'+D+'([NSns])[\\s,]*'+D+'([EWew])$'));
+  let lat,lng;
+  if(m){
+    lat=(+m[1])+(+(m[2]||0))/60+(+(m[3]||0))/3600;if(/s/i.test(m[4]))lat=-lat;
+    lng=(+m[5])+(+(m[6]||0))/60+(+(m[7]||0))/3600;if(/w/i.test(m[8]))lng=-lng;
+  } else {
+    m=q.match(/^(-?\d+(?:\.\d+)?)\s*°?\s*([NSns])?\s*(?:,\s*|\s+)(-?\d+(?:\.\d+)?)\s*°?\s*([EWew])?$/);
+    if(!m||!/[.,°]/.test(q))return null; // two bare whole numbers are more likely an address than a place on the globe
+    lat=+m[1];lng=+m[3];if(m[2]&&/s/i.test(m[2]))lat=-Math.abs(lat);if(m[4]&&/w/i.test(m[4]))lng=-Math.abs(lng);
+  }
+  if(!isFinite(lat)||!isFinite(lng)||Math.abs(lat)>90||Math.abs(lng)>180)return null;
+  const t=lat.toFixed(5)+', '+lng.toFixed(5);
+  return{lat,lng,name:'📍 '+t,sub:'',city:false,coords:true};
+}
 function srQuery(){
   const q=SR.inp.value.trim();if(q.length<2){SR.items=[];srRender();return;}
+  const cc=srCoords(q);if(cc){++SR.seq;SR.items=[cc];SR.sel=0;srRender();return;}
   const my=++SR.seq;srRender('Searching…');
   fetch('https://photon.komoot.io/api/?limit=6&q='+encodeURIComponent(q)).then(r=>r.json()).then(j=>{
     if(my!==SR.seq)return;
@@ -8215,9 +8248,9 @@ function srHop(it,label,elev,fall){
   const base=mapBaseD,key=mapRegionKey,dobj=mapDobj;
   const m=Object.assign({},base,{
     lat:it.lat,lng:it.lng,elevM:elev||0,overlay:label+'.',narrative:[label+'.'],
-    skyMode:undefined,tvYoutubeId:null,fallHeight:fall||350,dollyHeight:fall||350,targetRadiusM:9999,wide:true,
+    skyMode:undefined,tvYoutubeId:null,fallHeight:fall||350,dollyHeight:fall||350,targetRadiusM:9999,wide:true,highDrop:!fall,
     isPyramidPortal:dobj.doorIdx===2?true:base.isPyramidPortal,_regionKey:key,_hopIdx:-1,_base:base,
-    _arriveSay:label+'. '+rwLine(it.name,!it.city)
+    _arriveSay:(it.coords?'Your coordinates':label)+'. '+rwLine(it.name,!it.city)
   });
   enterMapFullGo(dobj,m);
   mapCurIdx=-1;
