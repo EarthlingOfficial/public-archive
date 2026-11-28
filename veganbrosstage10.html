@@ -7025,10 +7025,19 @@ function rgbeDecode(buf){ // .hdr (Radiance RGBE) -> {width,height,data: RGBE by
 const LOADQ={city:0,sky:0,warm:0,mb:null,steps:[],stepN:0,skyTex:null,skyState:'wait',city3d:null};
 function loadBarDraw(){
   const el=$('cfill'),tx=$('ctxt');if(!el||!tx)return;
-  if(LOADQ.done){el.style.width='100%';tx.textContent='CITY LOADED';return;}
+  if(LOADQ.done){el.style.width='100%';loadWaitLines(tx);return;}
   if(LOADQ.mb!=null){tx.textContent='LOADING '+LOADQ.mb+' MB';return;}
   const pct=Math.min(99,Math.round(LOADQ.city*50+LOADQ.sky*15+LOADQ.warm*35));
   el.style.width=pct+'%';tx.textContent='LOADING '+pct+'%';
+}
+const LOAD_WAIT_LINES=['BUILDING THE FULL EARTH — BE PATIENT','EARTH WASN\'T BUILT IN A DAY','PLANTING THE TREES…','FILLING THE OCEANS…','HIDING THE SLAUGHTERHOUSES…','SWITCHING ON THE SUN…','ALMOST THERE, EARTHLING'];
+function loadWaitLines(tx){ // from "city in" until the ENTER screen shows
+  if(LOADQ.waitT)return;
+  tx.textContent='INITIALIZING YOUR EARTH — PLEASE WAIT A MOMENT';
+  let i=0;LOADQ.waitT=setInterval(()=>{
+    const c2=$('cp2');if(c2&&c2.style.display==='flex'){clearInterval(LOADQ.waitT);return;}
+    tx.textContent=LOAD_WAIT_LINES[i%LOAD_WAIT_LINES.length];i++;
+  },4000);
 }
 function loadGap(fn,ms){setTimeout(()=>requestAnimationFrame(()=>requestAnimationFrame(fn)),ms||60);} // let the movie breathe between pieces
 function cityWarmup(city){
