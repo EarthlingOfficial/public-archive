@@ -2262,7 +2262,7 @@ function carLeave(){
 function toggleCar(){
   if(!ready)return 'notready';
   if(car.grab||SJ.catch||BX.catch)return 'grab'; // too late, it's got you
-  if(car.on){carLeave();return 'out';}
+  if(car.on){carLeave();sjCarDecoy();return 'out';}
   if(flyMode3||!onGround3)return 'air';
   if(onB&&!tilesB)return 'noroad';
   if(!car.ready){carLoad(ok=>{if(ok&&!car.on&&ready&&onGround3&&!flyMode3){vehUse('car');carPlace();carEnter();toastEv('IN THE VEGAN WAGON — W/S DRIVE · A/D STEER · SHIFT TURBO · SPACE HANDBRAKE · X CAMERA · Q GET OUT');}});return 'loading';}
@@ -2297,8 +2297,8 @@ function carPose(){
 function carUpdate(dt,P){
   if(car.grab){carGrabUpdate(dt,P);return;}
   if(car.tumble||car.wreck){carTumbleUpdate(dt,P);return;}
-  if(!vidCalm())car.driveT=(car.driveT||0)+dt; // the lock-on timer stands still while you watch a video (and just after)
-  if(car.grabAt&&car.driveT>=car.grabAt&&!car.air&&!onB&&!sh.crash&&AL.state==='none'&&!vidCalm()){car.grabAt=null;carGrabStart();return;}
+  if(!vidCalm()&&!AP.on&&!huntersOff)car.driveT=(car.driveT||0)+dt; // the lock-on timer stands still while you watch a video (and just after), while autopilot drives, or with hunters off
+  if(car.grabAt&&car.driveT>=car.grabAt&&!car.air&&!onB&&!sh.crash&&AL.state==='none'&&!vidCalm()&&!AP.on&&!huntersOff){car.grabAt=null;carGrabStart();return;}
   const g=carGroundObj();
   if(!g){carLeave();return;}
   // keep heading flat against local up (it drifts as you travel over the curve of the Earth)
@@ -2331,8 +2331,17 @@ function carUpdate(dt,P){
     else{ const d=(0.9+0.0045*v*v)*dt; v=Math.abs(v)<=d?0:v-Math.sign(v)*d; }
   }
   const accel=(v-car.v)/Math.max(dt,1e-4);
-  const steerT=st*Math.max(0.1,0.58-Math.abs(v)*0.0085);
-  car.steerA+=(steerT-car.steerA)*Math.min(1,dt*(st?5:7));
+  if(AP.on){ // autopilot keeps the steering it was tuned with
+    const steerT=st*Math.max(0.1,0.58-Math.abs(v)*0.0085);
+    car.steerA+=(steerT-car.steerA)*Math.min(1,dt*(st?5:7));
+  } else {
+    // keys: a tap is a small nudge, holding builds to full lock over about a second; the wheels follow at once and straighten fast
+    if(st&&Math.sign(st)===car.stDir)car.stHold=(car.stHold||0)+dt;else{car.stHold=0;car.stDir=Math.sign(st);}
+    const maxA=(bike?0.85:1)*Math.max(0.06,0.62/(1+Math.abs(v)*0.055)); // full lock at walking pace, gentle on the highway
+    const frac=Math.min(1,0.2+car.stHold*1.4);
+    const steerT=st*maxA*frac;
+    car.steerA+=(steerT-car.steerA)*Math.min(1,dt*(st?14:16));
+  }
   // ── turn (bicycle model) and move, unless the bumper is against a wall
   const sp=Math.abs(v),GRIP=9; // GRIP: only used for the body lean now
   const yawG=v*Math.tan(car.steerA)/CAR_WB; // where the front wheels point the car
@@ -2424,7 +2433,7 @@ function carUpdate(dt,P){
       car.airT=(car.airT||0)+dt;
       // off an edge the front loses the ground first, so the nose drops while the back wheels still touch
       const Fr=Math.max(hv(0)??-9,hv(1)??-9),Bk=Math.max(hv(2)??-9,hv(3)??-9);
-      if(car.airT<0.6&&Fr<-0.6&&Bk>-0.35&&v>2)car.wp-=Math.min(6,v*0.25)*dt*(bike?0.35:1);
+      if(car.airT<0.6&&Fr<-0.6&&Bk>-0.35&&v>(bike?2:0.5))car.wp-=(bike?Math.min(6,v*0.25)*0.35:3.2*Math.max(0.12,1-v/18))*dt; // slow off an edge: nose tips forward; fast: only a slight dip
       if(bike){const lk=car.leanK||0;
         if(lk){car.wp+=lk*3.4*dt;car.wp*=Math.exp(-dt*0.5);} // holding a lean: it rotates (hold it for a flip)
         else{car.wp*=Math.exp(-dt*3.5);car.wp-=wrapPi(car.pitch)*2.2*dt;} // let go: it settles back level
@@ -2439,7 +2448,8 @@ function carUpdate(dt,P){
     } else if(avg<(bike?-0.28:-0.45)){ // the road falls away faster than the car can follow: airborne
       car.air=true;car.airT=0;
       car.vy=Math.max(0,v*Math.sin(car.pitch))*0.9;if(bike)car.vy=Math.min(12,Math.max(car.vy,car.gvy||0)); // off a crest or a ramp you keep the climb you had
-      car.wp=Math.max(-3,Math.min(3,car.pv||0))+(Math.random()-0.5)*0.4;car.wr=Math.max(-3,Math.min(3,car.rv||0))+(Math.random()-0.5)*0.4; // and the turn the body was already making
+      { const pv=car.pv||0,rv=car.rv||0,crook=Math.min(1,(Math.abs(pv)+Math.abs(rv))/2.5); // how crooked the launch was
+        car.wp=Math.max(-2,Math.min(2,pv*0.4))+(Math.random()-0.5)*0.4*crook;car.wr=Math.max(-2.5,Math.min(2.5,rv*0.55))+(Math.random()-0.5)*0.4*crook;} // a straight launch flies level; a crooked one keeps its twist
       if(bike){car.wp=0;car.wr=0;} // the bike leaves the ground level: no spin
     } else {
       const gv=car.gvy||0,fall=gv*dt-4.9*dt*dt; // where gravity alone would have you this frame
@@ -2549,6 +2559,7 @@ function carLand(imp,v){
   const tilt=Math.acos(Math.max(-1,Math.min(1,Math.cos(car.pitch)*Math.cos(car.roll)))); // 0 = flat on its wheels
   const bk=car.kind==='bike';
   if(bk&&tilt<1.0){car.wp=0;car.wr=0;car.pitch*=0.3;return;} // a dirt bike rides away from anything that isn't on its side or upside down
+  if(!bk&&tilt<0.44){car.wp=0;car.wr=0;car.pitch*=0.3;car.roll*=0.3;if(imp>9){car.vy=Math.min(4,imp*0.12);car.air=true;car.airT=0.6;}return;} // landed on its wheels: thump, bounce, drive on
   const p=Math.min(1,Math.max(0,(imp-8)/22)*0.55+Math.max(0,(tilt-0.35)/0.9)*0.8);
   if(!bk&&!(tilt>1.3||(imp>=6&&Math.random()<p))){car.wp=0;car.wr=0;return;}
   // which way it goes over: sideways if it came down on a side, end over end if it came down nose or tail first
@@ -2556,11 +2567,15 @@ function carLand(imp,v){
   const base=axis==='roll'?car.roll:car.pitch;
   const w=axis==='roll'?(car.wr||0):(car.wp||0);
   const dir=Math.abs(w)>0.3?Math.sign(w):(base!==0?Math.sign(base):(Math.random()<0.5?-1:1));
-  const energy=imp+Math.abs(v)*0.5,n=1+Math.min(2,Math.floor(energy/22+Math.random()*0.8));
+  const energy=imp+Math.abs(v)*0.5;
+  const n=energy<14?0:energy<30?(Math.random()<0.5?0:1):1+Math.min(2,Math.floor((energy-30)/22+Math.random()*0.8)); // full rolls: none when slow, one at most when medium, more when fast
   const r=Math.random(),end=axis==='roll'?(r<0.5?0:r<0.75?Math.PI/2*(Math.random()<0.5?1:-1):Math.PI):(r<0.6?0:Math.PI); // wheels, side or roof
-  let k=Math.round((base+dir*2*Math.PI*n-end)/(2*Math.PI)),to=end+2*Math.PI*k;if(dir*(to-base)<Math.PI)to+=dir*2*Math.PI;
-  const spin=Math.min(10,3+energy*0.12);
-  car.tumble={axis,from:base,to,t:0,dur:Math.abs(to-base)/spin*1.6,q:null};car.wp=0;car.wr=0;
+  let k=Math.round((base+dir*2*Math.PI*n-end)/(2*Math.PI)),to=end+2*Math.PI*k;
+  if(n===0){if(end===0)to=Math.round(base/(2*Math.PI))*2*Math.PI; // slow and it's coming down on its wheels: it rocks back onto them
+    else{while(dir*(to-base)<0.2)to+=dir*2*Math.PI;while(dir*(to-base)>2*Math.PI)to-=dir*2*Math.PI;}} // slow: just over onto its side or roof
+  else if(dir*(to-base)<Math.PI)to+=dir*2*Math.PI;
+  const spin=Math.min(10,3+energy*0.12)*(0.8+Math.random()*0.45); // a bit different every time
+  car.tumble={axis,from:base,to,t:0,dur:Math.abs(to-base)/spin*1.6,q:null,slide:energy>30?1.0+Math.random()*0.8:1.8};car.wp=0;car.wr=0;
   if(Math.random()<0.6)alSay(alPick(CAR_ROLL_SAY));
 }
 function carTumbleUpdate(dt,P){
@@ -2569,12 +2584,12 @@ function carTumbleUpdate(dt,P){
     T.t+=dt;const x=Math.min(1,T.t/T.dur),e=1-(1-x)*(1-x),a=T.from+(T.to-T.from)*e;
     if(T.axis==='roll'){car.roll=a;car.pitch*=Math.exp(-4*dt);}else{car.pitch=a;car.roll*=Math.exp(-4*dt);} // the other way settles flat
     const q=Math.floor(a/(Math.PI/2));if(T.q!==null&&q!==T.q){try{carThud(8+Math.abs(car.v)*1.5+(1-x)*20);}catch(_){}car.bump=Math.max(car.bump,0.6*(1-x));}T.q=q;
-    car.v*=Math.exp(-1.8*dt);
+    car.v*=Math.exp(-(T.slide||1.8)*dt);
     if(x>=1){car.tumble=null;car.roll=wrapPi(car.roll);car.pitch=wrapPi(car.pitch);
       const ang=T.axis==='roll'?car.roll:car.pitch;
       if(Math.abs(ang)<0.3){if(T.axis==='roll')car.roll=0;else car.pitch=0;car.wreck=false;car.lift=0;} // back on its wheels: keep driving
-      else{car.wreck=true;car.v=0;car.wreckAxis=T.axis;toastEv(Math.abs(Math.abs(ang)-Math.PI)<0.4?'ON ITS ROOF — Q TO GET OUT':'ON ITS SIDE — Q TO GET OUT');alSay(alPick(CAR_WRECK_SAY));}}
-  } else car.v*=Math.exp(-4*dt);
+      else{car.wreck=true;car.v*=0.6;car.wreckAxis=T.axis;toastEv(Math.abs(Math.abs(ang)-Math.PI)<0.4?'ON ITS ROOF — Q TO GET OUT':'ON ITS SIDE — Q TO GET OUT');alSay(alPick(CAR_WRECK_SAY));}}
+  } else car.v*=Math.exp(-(car.wreck?1.4:4)*dt); // a wreck scrapes along on its side or roof to a stop
   // it slides on along the ground while it rolls
   const step=car.v*dt;
   if(Math.abs(step)>1e-4){gFwd.copy(car.fwd);camera3.position.copy(car.gp);const ag=onGround3;onGround3=true;
@@ -2618,7 +2633,7 @@ function carGrabStart(){
 function carParkedTick(dt){
   if(car.on||!car.obj||!car.obj.parent)return;
   if(car.grab){carGrabUpdate(dt,null);return;}
-  if(car.grabAt!=null&&ready&&!onB&&sh.state!=='on'&&!sh.crash&&AL.state==='none'&&!vidCalm()){car.driveT=(car.driveT||0)+dt;if(car.driveT>=car.grabAt){car.grabAt=null;carGrabStart();}}
+  if(car.grabAt!=null&&ready&&!onB&&sh.state!=='on'&&!sh.crash&&AL.state==='none'&&!vidCalm()&&!huntersOff){car.driveT=(car.driveT||0)+dt;if(car.driveT>=car.grabAt){car.grabAt=null;carGrabStart();}}
 }
 function carGrabUpdate(dt,P){
   const G=car.grab;G.t+=dt;if(!G.outside)car.anchor.copy(P);
@@ -3791,6 +3806,7 @@ function shGroundCheck(dt,U){
   const rest=SH_GEAR_H*sh.gearK+0.75*(1-sh.gearK);
   sh.agl=hUp-rest;
   if(hUp<=rest+0.05){
+    if(!sh.ground&&sh.v>15){shFwd(_shV);if(Math.asin(Math.max(-1,Math.min(1,_shV.dot(U))))<-0.349){shCrash(SH_DIVE_LINES);return;}} // nose down steeper than 20°: no levelling out
     const vDown=-sh.vUp-Math.min(0,shFwd(_shV).dot(U))*sh.v;
     if(sh.thrownFree>0&&!sh.ground&&(vDown>25||sh.v>170)){shCrash();return;} // you didn't save it
     if(!sh.ground&&vDown>14){toastEv('HARD LANDING!');sh.jolt=1;sh.v*=0.6;}
@@ -4110,7 +4126,7 @@ function shAbductUpdate(dt,T,P){
     AL.dark.style.transition='opacity 3s';AL.dark.style.opacity='0';AL.ovl.style.transition='';AL.ovl.style.opacity='1';AL.ovl.style.display='block';
     void AL.dark.offsetWidth;AL.dark.style.opacity='1';}
   if(T.t>10.5&&!T.msg){T.msg=true;
-    AL.txt.innerHTML='<div style="font-size:44px;font-weight:300;letter-spacing:22px;color:#8fa8c8">TAKEN</div><div style="font-size:22px;letter-spacing:2px;margin-top:28px;max-width:900px;line-height:1.6;color:#dbe8ff">'+alPick(AL_TAKEN).replace(/[<>&]/g,'')+'</div>';
+    AL.txt.innerHTML='<div style="font-size:44px;font-weight:300;letter-spacing:22px;color:#8fa8c8">TAKEN</div><div style="font-size:22px;letter-spacing:2px;margin-top:28px;max-width:900px;line-height:1.6;color:#dbe8ff">'+alPick(AL_TAKEN).replace(/[<>&]/g,'')+'</div>'+'<div style="font-size:13px;letter-spacing:8px;margin-top:40px;opacity:.6">LOADING CITY…</div>';
     AL.txt.style.opacity='1';}
   if(T.t>19){sh.thrown=null;
     window.dispatchEvent(new CustomEvent('tiles3d-died',{detail:''}));
@@ -4794,6 +4810,8 @@ function sjBuild(){
 function sjGround(p){ // the ground under a point (null while nothing is loaded there)
   _sjA.copy(p).addScaledVector(gUp,250);const h=carRay(_sjA,_sjB.copy(gUp).negate(),900);return h?h.point.clone():null;
 }
+function sjCarDecoy(){if(SJ.list)for(const m of SJ.list)if(m.state==='chase')m.carTgt=true;} // you got out: whatever was tailing the car keeps going for the car
+const _sjT=new THREE3.Vector3();
 function sjMe(o){return car.on?o.copy(car.gp).addScaledVector(gUp,1.4):o.copy(camera3.position).addScaledVector(gUp,-0.5);}
 function sjColour(m){ // the prettiest yet: wild colours, some rainbow, some striped, some gold
   const u=m.u,h=Math.random();
@@ -4834,8 +4852,8 @@ function sjUpdate(dt){
   if(!SJ.built){if(!act)return;sjBuild();}
   const me=sjMe(_sjM);
   for(const m of SJ.list){
-    const hi=m.kind==='hunt'?SJ.list.indexOf(m)-2:-1,allowed=hi<0||(hi<leafHunters()&&!mapWatching());
-    if(m.state==='chase'&&mapWatching())m.state='gone'; // a video started: anything chasing you gives up on the spot
+    const hi=m.kind==='hunt'?SJ.list.indexOf(m)-2:-1,allowed=hi<0||(hi<leafHunters()&&!mapWatching()&&!AP.on&&!huntersOff);
+    if(m.state==='chase'&&(mapWatching()||AP.on||huntersOff))m.state='gone'; // a video started, autopilot is driving, or hunters are off: anything chasing you gives up on the spot
     if(m.state==='off'){if(act&&!SJ.catch&&allowed){m.wait-=dt;if(m.wait<=0)sjSpawn(m,me);}continue;}
     m.t+=dt;
     const want=(m.state==='held'||(act&&m.state!=='gone'&&allowed))?1:0;
@@ -4853,10 +4871,12 @@ function sjUpdate(dt){
       else if(d>230)m.state='gone';
     } else if(m.state==='chase'){
       m.spd=Math.min(SJ_SPD,m.spd+9*dt);
-      _sjB.copy(me).sub(m.g.position);const len=_sjB.length();
+      if(m.carTgt&&(car.on||!car.obj||!car.obj.parent))m.carTgt=false; // back in the car (or it's gone): normal chase
+      const tp=m.carTgt?_sjT.copy(car.gp).addScaledVector(gUp,1.4):me;
+      _sjB.copy(tp).sub(m.g.position);const len=_sjB.length();
       m.g.position.addScaledVector(_sjB.divideScalar(Math.max(len,1e-6)),Math.min(len,m.spd*dt*(0.7+0.6*pu)));
       if(hh<1.5)m.g.position.addScaledVector(gUp,(1.5-hh)*Math.min(1,dt*4));
-      if(len<(car.on?4.6:3.2)&&!SJ.catch&&act&&!mapWatching())sjCatchStart(m);
+      if(len<(car.on||m.carTgt?4.6:3.2)&&!SJ.catch&&act&&!mapWatching()){if(m.carTgt)sjCarTake(m);else sjCatchStart(m);}
       else if(len>SJ_LOSE||!act||SJ.catch){m.state='gone';if(!SJ.catch&&act){sjSay(SJ_LOST_SAY);toastEv('YOU LOST IT');}}
     } else if(m.state==='gone'){m.g.position.addScaledVector(m.v,dt).addScaledVector(gUp,dt*1.5);}
     m.bell.scale.set(1-0.18*pu,1+0.1*pu,1-0.18*pu);
@@ -4894,6 +4914,56 @@ function sjCatchStart(m){
   toastEv(car.on?'IT\'S GOT THE CAR!':'IT\'S GOT YOU!');sjSay(car.on?SJ_GRAB_CAR_SAY:SJ_GRAB_SAY);
   if(car.on){car.v=0;try{carThud(40);}catch(e){}}
 }
+function sjCarTake(m){ // the empty car: lifted, thrown, gone. You're free the whole time.
+  m.carTgt=false;
+  SJ.catch={m,mode:'throw',t:0,phase:'grab',inCar:true,empty:true,p0:null,vel:new THREE3.Vector3(),spin:Math.random()<0.5?-1:1,K:null};
+  m.state='held';
+  for(const o of SJ.list)if(o!==m&&o.state==='chase')o.state='gone';
+  toastEv('IT\'S TAKING THE CAR!');sjSay(["It's taking the car! Keep moving, Earthling!","It wanted the car, not you. Go!","Better the Vegan Wagon than you. Run!"]);
+  try{carThud(40);}catch(e){}
+}
+function sjEmptyEnd(){
+  const C=SJ.catch;if(C&&C.K){try{scene3.remove(C.K.grp);}catch(e){}C.K=null;}
+  if(car.obj&&car.obj.parent)car.obj.parent.remove(car.obj);if(car.obj)car.obj.visible=true;
+  for(const o of SJ.list)if(o.state==='held')o.state='gone';
+  SJ.catch=null;
+}
+function sjEmptyMove(dt){ // runs the car's side only; returns false so you keep control
+  const C=SJ.catch,m=C.m;C.t+=dt;
+  if(!car.obj||!car.obj.parent||car.on){sjEmptyEnd();return false;}
+  if(C.phase==='grab'){
+    if(!C.p0)C.p0=car.gp.clone();
+    const f=Math.min(1,C.t/2.4),e=f*f*(3-2*f);
+    car.gp.copy(C.p0).addScaledVector(gUp,30*e);car.pitch=Math.sin(C.t*9)*0.12;car.roll=Math.sin(C.t*7)*0.15;car.v=0;carPose();
+    m.g.position.copy(car.gp).addScaledVector(gUp,3.4);
+    if(f>=1){C.t=0;C.phase='fly';const ref=Math.abs(gUp.y)<0.9?_sjH.set(0,1,0):_sjH.set(1,0,0);
+      _sjB.crossVectors(gUp,ref).normalize().applyAxisAngle(gUp,Math.random()*Math.PI*2);C.vel.copy(_sjB).multiplyScalar(24).addScaledVector(gUp,10);
+      m.state='gone';m.v.copy(_sjB).multiplyScalar(-2);}
+  } else if(C.phase==='fly'){
+    C.vel.addScaledVector(gUp,-24*dt);car.gp.addScaledVector(C.vel,dt);car.pitch+=2.6*dt;car.roll+=C.spin*3.4*dt;carPose();
+    const h=carRay(_sjA.copy(car.gp).addScaledVector(gUp,30),_sjB.copy(gUp).negate(),80);
+    if((h&&C.vel.dot(gUp)<0&&h.distance<30+Math.max(0.5,-C.vel.dot(gUp)*dt*1.5))||C.t>6){
+      if(h){car.gp.copy(h.point);carPose();}
+      car.obj.visible=false;try{carThud(60);}catch(e){}carFlameClear();
+      try{C.K=shBlast(car.gp.clone(),gUp.clone(),car.fwd.clone(),55,20,0.32,null,true);}catch(e){C.K=null;}
+      C.phase='boom';C.t=0;toastEv('THE VEGAN WAGON IS GONE');}
+  } else if(C.phase==='boom'){
+    if(C.K){C.K.t+=dt;try{shBlastAnim(C.K,dt);}catch(e){}}
+    if(!C.K||C.t>10)sjEmptyEnd();
+  }
+  return false;
+}
+// the browser pauses the game in a background tab; a death screen that was showing carries on by however long you were away
+let _deathHidAt=0;
+document.addEventListener('visibilitychange',()=>{
+  if(document.hidden){_deathHidAt=performance.now();return;}
+  if(!_deathHidAt)return;const away=(performance.now()-_deathHidAt)/1000;_deathHidAt=0;if(away<0.5)return;
+  const C=SJ.catch;if(C&&!C.empty&&C.dead)C.deadT+=away;
+  const B=BX.catch;if(B&&B.dead)B.t+=away;
+  if(AL.state==='kill')AL.t+=away;
+  if(sh.crash)sh.crash.t+=away;
+  if(sh.thrown&&sh.thrown.dark)sh.thrown.t+=away;
+});
 function sjDie(head){
   const C=SJ.catch;C.dead=true;C.deadT=0;C.step=0;C.head=head;
   sjOvl();SJ.blood.width=innerWidth;SJ.blood.height=innerHeight;SJ.blood.getContext('2d').clearRect(0,0,innerWidth,innerHeight);
@@ -4914,6 +4984,7 @@ function sjFinish(){
 }
 function sjMove(dt,P){ // while it has you, it moves you (or the car); returns true to take over this frame
   const C=SJ.catch;if(!C)return false;
+  if(C.empty)return sjEmptyMove(dt); // it's only got the empty car
   if(dLookX||dLookY){_qa.setFromAxisAngle(AX_Y,-dLookX);_qc.setFromAxisAngle(AX_X,-dLookY);Q3.multiply(_qa).multiply(_qc).normalize();}
   dLookX=0;dLookY=0;vel3Y=0;onGround3=false;noGroundFallTime=0;fVel.set(0,0,0);
   C.t+=dt;const m=C.m;
@@ -4956,7 +5027,7 @@ function sjMove(dt,P){ // while it has you, it moves you (or the car); returns t
     if(C.deadT>0.5&&C.step<2){C.step=2;sjSplat(3);}
     if(C.deadT>1.2&&C.step<3){C.step=3;SJ.dark.style.transition='opacity 3s';void SJ.dark.offsetWidth;SJ.dark.style.opacity='1';}
     if(C.deadT>4.2&&C.step<4){C.step=4;
-      SJ.txt.innerHTML='<div style="font-size:44px;font-weight:300;letter-spacing:22px;color:#ff9ab8">'+C.head+'</div><div style="font-size:22px;letter-spacing:2px;margin-top:28px;max-width:900px;line-height:1.6;color:#ffe3ec">'+alPick(SJ_DEATH[C.head]).replace(/[<>&]/g,'')+'</div>';
+      SJ.txt.innerHTML='<div style="font-size:44px;font-weight:300;letter-spacing:22px;color:#ff9ab8">'+C.head+'</div><div style="font-size:22px;letter-spacing:2px;margin-top:28px;max-width:900px;line-height:1.6;color:#ffe3ec">'+alPick(SJ_DEATH[C.head]).replace(/[<>&]/g,'')+'</div>'+'<div style="font-size:13px;letter-spacing:8px;margin-top:40px;opacity:.6">LOADING CITY…</div>';
       SJ.txt.style.opacity='1';}
     if(C.deadT>12){sjFinish();return true;}
   }
@@ -5004,7 +5075,9 @@ function bxLoad(cb){
 }
 function bxGround(p){_bxA.copy(p).addScaledVector(gUp,60);const h=carRay(_bxA,_bxB.copy(gUp).negate(),200);return h?h.point.clone():null;}
 function bxMe(o){return car.on?o.copy(car.gp):o.copy(camera3.position).addScaledVector(gUp,-EYE_H);}
-function bxOk(){return ready&&!onB&&sh.state!=='on'&&!sh.crash&&!car.grab&&!SJ.catch&&AL.state==='none'&&!(L.on)&&!(BOOM.on)&&SJ.near;}
+let huntersOff=false; // dev switch (` then -): no jellies, no Boxhead, no car lock-on
+function toggleHunters(){huntersOff=!huntersOff;if(huntersOff){if(SJ.list)for(const m of SJ.list)if(m.state==='chase')m.state='gone';if(BX.on&&!BX.catch)bxGone(null);}return huntersOff;}
+function bxOk(){return !huntersOff&&ready&&!onB&&sh.state!=='on'&&!sh.crash&&!car.grab&&!SJ.catch&&AL.state==='none'&&!(L.on)&&!(BOOM.on)&&SJ.near;}
 function bxSummon(force){
   if(BX.on||BX.catch||!ready||onB||sh.state==='on')return false;
   if(!BX.obj){bxLoad(ok=>{if(ok)bxSummon(force);});return true;}
@@ -5274,6 +5347,7 @@ function bxWatchUpdate(dt){ // returns true when it's handling him this frame
 function bxUpdate(dt){
   if(!scene3||!ready)return;
   if(BX.catch)return; // bxMove has him
+  if(huntersOff){if(BX.on)bxGone(null);return;}
   if(!BX.fly&&bxWatchUpdate(dt))return; // watching a real-world TV: his own creepy routine
   if(!BX.on){
     if(BX.fly){bxFlyUpdate(dt);return;}
@@ -5335,7 +5409,7 @@ function bxMove(dt,P){ // while he has you: lifted, shaken, run through
   if(C.dead){const t=C.t-C.dt0;
     if(t>0.4&&C.step<1){C.step=1;sjSplat(3);}
     if(t>1.0&&C.step<2){C.step=2;SJ.dark.style.transition='opacity 3s';void SJ.dark.offsetWidth;SJ.dark.style.opacity='1';}
-    if(t>4&&C.step<3){C.step=3;SJ.txt.innerHTML='<div style="font-size:44px;font-weight:300;letter-spacing:22px;color:#ff9ab8">IMPALED</div><div style="font-size:22px;letter-spacing:2px;margin-top:28px;max-width:900px;line-height:1.6;color:#ffe3ec">'+alPick(BX_DEATH).replace(/[<>&]/g,'')+'</div>';SJ.txt.style.opacity='1';}
+    if(t>4&&C.step<3){C.step=3;SJ.txt.innerHTML='<div style="font-size:44px;font-weight:300;letter-spacing:22px;color:#ff9ab8">IMPALED</div><div style="font-size:22px;letter-spacing:2px;margin-top:28px;max-width:900px;line-height:1.6;color:#ffe3ec">'+alPick(BX_DEATH).replace(/[<>&]/g,'')+'</div>'+'<div style="font-size:13px;letter-spacing:8px;margin-top:40px;opacity:.6">LOADING CITY…</div>';SJ.txt.style.opacity='1';}
     if(t>11){BX.catch=null;bxGone(null);
       window.dispatchEvent(new CustomEvent('tiles3d-died',{detail:''}));
       setTimeout(()=>{if(!SJ.ovl)return;SJ.ovl.style.transition='opacity 1.5s';SJ.ovl.style.opacity='0';
@@ -5739,7 +5813,7 @@ function alUpdate(dt){
     if(AL.splats===1&&AL.t>2.3){AL.splats=2;alSplat(4);}
     if(AL.splats===2&&AL.t>3.1){AL.splats=3;alSplat(5);}
     if(AL.splats===3&&AL.t>4.3){AL.splats=4;
-      AL.txt.innerHTML='<div style="font-size:54px;font-weight:700;letter-spacing:14px">IT GOT YOU</div><div style="font-size:22px;letter-spacing:2px;margin-top:26px;max-width:900px;line-height:1.5;color:#e8f2ff">'+alPick(AL_DEATH).replace(/[<>&]/g,'')+'</div>';
+      AL.txt.innerHTML='<div style="font-size:54px;font-weight:700;letter-spacing:14px">IT GOT YOU</div><div style="font-size:22px;letter-spacing:2px;margin-top:26px;max-width:900px;line-height:1.5;color:#e8f2ff">'+alPick(AL_DEATH).replace(/[<>&]/g,'')+'</div>'+'<div style="font-size:13px;letter-spacing:8px;margin-top:40px;opacity:.6">LOADING CITY…</div>';
       AL.txt.style.opacity='1';}
     if(AL.t>9.5){AL.state='none';AL.root.visible=false;
       window.dispatchEvent(new CustomEvent('tiles3d-died',{detail:''}));
@@ -5775,6 +5849,12 @@ const SH_CRASH_LINES=["You were thrown like a male chick on a conveyor belt.",
 "Your black box recording is just you saying 'but bacon though'.",
 "Smoked, like the ham you had for lunch.",
 "Charred on the outside. Raw on the inside. Ask for it medium next time."];
+const SH_DIVE_LINES=["Nose first into the dirt. Little human sausage, cooked on impact.",
+"You flew it like the industry flies a chicken: straight into the ground.",
+"Minced on arrival. The meat industry would call that efficient.",
+"That's not a landing. That's a meat grinder with wings.",
+"Flame-grilled pilot. Hold the sauce.",
+"Pancaked. Like a hen in a battery cage, only faster."];
 const SH_THROW_SAY=["Hahaha! It's throwing you like a toy!","Hahaha, round and round you go, like a chicken on a spit!","Hahaha! Hope you didn't eat a big lunch!","Wheee! Hahaha! Now you know how the cows feel on the truck!"];
 const SH_GRAB_SAY=["Hahaha! It's got the whole ship! You're a lunchbox now!","Hahaha! It's shaking you like a carton of milk!","Ha! It's opening you like a packet of ham!"];
 const SH_BOOM_SAY=["Hahaha! Kaboom! Well done, just how you like your steak!","Hahaha! Flame-grilled! Bet that smells familiar!","Hahaha! That's one way to have a barbecue!"];
@@ -5919,7 +5999,7 @@ function shCrashUpdate(dt,P){
   sh.jolt=t<1.5?1.2*(1-t/1.5):0;sh.shake=sh.jolt;
   if(t>4.5&&!K.said){K.said=true;alBuild();
     AL.ovl.style.display='block';AL.ovl.style.transition='';AL.ovl.style.opacity='1';AL.dark.style.opacity='0.55';AL.blood.getContext('2d').clearRect(0,0,AL.blood.width,AL.blood.height);
-    AL.txt.innerHTML='<div style="font-size:54px;font-weight:700;letter-spacing:14px">YOU CRASHED</div><div style="font-size:22px;letter-spacing:2px;margin-top:26px;max-width:900px;line-height:1.5;color:#e8f2ff">'+alPick(K.lines||SH_CRASH_LINES).replace(/[<>&]/g,'')+'</div>';
+    AL.txt.innerHTML='<div style="font-size:54px;font-weight:700;letter-spacing:14px">YOU CRASHED</div><div style="font-size:22px;letter-spacing:2px;margin-top:26px;max-width:900px;line-height:1.5;color:#e8f2ff">'+alPick(K.lines||SH_CRASH_LINES).replace(/[<>&]/g,'')+'</div>'+'<div style="font-size:13px;letter-spacing:8px;margin-top:40px;opacity:.6">LOADING CITY…</div>';
     AL.txt.style.opacity='1';}
   if(t>10){scene3.remove(K.grp);sh.crash=null;
     window.dispatchEvent(new CustomEvent('tiles3d-died',{detail:''}));
@@ -6397,7 +6477,7 @@ window.Tiles3D={
   setMoveInput(m){move=Object.assign({run:move.run},m);},
   setRun(r){move.run=!!r;},
   toggleCrouch:crouchToggle,strikeLightning:shLightningNow,
-  setHandbrake(b){car.hb=!!b;},
+  setHandbrake(b){car.hb=!!b;},toggleHunters,
   setFly(f){if(car.on)return;flyMode3=!!f;},
   toggleCar,carCam:carCamNext,isDriving(){return car.on;},
   toggleShuttle,shuttleInteract:shInteract,setShuttleLevel:shSetLevel,shuttleArea:shGoArea,shuttlePitch:shPitchKeys,shuttleCam:shCamNext,shuttleSeat:shSeatNext,shuttleHome:shHomeStart,shuttleLock:shLockToggle,shuttleNum:shNum,isInShuttle:shIsOn,summonGiant(){return gaSummon();},isOnSpacewalk(){return sh.state==='on'&&!!sh.eva;},getShuttleArrow,toggleBike,summonBoxhead(){return bxSummon(true);},setBikeLean(v){car.leanK=v;},autopilotTo:apStart,isAutopilot(){return AP.on;},isOnBike(){return car.on&&car.kind==='bike';},isCaught(){return !!SJ.catch;},getMapCredits(){const o=[];try{if(tiles&&!onB)tiles.getAttributions(o);}catch(_){}try{if(onB&&tilesB)tilesB.getAttributions(o);}catch(_){}return o.filter(a=>a&&a.type==='string'&&a.value).map(a=>a.value).join(' · ');},getShuttleHelp(){return sh.state==='on'?(sh.helpTxt||''):'';},setShuttleLook:shSetLook,identifyPart:shIdentify,getCarSpeed(){return car.on?Math.abs(car.v)*3.6:0;},getCarTurbo(){return car.on?(car.tb||0):0;},
@@ -6484,7 +6564,7 @@ window.Tiles3D={
   isBillboardPlaying(){const a=getTVDist(),b=skyTVDist(),g=geoBBDist();if(g!==null&&(a===null||g<a)&&(b===null||g<b))return GEO_BB.playing;if(b!==null&&(a===null||b<a))return !!skyTV.playing;return isBillboardPlaying();},
   isBillboardLoading,
   isFlying(){return !!flyMode3;},
-  isBusy(){return !!(car.grab||sh.crash||SJ.catch||BX.catch);}, // a grab, catch or crash is playing out
+  isBusy(){return !!(car.grab||sh.crash||(SJ.catch&&!SJ.catch.empty)||BX.catch||AL.state==='kill'||(sh.thrown&&sh.thrown.dark));}, // a grab, catch or crash is playing out
   evDebug,evCycleWeather,isEventActive(){return !!EV.big||FL.on||BOOM.on;},
   toggleHyper,toggleHyper2,toggleHyper3,toggleHyperK,isHyperActive,getTelemetry,getExitArrow,setSkyMode,getSkyMode,addLookDelta,takeSync,levelOut
 };
@@ -6498,8 +6578,8 @@ window.Tiles3D={
     <div class="wi">⚠ WARNING</div>
     <div class="wt">THE REAL WORLD</div>
     <div class="ws">GO DEAN! — STAGE 10 — 18+ ONLY</div>
-    <div class="wb">This stage contains <b>real-world footage</b>, live feeds, and confronting factual material about animal suffering and industrial agriculture.<br><br>Some content is live and unfiltered.<br><br><b>ENTER ONLY IF YOU ARE 18 OR OVER.</b></div>
-    <div class="wbtns"><button id="wen">ENTER</button><button id="wex" onclick="history.back()">EXIT</button></div>
+    <div class="wb">This stage contains <b>real-world footage</b>, live feeds, and confronting factual material about animal suffering and industrial agriculture.<br><br>Some content is live and unfiltered.<br><br><b>ENTER ONLY IF YOU ARE 18 OR OVER.</b><br><br>By entering you confirm you are 18 or older and consent to viewing graphic content.</div>
+    <div class="wbtns"><button id="wen">I AM 18+ — ENTER</button><button id="wex" onclick="history.back()">EXIT</button></div>
   </div>
 </div>
 
@@ -7685,10 +7765,11 @@ function setupControls(){
       if(k==='9'){window.Tiles3D.warp('up');toast('WARP: 45,000 KM UP');}
       if(/^[1-8]$/.test(k)&&window.Tiles3D.evDebug){const r=window.Tiles3D.evDebug(parseInt(k,10));if(r)toast('DEBUG — '+r);}
       if(k==='g'&&window.Tiles3D.evCycleWeather)toast('DEBUG — '+window.Tiles3D.evCycleWeather());
+      if(k==='-'&&window.Tiles3D.toggleHunters)toast('DEBUG — HUNTERS '+(window.Tiles3D.toggleHunters()?'OFF':'ON'));
       if(k==='z'&&window.Tiles3D.summonBoxhead){const ok=window.Tiles3D.summonBoxhead();toast(ok?'DEBUG — THE BOXHEAD IS COMING':'DEBUG — NOT NOW (ALREADY HERE, OR NOT ON THE GROUND)');}
     }
     if(k==='enter'&&!e.repeat&&doorState!=='map'){toggleStoneRoom();}
-    if(k==='escape'){closeFeed();exitMapFull();}
+    if(k==='escape'){if(doorState==='map'&&window.Tiles3D&&window.Tiles3D.isBusy&&window.Tiles3D.isBusy())return;closeFeed();exitMapFull();} // not during a death: it plays out first
   });
   document.addEventListener('keyup',e=>{
     const k=e.key.toLowerCase();
